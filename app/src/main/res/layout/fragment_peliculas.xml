@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".presentation.catalog.PeliculasFragment">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/movies_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="8dp"
+        android:clipToPadding="false"/>
+
+    <LinearLayout
+        android:id="@+id/loading_indicator_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:id="@+id/loading_text_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Por favor, espere mientras se carga..."
+            android:textColor="@android:color/darker_gray"
+            android:textSize="16sp"
+            android:layout_marginTop="8dp"/>
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/no_results_text_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="No hay resultados aquí"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        android:textColor="@android:color/darker_gray"
+        android:textSize="16sp"/>
+
+</FrameLayout>

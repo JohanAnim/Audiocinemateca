@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".presentation.contentdetail.ContentDetailFragment">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp">
+
+        <LinearLayout
+            android:id="@+id/content_details_container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <!-- Un separador orizontal -->
+            <View
+                android:id="@+id/separator"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@android:color/darker_gray"
+                android:layout_marginTop="32dp" />
+
+            <!-- Botón Escuchar ahora -->
+            <Button
+                android:id="@+id/listen_now_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Comenzar a oír"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="32dp"
+                android:layout_gravity="center_horizontal" />
+
+
+
+            <!-- Contenedor para la información general en una cuadrícula -->
+            <GridLayout
+                android:id="@+id/general_info_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="3"
+                android:layout_marginTop="16dp">
+
+                <!-- Fila 1 -->
+                <TextView
+                    android:id="@+id/content_year"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:gravity="center_horizontal"
+                    android:textSize="16sp"
+                    tools:text="Año: 2023" />
+
+                <TextView
+                    android:id="@+id/content_genre"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:gravity="center_horizontal"
+                    android:textSize="16sp"
+                    tools:text="Género: Drama" />
+
+                <TextView
+                    android:id="@+id/content_country"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:gravity="center_horizontal"
+                    android:textSize="16sp"
+                    tools:text="País: España" />
+
+                <!-- Fila 2 -->
+                <TextView
+                    android:id="@+id/content_director"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:textSize="16sp"
+                    tools:text="Director: John Doe" />
+
+                <TextView
+                    android:id="@+id/content_screenwriter"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:textSize="16sp"
+                    tools:text="Guion: Jane Doe" />
+
+                <TextView
+                    android:id="@+id/content_music"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:textSize="16sp"
+                    tools:text="Música: Varios" />
+
+                <!-- Fila 3 -->
+                <TextView
+                    android:id="@+id/content_photography"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:textSize="16sp"
+                    tools:text="Fotografía: John Smith" />
+
+                <TextView
+                    android:id="@+id/content_cast"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:textSize="16sp"
+                    tools:text="Reparto: Actor 1, Actor 2" />
+
+                <TextView
+                    android:id="@+id/content_producer"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:textSize="16sp"
+                    tools:text="Productora: Studio XYZ" />
+
+                <!-- Fila 4 -->
+                <TextView
+                    android:id="@+id/content_narration"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:textSize="16sp"
+                    tools:text="Narración: Narrador" />
+
+                <TextView
+                    android:id="@+id/content_duration"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:textSize="16sp"
+                    tools:text="Duración: 120 minutos" />
+
+                <TextView
+                    android:id="@+id/content_language"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:textSize="16sp"
+                    tools:text="Idioma: Español" />
+
+                <!-- Estos dos últimos no encajan en la cuadrícula de 3, los dejamos aparte -->
+                <TextView
+                    android:id="@+id/content_filmaffinity"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_columnSpan="3"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="16dp"
+                    android:textSize="16sp"
+                    tools:text="FilmAffinity: link" />
+
+                <TextView
+                    android:id="@+id/content_parts"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_columnSpan="3"
+                    android:gravity="center_horizontal"
+                    android:textSize="16sp"
+                    tools:text="Partes: 1" />
+
+                <TextView
+                    android:id="@+id/content_seasons"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_columnSpan="3"
+                    android:gravity="center_horizontal"
+                    android:textSize="16sp"
+                    tools:text="Temporadas: 3" />
+
+            </GridLayout>
+
+            <!-- Sinopsis -->
+            <TextView
+                android:id="@+id/sinopsis_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Sinopsis:"
+                android:textStyle="bold"
+                android:textSize="18sp"
+                android:layout_marginTop="16dp" />
+
+            <TextView
+                android:id="@+id/content_sinopsis"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:layout_marginTop="8dp"
+                tools:text="Esta es la sinopsis del contenido." />
+
+            <!-- Contenedor para partes de películas -->
+            <LinearLayout
+                android:id="@+id/movie_parts_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="16dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Partes:"
+                    android:textStyle="bold"
+                    android:textSize="18sp" />
+
+                <!-- Las partes se añadirán dinámicamente aquí -->
+                <LinearLayout
+                    android:id="@+id/movie_parts_list_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+            </LinearLayout>
+
+            <!-- Contenedor para temporadas y episodios de series -->
+            <LinearLayout
+                android:id="@+id/series_chapters_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="16dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Temporadas:"
+                    android:textStyle="bold"
+                    android:textSize="18sp" />
+
+                <Spinner
+                    android:id="@+id/season_spinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Episodios:"
+                    android:textStyle="bold"
+                    android:textSize="18sp"
+                    android:layout_marginTop="16dp" />
+
+                <!-- Los episodios se añadirán dinámicamente aquí -->
+                <LinearLayout
+                    android:id="@+id/episodes_list_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/content_not_found_message"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Contenido no encontrado."
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</ScrollView>

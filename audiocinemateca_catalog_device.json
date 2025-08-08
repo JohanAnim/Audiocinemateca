@@ -1,0 +1,375 @@
+{
+  "documentales": [
+    {
+      "id": "21",
+      "Titulo": "Guadalquivir",
+      "anio": "2013",
+      "genero": "Documental | Naturaleza. Animales",
+      "pais": "España",
+      "director": "Joaquín Gutiérrez Acha",
+      "guion": "Fernando López-Mirones",
+      "musica": "Pablo Martín Caminero",
+      "fotografia": "desconocida",
+      "reparto": "Documental",
+      "productora": "Wanda Vision",
+      "narracion": "desconocida (TVE)",
+      "duracion": "90",
+      "idioma": "1",
+      "filmaffinity": "https://www.filmaffinity.com/es/film404499.html",
+      "sinopsis": "Guadalquivir, aguas abajo. Más que un río, el Guadalquivir es el cauce que une tres de los espacios naturales más importantes de España: Cazorla, Sierra Morena y Doñana. Este documental nos muestra la vida al paso de la corriente, los paisajes de estos tres grandes espacios en las diferentes épocas del año. (FILMAFFINITY)",
+      "enlace": "system/files/Guadalquivir.mp3"
+    },
+    {
+      "id": "33",
+      "Titulo": "Trece. Miguel Poveda",
+      "anio": "2015",
+      "genero": "Documental | Documental sobre música. Biográfico. Flamenco",
+      "pais": "España",
+      "director": "Paco Ortiz",
+      "guion": "Isabel Cubero",
+      "musica": "desconocida",
+      "fotografia": "desconocida",
+      "reparto": "Documental, Miguel Poveda",
+      "productora": "Sarao Films",
+      "narracion": "desconocida",
+      "duracion": "92",
+      "idioma": "1",
+      "filmaffinity": "https://www.filmaffinity.com/es/film656336.html",
+      "sinopsis": "Miguel Poveda acaba de cumplir 40 años y se encuentra en el ecuador de su vida. Recientemente fue el aniversario de sus 25 años sobre los escenarios y ante tales acontecimientos decidió hacer algo especial, el que posiblemente fue su concierto más ambicioso hasta la fecha. A lo largo de los meses en los que se fue gestionando este evento desgranamos quién es Miguel Ángel Poveda León, la persona tras los focos, un hombre celoso de su vida privada que nos abre las puertas de su casa y su familia para que conozcamos sus orígenes. La historia de un chico que teniendo todo en contra para triunfar en el flamenco, payo, catalán y sin tradición familiar ha conseguido llegar a lo más alto. (Filmaffinity)",
+      "enlace": "system/files/13%2C%20Miguel%20Poveda.mp3"
+    },
+    {
+      "id": "34",
+      "Titulo": "La silla de Fernando",
+      "anio": "2006",
+      "genero": "Documental | Documental sobre cine. Biográfico",
+      "pais": "España",
+      "director": "David Trueba,  Luis Alegre",
+      "guion": "David Trueba, Luis Alegre",
+      "musica": "desconocida",
+      "fotografia": "Mischa Lluch",
+      "reparto": "Documental, Fernando Fernán Gómez",
+      "productora": "Buenavida Producciones S.L.",
+      "narracion": "desconocida (TVE)",
+      "duracion": "85",
+      "idioma": "1",
+      "filmaffinity": "https://www.filmaffinity.com/es/film683688.html",
+      "sinopsis": "Fernando Fernán Gómez nació el 28 de agosto de 1921 en Lima (Perú), durante una gira de su madre, la actriz Carola Fernán-Gómez, con la compañía teatral María Guerrero-Fernando Díaz de Mendoza. Todo el mundo conoce sus decisivas aportaciones como actor, escritor y director de cine. Sin embargo, sólo unos pocos privilegiados conocen hasta qué punto Fernando, sentado en una silla, es capaz de convertir una charla en algo más que una charla. (FILMAFFINITY)",
+      "enlace": "system/files/remote/La%20silla%20de%20Fernando.mp3"
+    }
+  ],
+  "peliculas": [
+    {
+      "id": "3",
+      "Titulo": "Agatha",
+      "anio": "1978",
+      "genero": "intriga",
+      "pais": "Estados Unidos",
+      "director": "Michael Apted",
+      "guion": "Kathleen Tynan, Arthur Hopcraft",
+      "musica": "Johnny Mandel",
+      "fotografia": "Vittorio Storaro",
+      "reparto": "Vanessa Redgrave, Dustin Hoffman, Timothy Dalton, Timothy West, Celia Gregory, Helen Morse",
+      "productora": "Coproducción USA/GB",
+      "narracion": "desconocida (Canal Sur)",
+      "duracion": "98",
+      "idioma": "1",
+      "partes": "1",
+      "filmaffinity": "https://www.filmaffinity.com/es/film883492.html",
+      "sinopsis": "Año 1926. Agatha Christie (Redgrave), una famosa escritora de carácter frágil y dependiente, casada con un coronel (Dalton), lleva 11 días desaparecida. Wally Stanton (Hoffman), un conocido periodista americano, investigará su misteriosa desaparición... (FILMAFFINITY)",
+      "enlaces": [
+        "system/files/Agatha.mp3"
+      ]
+    },
+    {
+      "id": "4",
+      "Titulo": "Ágora",
+      "anio": "2009",
+      "genero": "Aventuras. Romance | Histórico. Biográfico. Antigua Roma. Antiguo Egipto. Cine épico. Religión",
+      "pais": "España",
+      "director": "Alejandro Amenábar",
+      "guion": "Alejandro Amenábar, Mateo Gil",
+      "musica": "Dario Marianelli",
+      "fotografia": "Xavi Giménez",
+      "reparto": "Rachel Weisz, Max Minghella, Ashraf Barhom, Oscar Isaac, Michael Lonsdale, Rupert Evans, Homayoun Ershadi, Richard Durden, Sami Samir, Manuel Cauchi, Homayoun Ershadi, Oshri Cohen",
+      "productora": "Telecinco Cinema / Mod Producciones / Himenóptero",
+      "narracion": "Fundación Orange",
+      "duracion": "126",
+      "idioma": "1",
+      "partes": "1",
+      "filmaffinity": "https://www.filmaffinity.com/es/film566095.html",
+      "sinopsis": "En el siglo IV, Egipto era una provincia del Imperio Romano. La ciudad más importante, Alejandría, se había convertido en el último baluarte de la cultura frente a un mundo en crisis, dominado por la confusión y la violencia. En el año 391, hordas de fanáticos se ensañaron con la legendaria biblioteca de Alejandría. Atrapada tras sus muros, la brillante astrónoma Hypatia (Rachel Weisz), filósofa y atea, lucha por salvar la sabiduría del mundo antiguo, sin percibir que su joven esclavo Davo se debate entre el amor que le profesa en secreto y la libertad que podría alcanzar uniéndose al imparable ascenso del Cristianismo. (FILMAFFINITY)",
+      "enlaces": [
+        "system/files/%C3%81gora%20%28Audesc%29.mp3"
+      ]
+    },
+    {
+      "id": "6",
+      "Titulo": "Águila roja. La película",
+      "anio": "2011",
+      "genero": "Aventuras | Histórico. Siglo XVII. Capa y espada",
+      "pais": "España",
+      "director": "José Ramón Ayerra",
+      "guion": "Guillermo Cisneros, Juan Manuel Córdoba, Pilar Nadal",
+      "musica": "Daniel Sánchez de la Hera",
+      "fotografia": "Adolfo Hernández",
+      "reparto": "David Janer, Javier Gutiérrez, Inma Cuesta, Martina Klein, Francis Lorenzo, Pepa Aniorte, Antonio Molero, Xabier Elorriaga, William Miller, Stany Coppet, Roberto Álamo, Mariano Peña, José Ángel E",
+      "productora": "Globo Media S.A. / Televisión Española (TVE) / Versátil Cinema",
+      "narracion": "Fundación Orange",
+      "duracion": "122",
+      "idioma": "1",
+      "partes": "1",
+      "filmaffinity": "https://www.filmaffinity.com/es/film442163.html",
+      "sinopsis": "Adaptación a la pantalla grande de la exitosa serie de televisión. La acción comienza en una villa, donde se celebra un congreso al que asisten las potencias más importantes de la época: Francia, Inglaterra, Portugal y los Estados Pontificios. Aunque estos países han forzado el encuentro con la excusa de buscar la paz entre españoles y lusos, el verdadero motivo es conquistar el Reino de España. Para asegurar el éxito del complot, en el que la Marquesa de Santillana es una pieza clave, contratan a un sanguinario cosaco para acabar con Águila Roja, pero éste consigue vencer al mercenario, aunque en la pelea su hijo Alonso resulta herido. Entonces Águila Roja decide abandonar la lucha en favor de la justicia. De esta forma, tanto la villa como el Rey y todo el reino quedan a merced de los traidores... (FILMAFFINITY)",
+      "enlaces": [
+        "system/files/%C3%81guila%20roja%20%28Audesc%29.mp3"
+      ]
+    }
+  ],
+  "series": [
+    {
+      "id": "1",
+      "titulo": "Isabel",
+      "anio": "2011",
+      "duracion": "2880",
+      "pais": "España",
+      "director": "Javier Olivares (Creator), Pablo Olivares (Creator), Jordi Frades, Oriol Ferrer, Salvador García Ruiz, Joan Noguera",
+      "guion": "Javier Olivares, Pablo Olivares, Anaïs Schaaff, Laura Sarmiento",
+      "musica": "Federico Jusid",
+      "fotografia": "David Omedes",
+      "reparto": "Michelle Jenner, Rodolfo Sancho, Pablo Derqui, Bárbara Lennie, Ginés García Millán, Pedro Casablanc, Ramón Madaula, Sergio Peris-Mencheta, William Miller, Ainhoa Santamaría, Jordi Díaz, Andrés Herrera, Jorge Bosch, Daniel Albadalejo, Irene Escolar, Úrsula Corberó, Francesc Garrido, Julio Manrique, Eusebio Poncela, Fernando Guillén Cuervo, Irene Escolar, Raúl Mérida, Álvaro Cervantes, Víctor Elías, Fernando Cayo, Lluís Soler, Pere Ponce, Jordi Banacolocha, Daniel Holguín, Nerea Barros",
+      "genero": "Serie de TV. Drama | Histórico. Biográfico. Siglo XV",
+      "temporadas": "3",
+      "idioma": "1",
+      "narracion": "Fundación Orange",
+      "filmaffinity": "https://www.filmaffinity.com/es/film522264.html",
+      "sinopsis": "Serie de TV (2011-2014). 3 temporadas. 39 episodios. Narra la vida de la reina Isabel la Católica. Primera temporada (13 episodios): abarca desde su infancia hasta su proclamación como reina de Castilla en 1474, pasando por las guerras civiles por el trono de Castilla, su matrimonio con Fernando de Aragón. Segunda temporada (13 episodios): narra el periodo que va desde su coronación hasta la conquista de Granada. Tercera temporada (13 episodios): narra la etapa final de su vida. (FILMAFFINITY)",
+      "productora": "Emitida por la cadena TVE; Diagonal TV",
+      "capitulos": {
+        "1": [
+          {
+            "capitulo": "1",
+            "enlace": "system/files/Isabel%201x01.mp3",
+            "titulo": "Isabel, la reina"
+          }
+        ]
+      }
+    }
+  ],
+  "radionovelas": [
+    {
+      "id": "1",
+      "titulo": "Lucecita",
+      "anio": "desconocido",
+      "duracion": "1500",
+      "pais": "Cuba",
+      "director": "Caridad Martínez",
+      "guion": "Delia Fiallo",
+      "reparto": "desconocido",
+      "genero": "Romance",
+      "temporadas": "1",
+      "idioma": "2",
+      "narracion": "desconocida",
+      "filmaffinity": "#",
+      "sinopsis": "Lucecita es una campesina ingenua que al morir su madre es llevada a la capital a casa de unos aristócratas, los Aldama, donde tendrá que servir. Allí se enamora de Gustavo, un joven millonario ciego que está traumatizado por la muerte de su esposa en un accidente en el que él perdió la vista. Los Aldama tienen una ahijada, Angelina, malvada y calculadora, que quiere casarse con Gustavo para quedarse con su fortuna. Lucecita es víctima de las intrigas de Angelina pero gracias al amor de Gustavo conseguirá superar todos los obstáculos.",
+      "productora": "Radio progreso",
+      "capitulos": {
+        "1": [
+          {
+            "capitulo": "1",
+            "enlace": "system/files/Lucecita%2001.mp3",
+            "titulo": "Capítulo 1"
+          }
+        ]
+      }
+    }
+  ],
+  "radioteatros": [
+    {
+      "id": "1",
+      "titulo": "La casa de Bernarda Alba",
+      "anio": "2013",
+      "duracion": "70",
+      "pais": "España",
+      "director": "Benigno Moreno",
+      "guion": "Federico García Lorca",
+      "reparto": "María Galiana, Ana Wagener, Luisa Gavasa, Amparo Vega-León",
+      "genero": "Drama",
+      "temporadas": "1",
+      "idioma": "1",
+      "narracion": "desconocida",
+      "filmaffinity": "https://es.wikipedia.org/wiki/La_casa_de_Bernarda_Alba",
+      "sinopsis": "La obra cuenta la historia de Bernarda Alba que, tras haber enviudado por segunda vez a los 60 años, decide vivir los siguientes ocho años en el más riguroso luto. Con Bernarda viven sus cinco hijas (Angustias, Magdalena, Amelia, Martirio y Adela), su madre y sus dos criadas. Entre estas últimas se encuentra Poncia, una criada que ha vivido muchos años al servicio de la anciana.",
+      "productora": "RNE",
+      "capitulos": {
+        "1": [
+          {
+            "capitulo": "1",
+            "enlace": "system/files/remote/la-casa-de-bernarda-alba-radioteatro.mp3",
+            "titulo": "Audio único"
+          }
+        ]
+      }
+    },
+    {
+      "id": "2",
+      "titulo": "Luces de bohemia",
+      "anio": "2012",
+      "duracion": "100",
+      "pais": "España",
+      "director": "Benigno Moreno",
+      "guion": "Ramón María del Valle-Inclán",
+      "reparto": "Juan Diego, Amparo Pamplona, José Luis García-Pérez, María Galiana, Roberto Quintana",
+      "genero": "Drama",
+      "temporadas": "1",
+      "idioma": "1",
+      "narracion": "desconocida",
+      "filmaffinity": "https://es.wikipedia.org/wiki/Luces_de_bohemia",
+      "sinopsis": "Max Estrella, un poeta ciego y miserable, recorre durante una noche la ciudad de Madrid en compañía de don Latino de Híspalis. En su peregrinación se tropezará con todo tipo de personajes de la bohemia madrileña y sufrirá las consecuencias de su borrachera.",
+      "productora": "RNE",
+      "capitulos": {
+        "1": [
+          {
+            "capitulo": "1",
+            "enlace": "system/files/remote/luces-de-bohemia-radioteatro.mp3",
+            "titulo": "Audio único"
+          }
+        ]
+      }
+    },
+    {
+      "id": "3",
+      "titulo": "El apartamento",
+      "anio": "2016",
+      "duracion": "116",
+      "pais": "España",
+      "director": "Benigno Moreno",
+      "guion": "Billy Wilder, I.A.L. Diamond",
+      "reparto": "Cayetana Guillén Cuervo, Miguel Ángel Muñoz, Verónica Forqué, Carlos Hipólito, Luis Varela",
+      "genero": "Comedia",
+      "temporadas": "1",
+      "idioma": "1",
+      "narracion": "desconocida",
+      "filmaffinity": "https://www.filmaffinity.com/es/film956553.html",
+      "sinopsis": "C.C. Baxter (Jack Lemmon) es un modesto pero ambicioso empleado de una compañía de seguros de Manhattan. Está soltero y vive solo en un discreto apartamento que presta ocasionalmente a sus superiores para sus citas amorosas. Tiene la esperanza de que estos favores le sirvan para mejorar su posición en la empresa. Pero la situación cambia cuando se enamora de una ascensorista (Shirley MacLaine) que resulta ser la amante de uno de los jefes que usan su apartamento.",
+      "productora": "RNE",
+      "capitulos": {
+        "1": [
+          {
+            "capitulo": "1",
+            "enlace": "system/files/remote/el-apartamento-radioteatro.mp3",
+            "titulo": "Audio único"
+          }
+        ]
+      }
+    }
+  ],
+  "paisajes_sonoros": [
+    {
+      "id": "1",
+      "titulo": "El sonido de la noche",
+      "anio": "desconocido",
+      "duracion": "31",
+      "pais": "desconocido",
+      "director": "desconocido",
+      "guion": "desconocido",
+      "reparto": "desconocido",
+      "genero": "Sonidos de la naturaleza",
+      "temporadas": "1",
+      "idioma": "1",
+      "narracion": "desconocida",
+      "filmaffinity": "#",
+      "sinopsis": "Relajante sonido de una noche de verano, con el sonido de los grillos, el viento y los demás animales nocturnos.",
+      "productora": "desconocida",
+      "capitulos": {
+        "1": [
+          {
+            "capitulo": "1",
+            "enlace": "system/files/el-sonido-de-la-noche.mp3",
+            "titulo": "Audio único"
+          }
+        ]
+      }
+    }
+  ],
+  "infantiles": [
+    {
+      "id": "1",
+      "titulo": "El gato con botas",
+      "anio": "desconocido",
+      "duracion": "20",
+      "pais": "desconocido",
+      "director": "desconocido",
+      "guion": "desconocido",
+      "reparto": "desconocido",
+      "genero": "Cuento",
+      "temporadas": "1",
+      "idioma": "1",
+      "narracion": "desconocida",
+      "filmaffinity": "#",
+      "sinopsis": "Un molinero pobre deja a su hijo pequeño como única herencia un gato. El hijo se lamenta de su suerte, pero el gato, que es muy astuto, le pide un par de botas y un saco. Le promete que, si confía en él, conseguirá salir de la miseria.",
+      "productora": "desconocida",
+      "capitulos": {
+        "1": [
+          {
+            "capitulo": "1",
+            "enlace": "system/files/El-gato-con-botas.mp3",
+            "titulo": "Audio único"
+          }
+        ]
+      }
+    },
+    {
+      "id": "2",
+      "titulo": "La Cenicienta",
+      "anio": "desconocido",
+      "duracion": "22",
+      "pais": "desconocido",
+      "director": "desconocido",
+      "guion": "desconocido",
+      "reparto": "desconocido",
+      "genero": "Cuento",
+      "temporadas": "1",
+      "idioma": "1",
+      "narracion": "desconocida",
+      "filmaffinity": "#",
+      "sinopsis": "Érase una vez una joven hermosa y bondadosa que, tras la muerte de su padre, se ve obligada a hacer de sirvienta para su cruel madrastra y sus dos malvadas hermanastras, que la llaman despectivamente Cenicienta. El príncipe del reino anuncia que va a celebrar un gran baile al que invita a todas las jóvenes casaderas para elegir a su futura esposa. Cenicienta sueña con ir al baile, pero su madrastra se lo impide. Sin embargo, cuando ya ha perdido toda esperanza, aparece su hada madrina que, con su varita mágica, la convierte en una deslumbrante princesa. Pero su encantamiento terminará a las doce de la noche.",
+      "productora": "desconocida",
+      "capitulos": {
+        "1": [
+          {
+            "capitulo": "1",
+            "enlace": "system/files/La-cenicienta.mp3",
+            "titulo": "Audio único"
+          }
+        ]
+      }
+    },
+    {
+      "id": "3",
+      "titulo": "El sastrecillo valiente",
+      "anio": "desconocido",
+      "duracion": "20",
+      "pais": "desconocido",
+      "director": "desconocido",
+      "guion": "desconocido",
+      "reparto": "desconocido",
+      "genero": "Cuento",
+      "temporadas": "1",
+      "idioma": "1",
+      "narracion": "desconocida",
+      "filmaffinity": "#",
+      "sinopsis": "Un humilde sastre mata a siete moscas de un solo golpe. Orgulloso de su hazaña, se borda un cinturón con la frase \"siete de un golpe\" y se lanza a recorrer el mundo. La gente, al leer el cinturón, piensa que es un gran guerrero y su fama llega a oídos del rey que, para librarse de él, le encomienda peligrosas misiones. Pero el sastrecillo, gracias a su ingenio y astucia, consigue superar todas las pruebas.",
+      "productora": "desconocida",
+      "capitulos": {
+        "1": [
+          {
+            "capitulo": "1",
+            "enlace": "system/files/El-sastrecillo-valiente.mp3",
+            "titulo": "Audio único"
+          }
+        ]
+      }
+    }
+  ]
+}

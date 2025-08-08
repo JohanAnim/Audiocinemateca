@@ -1,0 +1,111 @@
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#80000000">
+
+    <!-- Controles de Reproducción Superiores -->
+    <LinearLayout
+        android:id="@+id/playback_controls"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="128dp" 
+        android:gravity="center"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- Botón de Pista Anterior (Personalizado) -->
+        <ImageButton
+            android:id="@+id/custom_prev_media"
+            style="@style/ExoMediaButton"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:contentDescription="Anterior"
+            android:src="@drawable/ic_previous" />
+
+        <!-- Botón de Retroceso Rápido (Estándar de ExoPlayer) -->
+        <ImageButton
+            android:id="@id/exo_rew"
+            style="@style/ExoMediaButton.Rewind"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:contentDescription="Retroceder" />
+
+        <!-- Botón de Reproducir/Pausar (Estándar de ExoPlayer) -->
+        <ImageButton
+            android:id="@id/exo_play_pause"
+            style="@style/ExoMediaButton"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:contentDescription="Reproducir/Pausar" />
+
+        <!-- Botón de Avance Rápido (Estándar de ExoPlayer) -->
+        <ImageButton
+            android:id="@id/exo_ffwd"
+            style="@style/ExoMediaButton.FastForward"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:contentDescription="Adelantar" />
+
+        <!-- Botón de Siguiente Pista (Personalizado) -->
+        <ImageButton
+            android:id="@+id/custom_next_media"
+            style="@style/ExoMediaButton"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:contentDescription="Siguiente"
+            android:src="@drawable/ic_next" />
+
+    </LinearLayout>
+
+    <!-- Barra de Tiempo y Duración -->
+    <LinearLayout
+        android:id="@+id/time_bar_container"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="64dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/playback_controls">
+
+        <!-- Tiempo de Reproducción Actual (Estándar de ExoPlayer) -->
+        <TextView
+            android:id="@id/exo_position"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            tools:text="01:23" />
+
+        <!-- Barra de Progreso (Estándar de ExoPlayer) -->
+        <androidx.media3.ui.DefaultTimeBar
+            android:id="@id/exo_progress"
+            android:layout_width="0dp"
+            android:layout_height="26dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:tooltipText="Barra de tiempo"
+            app:buffered_color="#99FFFFFF"
+            app:played_color="#FF0000"
+            app:unplayed_color="#4DFFFFFF" />
+
+        <!-- Duración Total del Medio (Estándar de ExoPlayer) -->
+        <TextView
+            android:id="@id/exo_duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            tools:text="05:00" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

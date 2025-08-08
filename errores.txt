@@ -1,0 +1,17 @@
+23:24:53.499  D  observeFilterChanges: Filter options for 'peliculas' changed to: FilterOptions(filterType=Alfabéticamente, filterValue=A-Z, searchQuery=null)
+23:24:53.499  D  observeFilterChanges: Calling loadMovies() after filter change.
+23:24:53.500  D  loadMovies: Current filter options: FilterOptions(filterType=Alfabéticamente, filterValue=A-Z, searchQuery=null)
+23:24:54.227  D  loadMovies: Raw items for 'peliculas' size: 6937
+23:24:54.669  D  loadMovies: Filtered items size after applyFilter: 6937
+23:24:54.669  D  loadMovies: New movies for current page size: 20
+23:24:54.670  D  loadMovies: Appended 20 movies. Current total: 20
+23:24:54.671  D  loadMovies: Loading finished. isLoading: false
+
+23:24:53.499  D  Received new movie list. Size: 0. First movie title: N/A
+23:24:53.500  D  Loading state changed: true
+23:24:54.669  D  Received new movie list. Size: 20. First movie title: 7 mujeres, 1 homosexual y Carlos
+23:24:54.670  D  Loading state changed: false
+23:26:36.156  D  Received new movie list. Size: 0. First movie title: N/A
+23:26:36.156  D  Loading state changed: true
+23:26:37.267  D  Received new movie list. Size: 20. First movie title: 7 mujeres, 1 homosexual y Carlos
+23:26:37.268  D  Loading state changed: false

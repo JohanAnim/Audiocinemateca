@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Audiocinemateca</string>
+    <string name="my_lists_title">Mis Listas</string>
+    <string name="history_title">Historial</string>
+    <string name="forget_all_button_text">Olvidar todo</string>
+    <string name="search_title">Buscar</string>
+    <string name="search_hint">Buscar por título, director, etc.</string>
+    <string name="filter_by_prompt">Filtrar por</string>
+    <string name="dependent_filter_prompt">Seleccionar</string>
+    <string name="filter_by_description">filtrar por:</string>
+    <string name="close_button_description">Cerrar</string>
+    <string name="media_route_menu_title">Transmitir</string>
+    <string name="forget_all_history_title">Olvidar todo</string>
+    <string name="forget_all_history_message">¡atención!\nEsta acción no se puede revertir y eliminará en su totalidad todo el historial de reproducción junto con los puntos de guardado para cada título.\nProceda con cuidado.\n¿Está seguro de querer eliminar todo el historial?</string>
+    <string name="cancel_button_text">Cancelar</string>
+</resources>
