@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -24,17 +25,22 @@ import com.johang.audiocinemateca.data.model.Documentary
 import com.johang.audiocinemateca.data.model.Movie
 import com.johang.audiocinemateca.data.model.Serie
 import com.johang.audiocinemateca.data.model.ShortFilm
+import com.johang.audiocinemateca.domain.usecase.UpdateCheckResult
 import com.johang.audiocinemateca.data.repository.SearchRepository
+import com.johang.audiocinemateca.presentation.account.AccountViewModel
 import com.johang.audiocinemateca.presentation.player.PlayerService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
+@androidx.media3.common.util.UnstableApi
 class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var searchRepository: SearchRepository
+
+    private val accountViewModel: AccountViewModel by viewModels()
 
     private lateinit var navController: NavController
     private lateinit var miniPlayerContainer: View
@@ -82,8 +88,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val updateIndicatorReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottom_nav_view)
+            val accountMenuItem = bottomNavigationView.menu.findItem(R.id.accountFragment)
+            when (intent.action) {
+                ACTION_SHOW_UPDATE_INDICATOR -> {
+                    accountMenuItem.title = "Cuenta (Hay una nueva actualización de la app)"
+                }
+                ACTION_HIDE_UPDATE_INDICATOR -> {
+                    accountMenuItem.title = "Cuenta"
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d("MainActivity", "onCreate called") // Added log
         setContentView(R.layout.activity_main)
 
         setSupportActionBar(findViewById(R.id.toolbar))
@@ -167,8 +189,50 @@ class MainActivity : AppCompatActivity() {
         }
         LocalBroadcastManager.getInstance(this).registerReceiver(miniPlayerUpdateReceiver, filter)
 
+        val updateIndicatorFilter = IntentFilter().apply {
+            addAction(ACTION_SHOW_UPDATE_INDICATOR)
+            addAction(ACTION_HIDE_UPDATE_INDICATOR)
+        }
+        LocalBroadcastManager.getInstance(this).registerReceiver(updateIndicatorReceiver, updateIndicatorFilter)
+
         // Handle deep links
         handleIntent(intent)
+
+        // Check for app updates
+        try {
+            packageManager.getPackageInfo(packageName, 0).versionName?.let { currentVersion ->
+                accountViewModel.checkForUpdates(currentVersion)
+
+                // Observe the updateState and send broadcast accordingly
+                lifecycleScope.launch {
+                    accountViewModel.updateState.collect { result ->
+                        when (result) {
+                            is UpdateCheckResult.UpdateAvailable -> {
+                                Log.d("MainActivity", "Update available: ${result.updateInfo.version}")
+                                val intent = Intent(ACTION_SHOW_UPDATE_INDICATOR)
+                                LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
+                            }
+                            is UpdateCheckResult.NoUpdateAvailable -> {
+                                Log.d("MainActivity", "No update available.")
+                                val intent = Intent(ACTION_HIDE_UPDATE_INDICATOR)
+                                LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
+                            }
+                            is UpdateCheckResult.Error -> {
+                                Log.e("MainActivity", "Error checking for update: ${result.message}")
+                                val intent = Intent(ACTION_HIDE_UPDATE_INDICATOR)
+                                LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
+                                // Optionally, show a toast or other UI feedback for the error
+                            }
+                            UpdateCheckResult.Loading -> {
+                                // Optionally, show a loading indicator
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error checking for app update", e)
+        }
     }
 
     override fun onStart() {
@@ -212,8 +276,7 @@ class MainActivity : AppCompatActivity() {
                             Log.d("DeepLink", "Navigating to ContentDetailFragment with itemId: ${it.id}, itemType: $itemType using NavDirections")
                             navController.navigate(action)
                         } ?: run {
-                            Log.w("DeepLink", "Content not found for itemId: $itemId, itemType: $itemType")
-                            Toast.makeText(this@MainActivity, "Contenido no encontrado.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@MainActivity, "No se pudo cargar el contenido para reanudar la reproducción.", Toast.LENGTH_SHORT).show()
                         }
                     }
                 } else {
@@ -253,6 +316,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         LocalBroadcastManager.getInstance(this).unregisterReceiver(miniPlayerUpdateReceiver)
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(updateIndicatorReceiver)
     }
 
     private fun updateMiniPlayerContent(title: String?, subtitle: String?, isPlaying: Boolean) {
@@ -290,5 +354,8 @@ class MainActivity : AppCompatActivity() {
         const val EXTRA_CURRENT_POSITION = "extra_current_position"
         const val ACTION_SEEK_TO_PREVIOUS = "com.johang.audiocinemateca.SEEK_TO_PREVIOUS"
         const val ACTION_SEEK_TO_NEXT = "com.johang.audiocinemateca.SEEK_TO_NEXT"
+
+        const val ACTION_SHOW_UPDATE_INDICATOR = "com.johang.audiocinemateca.SHOW_UPDATE_INDICATOR"
+        const val ACTION_HIDE_UPDATE_INDICATOR = "com.johang.audiocinemateca.HIDE_UPDATE_INDICATOR"
     }
 }
