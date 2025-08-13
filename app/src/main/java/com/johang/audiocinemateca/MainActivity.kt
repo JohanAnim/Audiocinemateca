@@ -30,6 +30,7 @@ import com.johang.audiocinemateca.data.repository.SearchRepository
 import com.johang.audiocinemateca.presentation.account.AccountViewModel
 import com.johang.audiocinemateca.presentation.player.PlayerService
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -205,12 +206,14 @@ class MainActivity : AppCompatActivity() {
 
                 // Observe the updateState and send broadcast accordingly
                 lifecycleScope.launch {
+                    delay(1000) // Delay for 1 second
                     accountViewModel.updateState.collect { result ->
                         when (result) {
                             is UpdateCheckResult.UpdateAvailable -> {
                                 Log.d("MainActivity", "Update available: ${result.updateInfo.version}")
                                 val intent = Intent(ACTION_SHOW_UPDATE_INDICATOR)
                                 LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
+                                Toast.makeText(this@MainActivity, "Hola. Hay una nueva versión de la app disponible! Para ver más detalles, dirígete a la pestaña de cuenta", Toast.LENGTH_LONG).show()
                             }
                             is UpdateCheckResult.NoUpdateAvailable -> {
                                 Log.d("MainActivity", "No update available.")

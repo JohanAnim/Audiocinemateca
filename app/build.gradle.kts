@@ -46,6 +46,24 @@ android {
         viewBinding = true
     }
 
+    packaging {
+        resources {
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/NOTICE"
+            excludes += "META-INF/LICENSE.txt"
+            excludes += "META-INF/NOTICE.txt"
+            excludes += "META-INF/ASL2.0"
+            excludes += "META-INF/*.kotlin_module"
+            excludes += "META-INF/*.DSA"
+            excludes += "META-INF/*.SF"
+            excludes += "META-INF/*.RSA"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE-LGPL-3.txt"
+            excludes += "META-INF/LICENSE-LGPL-2.1.txt"
+            excludes += "META-INF/LICENSE-W3C-TEST"
+        }
+    }
+
     // --- Personalizar nombre del APK en Kotlin DSL ---
     applicationVariants.all {
         outputs.all {
@@ -94,6 +112,9 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
+
+    // FlexMark for Markdown to HTML
+    implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

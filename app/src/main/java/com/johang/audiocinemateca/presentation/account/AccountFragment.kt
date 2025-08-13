@@ -22,7 +22,11 @@ import com.johang.audiocinemateca.data.AuthCatalogRepository
 import com.johang.audiocinemateca.domain.model.UpdateInfo
 import com.johang.audiocinemateca.domain.usecase.UpdateCheckResult
 import com.johang.audiocinemateca.media.VoicePlayer
+import android.webkit.WebView
 import com.johang.audiocinemateca.util.DownloadProgress // Importar DownloadProgress
+import com.vladsch.flexmark.html.HtmlRenderer
+import com.vladsch.flexmark.parser.Parser
+import com.vladsch.flexmark.util.data.MutableDataSet
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -140,18 +144,18 @@ class AccountFragment : Fragment() {
 
     private fun observeUpdateState() {
         lifecycleScope.launch {
-            viewModel.updateState.collect {
-                when (it) {
+            viewModel.updateState.collect { result ->
+                when (result) {
                     is UpdateCheckResult.UpdateAvailable -> {
                         appUpdateButton.visibility = View.VISIBLE
-                        val updateInfo = (it as UpdateCheckResult.UpdateAvailable).updateInfo // Cast explícito
+                        val updateInfo = result.updateInfo
                         appUpdateButton.setOnClickListener {
                             showUpdateDialog(updateInfo)
                         }
                         sendUpdateIndicatorBroadcast(true)
                     }
                     is UpdateCheckResult.Error -> {
-                        Log.e("AccountFragment", "Error checking for app update: ${it.message}")
+                        Log.e("AccountFragment", "Error checking for app update: ${result.message}")
                         appUpdateButton.visibility = View.GONE
                         sendUpdateIndicatorBroadcast(false)
                     }
@@ -215,9 +219,25 @@ class AccountFragment : Fragment() {
     }
 
     private fun showUpdateDialog(updateInfo: UpdateInfo) {
+        // Inflar la vista personalizada
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_changelog, null)
+        val webView: WebView = dialogView.findViewById(R.id.changelog_webview)
+
+        // Convertir Markdown a HTML
+        val options = MutableDataSet()
+        val parser = Parser.builder(options).build()
+        val renderer = HtmlRenderer.builder(options).build()
+        val changelogMarkdown = "### Versión ${updateInfo.version}\n\n${updateInfo.changelog}"
+        val document = parser.parse(changelogMarkdown)
+        val htmlContent = renderer.render(document)
+
+        // Cargar HTML en la WebView
+        webView.loadDataWithBaseURL(null, htmlContent, "text/html", "utf-8", null)
+
+        // Crear y mostrar el diálogo
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(updateInfo.name)
-            .setMessage("Versión: ${updateInfo.version}\n\nCambios:\n${updateInfo.changelog}")
+            .setView(dialogView)
             .setPositiveButton("Toque para actualizar ahora a la última versión de la app") { dialog, _ ->
                 viewModel.downloadUpdate(updateInfo)
                 dialog.dismiss()
@@ -228,23 +248,20 @@ class AccountFragment : Fragment() {
 
     private fun downloadAndUpdateCatalog(serverVersion: java.util.Date) {
         lifecycleScope.launch {
-            // 1. Reproducir sonido de inicio
-            voicePlayer.playVoice(R.raw.voz_descargando)
-            // 2. Mostrar diálogo de carga
+            // 1. Mostrar diálogo de carga
             showLoadingDialog("Actualizando Catálogo", "Por favor, espere mientras se actualiza el catálogo.")
 
-            // 3. Iniciar la descarga
+            // 2. Iniciar la descarga
             authCatalogRepository.downloadAndSaveCatalog(serverVersion).collect {
                 when (it) {
                     is AuthCatalogRepository.LoadCatalogResultWithProgress.Progress -> {
                         // Actualizar progreso en el diálogo
                         progressBar?.progress = it.percent
-                        progressText?.text = "${it.percent}%".format(it.percent)
+                        progressText?.text = "${it.percent}%"
                     }
                     is AuthCatalogRepository.LoadCatalogResultWithProgress.Success -> {
-                        // 4. Ocultar diálogo y reproducir sonido de finalización
+                        // 3. Ocultar diálogo
                         hideLoadingDialog()
-                        voicePlayer.playVoice(R.raw.voz_descarga_lista)
                         
                         MaterialAlertDialogBuilder(requireContext())
                             .setTitle("Actualización Completa")

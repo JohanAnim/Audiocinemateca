@@ -1,0 +1,19 @@
+# Versión 2.6.1
+
+## Cambios Principales
+
+Esta versión se enfoca en mejorar la estabilidad del proceso de compilación, corregir errores y refactorizar el código para un mejor mantenimiento.
+
+### Mejoras
+- **Nombre de APK Personalizado:** El archivo APK generado ahora incluye el tipo de compilación en su nombre (ej. `audiocinemateca_release.apk`), facilitando la identificación de los artefactos de compilación.
+- **Unificación de Versiones de Gradle:** Se ha centralizado la versión del Plugin de Android para Gradle en el catálogo de versiones (`libs.versions.toml`), eliminando conflictos y código duplicado (`buildscript`) para un proceso de compilación más limpio y estable.
+- **Visualización de Changelog Mejorada:** El diálogo de actualización de la aplicación ahora muestra los detalles de la nueva versión en un formato HTML renderizado desde Markdown, utilizando una vista web para una mejor presentación.
+- **Notificación de Actualización en Inicio:** Se añadió una notificación Toast en la actividad principal (MainActivity) que informa al usuario sobre la disponibilidad de una nueva versión de la aplicación, después de un breve retraso al iniciar.
+
+### Corrección de Errores
+- **Estabilidad del Diálogo de Progreso:** Se corrigió un error de formato de texto en el diálogo de progreso de la actualización del catálogo para prevenir posibles cierres inesperados de la aplicación.
+- **Conflictos de Recursos en Compilación:** Se implementó una solución definitiva para los conflictos de archivos duplicados en la carpeta `META-INF` durante la compilación, asegurando que el proyecto se compile sin errores relacionados con licencias o metadatos.
+
+### Refactorización
+- **Eliminación de Reproducción de Voz:** Se ha eliminado la reproducción de sonidos durante el inicio y la finalización de la actualización del catálogo para simplificar la experiencia de usuario.
+- **Claridad del Código:** Se refactorizó la función `observeUpdateState` en `AccountFragment` para mejorar la legibilidad y resolver posibles advertencias del compilador, renombrando variables y eliminando casts innecesarios.
