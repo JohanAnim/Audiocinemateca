@@ -1,11 +1,10 @@
-plugins {           alias(libs.plugins.android.application)
+plugins {
+    alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.navigation.safe.args)
     alias(libs.plugins.ksp)
     id("kotlin-parcelize")
-    
-    
 }
 
 android {
@@ -31,10 +30,12 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
@@ -44,21 +45,24 @@ android {
     buildFeatures {
         viewBinding = true
     }
+
+    // --- Personalizar nombre del APK en Kotlin DSL ---
+    applicationVariants.all {
+        outputs.all {
+            val apkOutput = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
+            apkOutput.outputFileName = "audiocinemateca_${this@all.name}.apk"
+        }
+    }
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
-    
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.activity.ktx)
-
-        implementation(libs.androidx.constraintlayout)
-
-    
+    implementation(libs.androidx.constraintlayout)
 
     // Retrofit & OkHttp
     implementation(libs.retrofit)
