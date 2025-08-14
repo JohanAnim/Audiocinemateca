@@ -2,7 +2,7 @@
     <item
         android:id="@id/catalogFragment"
         android:icon="@drawable/ic_catalog"
-        android:title="Catálogo" />
+        android:title="Inicio" />
     <item
         android:id="@id/myListsFragment"
         android:icon="@drawable/ic_lists"

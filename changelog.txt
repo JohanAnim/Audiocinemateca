@@ -3,13 +3,16 @@
 ## Cambios Principales
 
 ### Mejoras
-- 
+- Se renombra la pestaña de navegación inferior 'Catálogo' a 'Inicio'.
+- Se mejora la pantalla de detalles de contenido:
+  - Se muestra el título del contenido sobre el botón de reproducción.
+  - Se actualiza el mensaje de compartir contenido con una aclaración sobre la activación de enlaces.
 
 ### Corrección de Errores
-- 
+- Se oculta la lista de partes de película si solo tiene una parte.
 
 ### Refactorización
-- 
+- Se cambia 'Guion:' por 'Escrito por:' en la pantalla de detalles de contenido. 
 
 # Versión 2.7.2
 

@@ -50,7 +50,7 @@ class ContentDetailFragment : Fragment() {
     lateinit var playbackProgressRepository: PlaybackProgressRepository
 
     // Views
-    
+    private lateinit var contentTitleHeader: TextView
     private lateinit var listenNowButton: Button
     private lateinit var contentYear: TextView
     private lateinit var contentGenre: TextView
@@ -99,7 +99,7 @@ class ContentDetailFragment : Fragment() {
     }
 
     private fun initializeViews(view: View) {
-        
+        contentTitleHeader = view.findViewById(R.id.content_title_header)
         listenNowButton = view.findViewById(R.id.listen_now_button)
         contentYear = view.findViewById(R.id.content_year)
         contentGenre = view.findViewById(R.id.content_genre)
@@ -155,7 +155,8 @@ class ContentDetailFragment : Fragment() {
         contentGenre.text = "Género: ${item.genero}"
         contentCountry.text = "País: ${item.pais}"
         contentDirector.text = "Director: ${item.director}"
-        contentScreenwriter.text = "Guion: ${item.guion}"
+                        contentScreenwriter.text = "Escrito por: ${item.guion}"
+                contentTitleHeader.text = item.title
         contentMusic.text = "Música: ${item.musica}"
         contentPhotography.text = "Fotografía: ${item.fotografia}"
         contentCast.text = "Reparto: ${item.reparto}"
@@ -187,19 +188,23 @@ class ContentDetailFragment : Fragment() {
     }
 
     private fun setupMovieUI(movie: Movie) {
-        moviePartsContainer.visibility = View.VISIBLE
-        moviePartsListContainer.removeAllViews() // Clear previous views
-        movie.enlaces.forEachIndexed { index, _ ->
-            val partTextView = createClickableTextView("Parte ${index + 1}: Reproducir ahora", "part_$index") {
-                Log.d("ContentDetailFragment", "Reproduciendo parte de película: movie=$movie, partIndex=$index")
-                val action = ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(
-                    movie,
-                    index,
-                    -1 // -1 to indicate it's not a series episode
-                )
-                findNavController().navigate(action)
+        if (movie.enlaces.size > 1) {
+            moviePartsContainer.visibility = View.VISIBLE
+            moviePartsListContainer.removeAllViews() // Clear previous views
+            movie.enlaces.forEachIndexed { index, _ ->
+                val partTextView = createClickableTextView("Parte ${index + 1}: Reproducir ahora", "part_$index") {
+                    Log.d("ContentDetailFragment", "Reproduciendo parte de película: movie=$movie, partIndex=$index")
+                    val action = ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(
+                        movie,
+                        index,
+                        -1 // -1 to indicate it's not a series episode
+                    )
+                    findNavController().navigate(action)
+                }
+                moviePartsListContainer.addView(partTextView)
             }
-            moviePartsListContainer.addView(partTextView)
+        } else {
+            moviePartsContainer.visibility = View.GONE
         }
     }
 
@@ -428,7 +433,7 @@ class ContentDetailFragment : Fragment() {
             else -> "contenido"
         }
 
-        val message = "¡Oye! Estoy escuchando esta increíble $itemType llamada '${contentItem.title}' en la Audiocinemateca. ¡Seguro que a ti también te podría gustar! Da clic en este enlace para que lo escuches en la app."
+        val message = "¡Oye! Estoy escuchando esta increíble $itemType llamada '${contentItem.title}' en la Audiocinemateca. ¡Seguro que a ti también te podría gustar! Da clic en este enlace para que lo escuches en la app. (Si el enlace no se abre directamente en la app, asegúrate de tener activada la opción 'Abrir enlaces compatibles' en la configuración de la aplicación Audiocinemateca en tu dispositivo.)"
         val url = "https://audiocinemateca.com/$itemType?id=${contentItem.id}"
         val fullMessage = "$message\n\n$url"
 
