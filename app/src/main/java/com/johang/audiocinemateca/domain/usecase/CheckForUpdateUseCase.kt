@@ -15,10 +15,12 @@ class CheckForUpdateUseCase @Inject constructor(
             is Resource.Success -> {
                 val remoteVersion = resource.data!!.version.removePrefix("v")
                 Log.d("CheckForUpdateUseCase", "Comparing versions: remote='$remoteVersion', current='$currentVersion'")
-                if (isNewerVersion(remoteVersion, currentVersion)) {
+                val isNewer = isNewerVersion(remoteVersion, currentVersion)
+                Log.d("CheckForUpdateUseCase", "Is newer version: $isNewer") // Debug log
+                if (isNewer) {
                     UpdateCheckResult.UpdateAvailable(resource.data)
                 } else {
-                    UpdateCheckResult.NoUpdateAvailable
+                    UpdateCheckResult.NoUpdateAvailable(resource.data) // Pass updateInfo
                 }
             }
             is Resource.Error -> UpdateCheckResult.Error(resource.message ?: "Error desconocido")
@@ -30,6 +32,7 @@ class CheckForUpdateUseCase @Inject constructor(
         try {
             val remoteParts = remoteVersion.split(".").map { it.filter { char -> char.isDigit() }.toIntOrNull() ?: 0 }
             val currentParts = currentVersion.split(".").map { it.filter { char -> char.isDigit() }.toIntOrNull() ?: 0 }
+            Log.d("CheckForUpdateUseCase", "Parsed versions: remoteParts=$remoteParts, currentParts=$currentParts") // Debug log
 
             val commonLength = minOf(remoteParts.size, currentParts.size)
 
@@ -53,7 +56,7 @@ class CheckForUpdateUseCase @Inject constructor(
 
 sealed class UpdateCheckResult {
     data class UpdateAvailable(val updateInfo: UpdateInfo) : UpdateCheckResult()
-    object NoUpdateAvailable : UpdateCheckResult()
+    data class NoUpdateAvailable(val updateInfo: UpdateInfo) : UpdateCheckResult() // Modified to carry UpdateInfo
     data class Error(val message: String) : UpdateCheckResult()
     object Loading : UpdateCheckResult()
 }

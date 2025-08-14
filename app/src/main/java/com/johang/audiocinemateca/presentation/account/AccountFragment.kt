@@ -22,13 +22,12 @@ import com.johang.audiocinemateca.data.AuthCatalogRepository
 import com.johang.audiocinemateca.domain.model.UpdateInfo
 import com.johang.audiocinemateca.domain.usecase.UpdateCheckResult
 import com.johang.audiocinemateca.media.VoicePlayer
-import android.webkit.WebView
 import com.johang.audiocinemateca.util.DownloadProgress // Importar DownloadProgress
-import com.vladsch.flexmark.html.HtmlRenderer
-import com.vladsch.flexmark.parser.Parser
-import com.vladsch.flexmark.util.data.MutableDataSet
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collect
+import java.text.SimpleDateFormat
+import java.util.Locale
+import io.noties.markwon.Markwon // Markwon import
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -61,6 +60,7 @@ class AccountFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val welcomeText: TextView = view.findViewById(R.id.welcome_text)
+        val downloadCountText: TextView = view.findViewById(R.id.download_count_text) // New TextView
         val settingsButton: Button = view.findViewById(R.id.settings_button)
         val aboutButton: Button = view.findViewById(R.id.about_button)
         val logoutButton: Button = view.findViewById(R.id.logout_button)
@@ -70,9 +70,39 @@ class AccountFragment : Fragment() {
         appUpdateButton = view.findViewById(R.id.app_update_button)
 
         // Mostrar nombre de usuario
-        lifecycleScope.launch {
+        lifecycleScope.launch label_username_check@{ // Added label
             val username = authCatalogRepository.getStoredUsername()
+            Log.d("AccountFragment", "Logged in username: $username") // Debug log
             welcomeText.text = "¡Bienvenido, ${username ?: "Usuario"}!"
+
+            // Mostrar contador de descargas si el usuario es "Johan-a-g"
+            if (username == "Johan-a-g") {
+                Log.d("AccountFragment", "User is Johan-a-g, observing updateState...") // Debug log
+                viewModel.updateState.collect { result ->
+                    Log.d("AccountFragment", "UpdateCheckResult: $result") // Debug log
+                    val updateInfo = when (result) {
+                        is UpdateCheckResult.UpdateAvailable -> result.updateInfo
+                        is UpdateCheckResult.NoUpdateAvailable -> result.updateInfo
+                        else -> null // Handle other states if necessary, or just ignore
+                    }
+
+                    if (updateInfo != null) {
+                        val downloads = updateInfo.downloadCount
+                        val downloadsText = if (downloads == 1) {
+                            "Esta versión de la app tiene 1 descarga."
+                        } else {
+                            "Esta versión de la app tiene $downloads descargas."
+                        }
+                        downloadCountText.text = downloadsText
+                        downloadCountText.visibility = View.VISIBLE
+                        Log.d("AccountFragment", "Download count displayed: $downloads") // Debug log
+                    } else if (result is UpdateCheckResult.Error) {
+                        Log.e("AccountFragment", "Error in UpdateCheckResult: ${result.message}") // Debug log
+                    } else if (result is UpdateCheckResult.Loading) {
+                        Log.d("AccountFragment", "UpdateCheckResult is Loading.") // Debug log
+                    }
+                }
+            }
         }
 
         // Mostrar versión del catálogo
@@ -221,18 +251,20 @@ class AccountFragment : Fragment() {
     private fun showUpdateDialog(updateInfo: UpdateInfo) {
         // Inflar la vista personalizada
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_changelog, null)
-        val webView: WebView = dialogView.findViewById(R.id.changelog_webview)
+        val changelogTextView: TextView = dialogView.findViewById(R.id.changelog_text_view)
 
-        // Convertir Markdown a HTML
-        val options = MutableDataSet()
-        val parser = Parser.builder(options).build()
-        val renderer = HtmlRenderer.builder(options).build()
-        val changelogMarkdown = "### Versión ${updateInfo.version}\n\n${updateInfo.changelog}"
-        val document = parser.parse(changelogMarkdown)
-        val htmlContent = renderer.render(document)
+        // Formatear la fecha de lanzamiento
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        val date = inputFormat.parse(updateInfo.updatedAt)
+        val formattedDate = date?.let { outputFormat.format(it) } ?: "N/A"
 
-        // Cargar HTML en la WebView
-        webView.loadDataWithBaseURL(null, htmlContent, "text/html", "utf-8", null)
+        // Construir el contenido Markdown
+        val fullChangelogMarkdown = "Fecha de lanzamiento: $formattedDate\n\n${updateInfo.changelog}"
+
+        // Renderizar Markdown con Markwon
+        val markwon = Markwon.create(requireContext())
+        markwon.setMarkdown(changelogTextView, fullChangelogMarkdown)
 
         // Crear y mostrar el diálogo
         MaterialAlertDialogBuilder(requireContext())

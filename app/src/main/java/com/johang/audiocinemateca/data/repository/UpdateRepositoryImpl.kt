@@ -22,7 +22,9 @@ class UpdateRepositoryImpl @Inject constructor(
                             version = releaseDto.tagName,
                             name = releaseDto.name,
                             changelog = releaseDto.body,
-                            downloadUrl = apkAsset.browserDownloadUrl
+                            downloadUrl = apkAsset.browserDownloadUrl,
+                            updatedAt = releaseDto.updatedAt,
+                            downloadCount = apkAsset.downloadCount
                         )
                         Resource.Success(updateInfo)
                     } else {

@@ -16,7 +16,7 @@ android {
         minSdk = 25
         targetSdk = 35
         versionCode = 1
-        versionName = "2.6.0beta"
+        versionName = "2.7.2beta"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -113,8 +113,8 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
-    // FlexMark for Markdown to HTML
-    implementation("com.vladsch.flexmark:flexmark-all:0.64.8")
+    // Markwon for Markdown to Spannable
+    implementation("io.noties.markwon:core:4.6.2")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

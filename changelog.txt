@@ -1,4 +1,22 @@
-# Versión 2.6.1
+# Versión 2.7.2
+
+## Cambios Principales
+
+Esta versión se centra en rediseñar por completo la experiencia de actualización de la aplicación, mejorando tanto la funcionalidad interna como la interfaz que se presenta al usuario.
+
+### Mejoras
+- **Visualización de Changelog Nativa:** Se ha reemplazado el `WebView` que mostraba el changelog por un componente de texto nativo renderizado con la librería Markwon. Esto resulta en un rendimiento superior y una apariencia visual más limpia y consistente.
+- **Fecha de Lanzamiento en Actualizaciones:** El diálogo que informa sobre una nueva versión ahora muestra la fecha exacta de lanzamiento, proporcionando un contexto más claro.
+- **Contador de Descargas (Funcionalidad para desarrollador):** En la pantalla de "Cuenta", el usuario "Johan-a-g" ahora puede ver el número total de descargas de la versión actual, obteniendo métricas de uso directamente en la app.
+
+### Corrección de Errores
+- **Lógica de Detección de Actualizaciones:** Se ha corregido y robustecido el mecanismo que compara la versión instalada con la versión remota, asegurando que la disponibilidad de una nueva actualización se detecte de manera precisa.
+
+### Refactorización
+- **Modelo de Datos de Actualización:** Se ha enriquecido el modelo de datos para incluir información adicional como la fecha de actualización y el contador de descargas.
+- **Gestión del Estado de Actualización:** Se ha mejorado la gestión de los diferentes estados del proceso de actualización (disponible, no disponible, error) para un comportamiento más predecible.
+
+# Versión 2.7.1
 
 ## Cambios Principales
 

@@ -74,3 +74,4 @@
 # Keep data model classes
 -keep class com.johang.audiocinemateca.data.model.** { *; }
 -keep class com.johang.audiocinemateca.data.remote.model.** { *; }
+
