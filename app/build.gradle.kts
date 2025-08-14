@@ -15,8 +15,8 @@ android {
         applicationId = "com.johang.audiocinemateca"
         minSdk = 25
         targetSdk = 35
-        versionCode = 1
-        versionName = "2.7.2beta"
+        versionCode = 2
+        versionName = "2.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

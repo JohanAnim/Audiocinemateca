@@ -1,3 +1,16 @@
+# Versión 2.8.0
+
+## Cambios Principales
+
+### Mejoras
+- 
+
+### Corrección de Errores
+- 
+
+### Refactorización
+- 
+
 # Versión 2.7.2
 
 ## Cambios Principales
