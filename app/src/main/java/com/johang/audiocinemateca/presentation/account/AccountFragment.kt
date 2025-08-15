@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -22,13 +23,12 @@ import com.johang.audiocinemateca.data.AuthCatalogRepository
 import com.johang.audiocinemateca.domain.model.UpdateInfo
 import com.johang.audiocinemateca.domain.usecase.UpdateCheckResult
 import com.johang.audiocinemateca.media.VoicePlayer
-import com.johang.audiocinemateca.util.DownloadProgress // Importar DownloadProgress
+import com.johang.audiocinemateca.util.DownloadProgress
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.collect
+import io.noties.markwon.Markwon
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
-import io.noties.markwon.Markwon // Markwon import
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -47,6 +47,8 @@ class AccountFragment : Fragment() {
     private var progressText: TextView? = null
 
     private lateinit var appUpdateButton: Button
+    private lateinit var novedadesButton: Button
+    private var updateInfo: UpdateInfo? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -60,7 +62,7 @@ class AccountFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val welcomeText: TextView = view.findViewById(R.id.welcome_text)
-        val downloadCountText: TextView = view.findViewById(R.id.download_count_text) // New TextView
+        val downloadCountText: TextView = view.findViewById(R.id.download_count_text)
         val settingsButton: Button = view.findViewById(R.id.settings_button)
         val aboutButton: Button = view.findViewById(R.id.about_button)
         val logoutButton: Button = view.findViewById(R.id.logout_button)
@@ -68,26 +70,24 @@ class AccountFragment : Fragment() {
         val appVersionText: TextView = view.findViewById(R.id.app_version_text)
         val checkUpdatesButton: Button = view.findViewById(R.id.check_updates_button)
         appUpdateButton = view.findViewById(R.id.app_update_button)
+        novedadesButton = view.findViewById(R.id.novedades_button)
 
         // Mostrar nombre de usuario
-        lifecycleScope.launch label_username_check@{ // Added label
+        lifecycleScope.launch {
             val username = authCatalogRepository.getStoredUsername()
-            Log.d("AccountFragment", "Logged in username: $username") // Debug log
             welcomeText.text = "¡Bienvenido, ${username ?: "Usuario"}!"
 
             // Mostrar contador de descargas si el usuario es "Johan-a-g"
             if (username == "Johan-a-g") {
-                Log.d("AccountFragment", "User is Johan-a-g, observing updateState...") // Debug log
-                viewModel.updateState.collect { result ->
-                    Log.d("AccountFragment", "UpdateCheckResult: $result") // Debug log
-                    val updateInfo = when (result) {
-                        is UpdateCheckResult.UpdateAvailable -> result.updateInfo
-                        is UpdateCheckResult.NoUpdateAvailable -> result.updateInfo
-                        else -> null // Handle other states if necessary, or just ignore
+                viewModel.updateState.collect {
+                    val currentUpdateInfo = when (it) {
+                        is UpdateCheckResult.UpdateAvailable -> it.updateInfo
+                        is UpdateCheckResult.NoUpdateAvailable -> it.updateInfo
+                        else -> null
                     }
 
-                    if (updateInfo != null) {
-                        val downloads = updateInfo.downloadCount
+                    if (currentUpdateInfo != null) {
+                        val downloads = currentUpdateInfo.downloadCount
                         val downloadsText = if (downloads == 1) {
                             "Esta versión de la app tiene 1 descarga."
                         } else {
@@ -95,11 +95,6 @@ class AccountFragment : Fragment() {
                         }
                         downloadCountText.text = downloadsText
                         downloadCountText.visibility = View.VISIBLE
-                        Log.d("AccountFragment", "Download count displayed: $downloads") // Debug log
-                    } else if (result is UpdateCheckResult.Error) {
-                        Log.e("AccountFragment", "Error in UpdateCheckResult: ${result.message}") // Debug log
-                    } else if (result is UpdateCheckResult.Loading) {
-                        Log.d("AccountFragment", "UpdateCheckResult is Loading.") // Debug log
                     }
                 }
             }
@@ -124,6 +119,15 @@ class AccountFragment : Fragment() {
         // Configurar listeners de botones
         settingsButton.setOnClickListener { /* Lógica para Configuración */ }
         aboutButton.setOnClickListener { /* Lógica para Acerca de */ }
+        
+        novedadesButton.setOnClickListener {
+            if (updateInfo != null) {
+                showNovedadesDialog(updateInfo!!)
+            } else {
+                Toast.makeText(requireContext(), "No hay novedades disponibles en este momento.", Toast.LENGTH_SHORT).show()
+            }
+        }
+        
         logoutButton.setOnClickListener {
             lifecycleScope.launch {
                 authCatalogRepository.logout()
@@ -151,7 +155,6 @@ class AccountFragment : Fragment() {
                                 .setMessage("Hay una nueva versión del catálogo disponible. ¿Deseas descargarla ahora?")
                                 .setPositiveButton("Sí") { dialog, _ ->
                                     dialog.dismiss()
-                                    // Iniciar la descarga con sonido y diálogo de progreso
                                     downloadAndUpdateCatalog(it.serverVersion)
                                 }
                                 .setNegativeButton("No", null)
@@ -178,19 +181,21 @@ class AccountFragment : Fragment() {
                 when (result) {
                     is UpdateCheckResult.UpdateAvailable -> {
                         appUpdateButton.visibility = View.VISIBLE
-                        val updateInfo = result.updateInfo
+                        this@AccountFragment.updateInfo = result.updateInfo
                         appUpdateButton.setOnClickListener {
-                            showUpdateDialog(updateInfo)
+                            showUpdateDialog(result.updateInfo)
                         }
                         sendUpdateIndicatorBroadcast(true)
+                    }
+                    is UpdateCheckResult.NoUpdateAvailable -> {
+                        appUpdateButton.visibility = View.GONE
+                        this@AccountFragment.updateInfo = result.updateInfo
+                        sendUpdateIndicatorBroadcast(false)
                     }
                     is UpdateCheckResult.Error -> {
                         Log.e("AccountFragment", "Error checking for app update: ${result.message}")
                         appUpdateButton.visibility = View.GONE
-                        sendUpdateIndicatorBroadcast(false)
-                    }
-                    is UpdateCheckResult.NoUpdateAvailable -> {
-                        appUpdateButton.visibility = View.GONE
+                        this@AccountFragment.updateInfo = null
                         sendUpdateIndicatorBroadcast(false)
                     }
                     is UpdateCheckResult.Loading -> {
@@ -202,25 +207,26 @@ class AccountFragment : Fragment() {
 
         // Observar el progreso de la descarga
         lifecycleScope.launch {
-            viewModel.downloadProgress.collect { progress ->
-                when (progress) {
+            viewModel.downloadProgress.collect {
+                when (it) {
                     is DownloadProgress.Idle -> {
                         hideLoadingDialog()
                     }
                     is DownloadProgress.Progress -> {
                         showLoadingDialog("Descargando Actualización", "Descargando la nueva versión de la app, por favor, espere un poco...")
                         progressBar?.isIndeterminate = false
-                        progressBar?.progress = progress.percent
+                        progressBar?.progress = it.percent
                         progressText?.visibility = View.VISIBLE
-                        progressText?.text = "${progress.percent}%"
+                        progressText?.text = "${it.percent}%%"
                     }
                     is DownloadProgress.Success -> {
                         hideLoadingDialog()
                         MaterialAlertDialogBuilder(requireContext())
                             .setTitle("Descarga Completa")
                             .setMessage("La actualización se ha descargado correctamente. ¿Deseas instalarla ahora?")
-                            .setPositiveButton("Instalar") { dialog, _ ->
-                                viewModel.installUpdate(progress.uri) // Llamar a la función en ViewModel
+                            .setPositiveButton("Instalar") {
+                                dialog, _ ->
+                                viewModel.installUpdate(it.uri)
                                 dialog.dismiss()
                             }
                             .setNegativeButton("Más tarde", null)
@@ -230,7 +236,7 @@ class AccountFragment : Fragment() {
                         hideLoadingDialog()
                         MaterialAlertDialogBuilder(requireContext())
                             .setTitle("Error de Descarga")
-                            .setMessage("Ocurrió un error al descargar la actualización: ${progress.message}")
+                            .setMessage("Ocurrió un error al descargar la actualización: ${it.message}")
                             .setPositiveButton("Aceptar", null)
                             .show()
                     }
@@ -249,28 +255,24 @@ class AccountFragment : Fragment() {
     }
 
     private fun showUpdateDialog(updateInfo: UpdateInfo) {
-        // Inflar la vista personalizada
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_changelog, null)
         val changelogTextView: TextView = dialogView.findViewById(R.id.changelog_text_view)
 
-        // Formatear la fecha de lanzamiento
         val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
         val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
         val date = inputFormat.parse(updateInfo.updatedAt)
         val formattedDate = date?.let { outputFormat.format(it) } ?: "N/A"
 
-        // Construir el contenido Markdown
         val fullChangelogMarkdown = "Fecha de lanzamiento: $formattedDate\n\n${updateInfo.changelog}"
 
-        // Renderizar Markdown con Markwon
         val markwon = Markwon.create(requireContext())
         markwon.setMarkdown(changelogTextView, fullChangelogMarkdown)
 
-        // Crear y mostrar el diálogo
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle(updateInfo.name)
+            .setTitle("Novedades de esta versión")
             .setView(dialogView)
-            .setPositiveButton("Toque para actualizar ahora a la última versión de la app") { dialog, _ ->
+            .setPositiveButton("Toque para actualizar ahora a la última versión de la app") {
+                dialog, _ ->
                 viewModel.downloadUpdate(updateInfo)
                 dialog.dismiss()
             }
@@ -278,23 +280,41 @@ class AccountFragment : Fragment() {
             .show()
     }
 
+    private fun showNovedadesDialog(updateInfo: UpdateInfo) {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_changelog, null)
+        val changelogTextView: TextView = dialogView.findViewById(R.id.changelog_text_view)
+
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        val date = inputFormat.parse(updateInfo.updatedAt)
+        val formattedDate = date?.let { outputFormat.format(it) } ?: "N/A"
+
+        val fullChangelogMarkdown = "Fecha de lanzamiento: $formattedDate\n\n${updateInfo.changelog}"
+
+        val markwon = Markwon.create(requireContext())
+        markwon.setMarkdown(changelogTextView, fullChangelogMarkdown)
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Novedades de esta versión")
+            .setView(dialogView)
+            .setPositiveButton("Cerrar") {
+                dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
     private fun downloadAndUpdateCatalog(serverVersion: java.util.Date) {
         lifecycleScope.launch {
-            // 1. Mostrar diálogo de carga
             showLoadingDialog("Actualizando Catálogo", "Por favor, espere mientras se actualiza el catálogo.")
-
-            // 2. Iniciar la descarga
             authCatalogRepository.downloadAndSaveCatalog(serverVersion).collect {
                 when (it) {
                     is AuthCatalogRepository.LoadCatalogResultWithProgress.Progress -> {
-                        // Actualizar progreso en el diálogo
                         progressBar?.progress = it.percent
-                        progressText?.text = "${it.percent}%"
+                        progressText?.text = "${it.percent}%%"
                     }
                     is AuthCatalogRepository.LoadCatalogResultWithProgress.Success -> {
-                        // 3. Ocultar diálogo
                         hideLoadingDialog()
-                        
                         MaterialAlertDialogBuilder(requireContext())
                             .setTitle("Actualización Completa")
                             .setMessage("El catálogo se ha actualizado correctamente.")
@@ -330,7 +350,7 @@ class AccountFragment : Fragment() {
                 .create()
         }
         loadingDialog?.show()
-        progressText?.text = "${progressBar?.progress ?: 0}%"
+        progressText?.text = "${progressBar?.progress ?: 0}%%"
     }
 
     private fun hideLoadingDialog() {

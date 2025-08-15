@@ -29,6 +29,7 @@ import com.johang.audiocinemateca.domain.usecase.UpdateCheckResult
 import com.johang.audiocinemateca.data.repository.SearchRepository
 import com.johang.audiocinemateca.presentation.account.AccountViewModel
 import com.johang.audiocinemateca.presentation.player.PlayerService
+import com.johang.audiocinemateca.data.AuthCatalogRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -40,6 +41,9 @@ class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var searchRepository: SearchRepository
+
+    @Inject
+    lateinit var authCatalogRepository: com.johang.audiocinemateca.data.AuthCatalogRepository
 
     private val accountViewModel: AccountViewModel by viewModels()
 
@@ -110,6 +114,42 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         setSupportActionBar(findViewById(R.id.toolbar))
+
+        // Automatic catalog update check
+        val sharedPrefs = getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE)
+        val lastUpdateTimestamp = sharedPrefs.getLong(LAST_CATALOG_UPDATE_TIMESTAMP_KEY, 0L)
+        val currentTime = System.currentTimeMillis()
+
+        if (currentTime - lastUpdateTimestamp > CATALOG_UPDATE_INTERVAL_MS) {
+            lifecycleScope.launch {
+                Log.d("MainActivity", "Checking for silent catalog update...")
+                authCatalogRepository.loadCatalog().collect { result ->
+                    when (result) {
+                        is AuthCatalogRepository.LoadCatalogResultWithProgress.UpdateAvailable -> {
+                            Log.d("MainActivity", "Silent catalog update available. Downloading...")
+                            authCatalogRepository.downloadAndSaveCatalog(result.serverVersion).collect { downloadResult ->
+                                when (downloadResult) {
+                                    is AuthCatalogRepository.LoadCatalogResultWithProgress.Success -> {
+                                        Log.d("MainActivity", "Silent catalog update downloaded and saved successfully.")
+                                        sharedPrefs.edit().putLong(LAST_CATALOG_UPDATE_TIMESTAMP_KEY, currentTime).apply()
+                                    }
+                                    is AuthCatalogRepository.LoadCatalogResultWithProgress.Error -> {
+                                        Log.e("MainActivity", "Error during silent catalog download: ${downloadResult.message}")
+                                    }
+                                    else -> { /* Ignore progress and other states for silent update */ }
+                                }
+                            }
+                        }
+                        is AuthCatalogRepository.LoadCatalogResultWithProgress.Error -> {
+                            Log.e("MainActivity", "Error checking for silent catalog update: ${result.message}")
+                        }
+                        else -> { /* No update available or still loading, ignore for silent check */ }
+                    }
+                }
+            }
+        } else {
+            Log.d("MainActivity", "Silent catalog update check skipped. Less than 24 hours since last check.")
+        }
 
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         navController = navHostFragment.navController
@@ -360,5 +400,9 @@ class MainActivity : AppCompatActivity() {
 
         const val ACTION_SHOW_UPDATE_INDICATOR = "com.johang.audiocinemateca.SHOW_UPDATE_INDICATOR"
         const val ACTION_HIDE_UPDATE_INDICATOR = "com.johang.audiocinemateca.HIDE_UPDATE_INDICATOR"
+
+        const val LAST_CATALOG_UPDATE_TIMESTAMP_KEY = "last_catalog_update_timestamp"
+        const val CATALOG_UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000L // 24 hours in milliseconds
+        const val SHARED_PREFS_NAME = "app_preferences"
     }
 }

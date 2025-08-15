@@ -7,47 +7,11 @@
 - Se mejora la pantalla de detalles de contenido:
   - Se muestra el título del contenido sobre el botón de reproducción.
   - Se actualiza el mensaje de compartir contenido con una aclaración sobre la activación de enlaces.
+- Hemos mejorado la forma en que se ve y se usa la pantalla donde encuentras los detalles de cada contenido. Ahora es más fácil navegar y entender la información.
+- También hemos ajustado cómo se comparte el contenido para que sea más claro.
 
 ### Corrección de Errores
 - Se oculta la lista de partes de película si solo tiene una parte.
 
 ### Refactorización
 - Se cambia 'Guion:' por 'Escrito por:' en la pantalla de detalles de contenido. 
-
-# Versión 2.7.2
-
-## Cambios Principales
-
-Esta versión se centra en rediseñar por completo la experiencia de actualización de la aplicación, mejorando tanto la funcionalidad interna como la interfaz que se presenta al usuario.
-
-### Mejoras
-- **Visualización de Changelog Nativa:** Se ha reemplazado el `WebView` que mostraba el changelog por un componente de texto nativo renderizado con la librería Markwon. Esto resulta en un rendimiento superior y una apariencia visual más limpia y consistente.
-- **Fecha de Lanzamiento en Actualizaciones:** El diálogo que informa sobre una nueva versión ahora muestra la fecha exacta de lanzamiento, proporcionando un contexto más claro.
-- **Contador de Descargas (Funcionalidad para desarrollador):** En la pantalla de "Cuenta", el usuario "Johan-a-g" ahora puede ver el número total de descargas de la versión actual, obteniendo métricas de uso directamente en la app.
-
-### Corrección de Errores
-- **Lógica de Detección de Actualizaciones:** Se ha corregido y robustecido el mecanismo que compara la versión instalada con la versión remota, asegurando que la disponibilidad de una nueva actualización se detecte de manera precisa.
-
-### Refactorización
-- **Modelo de Datos de Actualización:** Se ha enriquecido el modelo de datos para incluir información adicional como la fecha de actualización y el contador de descargas.
-- **Gestión del Estado de Actualización:** Se ha mejorado la gestión de los diferentes estados del proceso de actualización (disponible, no disponible, error) para un comportamiento más predecible.
-
-# Versión 2.7.1
-
-## Cambios Principales
-
-Esta versión se enfoca en mejorar la estabilidad del proceso de compilación, corregir errores y refactorizar el código para un mejor mantenimiento.
-
-### Mejoras
-- **Nombre de APK Personalizado:** El archivo APK generado ahora incluye el tipo de compilación en su nombre (ej. `audiocinemateca_release.apk`), facilitando la identificación de los artefactos de compilación.
-- **Unificación de Versiones de Gradle:** Se ha centralizado la versión del Plugin de Android para Gradle en el catálogo de versiones (`libs.versions.toml`), eliminando conflictos y código duplicado (`buildscript`) para un proceso de compilación más limpio y estable.
-- **Visualización de Changelog Mejorada:** El diálogo de actualización de la aplicación ahora muestra los detalles de la nueva versión en un formato HTML renderizado desde Markdown, utilizando una vista web para una mejor presentación.
-- **Notificación de Actualización en Inicio:** Se añadió una notificación Toast en la actividad principal (MainActivity) que informa al usuario sobre la disponibilidad de una nueva versión de la aplicación, después de un breve retraso al iniciar.
-
-### Corrección de Errores
-- **Estabilidad del Diálogo de Progreso:** Se corrigió un error de formato de texto en el diálogo de progreso de la actualización del catálogo para prevenir posibles cierres inesperados de la aplicación.
-- **Conflictos de Recursos en Compilación:** Se implementó una solución definitiva para los conflictos de archivos duplicados en la carpeta `META-INF` durante la compilación, asegurando que el proyecto se compile sin errores relacionados con licencias o metadatos.
-
-### Refactorización
-- **Eliminación de Reproducción de Voz:** Se ha eliminado la reproducción de sonidos durante el inicio y la finalización de la actualización del catálogo para simplificar la experiencia de usuario.
-- **Claridad del Código:** Se refactorizó la función `observeUpdateState` en `AccountFragment` para mejorar la legibilidad y resolver posibles advertencias del compilador, renombrando variables y eliminando casts innecesarios.

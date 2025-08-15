@@ -304,13 +304,6 @@ class AuthCatalogRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e("AuthCatalogRepository", "Error al descargar el catálogo: ${e.message}", e)
             val errorMessage = "Error al descargar o procesar el catálogo: ${e.message}"
-            // Show a Toast on the main thread for immediate feedback and copy to clipboard
-            withContext(Dispatchers.Main) {
-                android.widget.Toast.makeText(context, errorMessage, android.widget.Toast.LENGTH_LONG).show()
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clip = android.content.ClipData.newPlainText("error", errorMessage)
-                clipboard.setPrimaryClip(clip)
-            }
             send(LoadCatalogResultWithProgress.Error(errorMessage))
         } finally {
             progressJob.cancel() // Cancelar el job de progreso cuando la descarga termine

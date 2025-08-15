@@ -24,12 +24,18 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideLoginRepository(
+    fun provideAuthCatalogRepository(
         @ApplicationContext context: Context,
         catalogRepository: CatalogRepository,
         authService: AuthService
-    ): LoginRepository {
+    ): AuthCatalogRepository {
         return AuthCatalogRepository(context, catalogRepository, authService)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLoginRepository(authCatalogRepository: AuthCatalogRepository): LoginRepository {
+        return authCatalogRepository
     }
 
     @Provides
