@@ -9,6 +9,7 @@
   - Se actualiza el mensaje de compartir contenido con una aclaración sobre la activación de enlaces.
 - Hemos mejorado la forma en que se ve y se usa la pantalla donde encuentras los detalles de cada contenido. Ahora es más fácil navegar y entender la información.
 - También hemos ajustado cómo se comparte el contenido para que sea más claro.
+- Hemos añadido un sistema de actualización automática del catálogo. Ahora, una vez al día, al abrir la aplicación, se comprobará si hay una nueva versión del catálogo disponible para que siempre tengas la información más reciente.
 
 ### Corrección de Errores
 - Se oculta la lista de partes de película si solo tiene una parte.
