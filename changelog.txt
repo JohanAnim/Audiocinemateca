@@ -1,18 +1,16 @@
-# Versión 2.8.0
+# Versión 2.8.3
 
 ## Cambios Principales
 
 ### Mejoras
-- Se renombra la pestaña de navegación inferior 'Catálogo' a 'Inicio'.
-- Se mejora la pantalla de detalles de contenido:
-  - Se muestra el título del contenido sobre el botón de reproducción.
-  - Se actualiza el mensaje de compartir contenido con una aclaración sobre la activación de enlaces.
-- Hemos mejorado la forma en que se ve y se usa la pantalla donde encuentras los detalles de cada contenido. Ahora es más fácil navegar y entender la información.
-- También hemos ajustado cómo se comparte el contenido para que sea más claro.
-- Hemos añadido un sistema de actualización automática del catálogo. Ahora, una vez al día, al abrir la aplicación, se comprobará si hay una nueva versión del catálogo disponible para que siempre tengas la información más reciente.
+- Se ha rediseñado la barra de búsqueda para una mejor experiencia de usuario.
+- Se ha añadido un botón para limpiar el campo de búsqueda que aparece dinámicamente.
 
 ### Corrección de Errores
-- Se oculta la lista de partes de película si solo tiene una parte.
+- Se ha solucionado un error que causaba que la aplicación fallara al salir de la pantalla de búsqueda.
+
+### Mejoras de Accesibilidad
+- El teclado ahora se oculta automáticamente después de realizar una búsqueda por voz.
 
 ### Refactorización
-- Se cambia 'Guion:' por 'Escrito por:' en la pantalla de detalles de contenido. 
+- Se ha eliminado el botón para borrar todo el historial de la pantalla de búsqueda. Esta función se reubicará en los ajustes de la aplicación en una futura versión.

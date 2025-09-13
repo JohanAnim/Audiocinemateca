@@ -14,6 +14,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import androidx.room.Room
+import com.johang.audiocinemateca.data.local.dao.SearchHistoryDao
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -28,7 +29,7 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "audiocinemateca.db"
-        ).build()
+        ).fallbackToDestructiveMigration().build()
     }
 
     @Provides
@@ -41,6 +42,12 @@ object AppModule {
     @Singleton
     fun providePlaybackProgressDao(appDatabase: AppDatabase): PlaybackProgressDao {
         return appDatabase.playbackProgressDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSearchHistoryDao(appDatabase: AppDatabase): SearchHistoryDao {
+        return appDatabase.searchHistoryDao()
     }
 
     @Provides

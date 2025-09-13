@@ -16,9 +16,11 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -38,9 +40,16 @@ class SearchFragment : Fragment() {
     private val viewModel: SearchViewModel by viewModels()
     private lateinit var searchEditText: EditText
     private lateinit var voiceSearchButton: ImageButton
-    private lateinit var recyclerView: RecyclerView
+    private lateinit var clearTextButton: ImageButton
+    private lateinit var searchResultsRecyclerView: RecyclerView
     private lateinit var emptyResultsTextView: TextView
     private lateinit var searchAdapter: SearchAdapter
+
+    private lateinit var searchHistoryRecyclerView: RecyclerView
+    private lateinit var searchHistoryContainer: LinearLayout
+    private lateinit var searchHistoryAdapter: SearchHistoryAdapter
+
+    private var focusFirstResultAfterVoiceSearch = false
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -61,7 +70,7 @@ class SearchFragment : Fragment() {
             }
             spokenText?.let {
                 searchEditText.setText(it)
-                performSearch()
+                focusFirstResultAfterVoiceSearch = true
             }
         } else if (result.resultCode == Activity.RESULT_CANCELED) {
             Toast.makeText(requireContext(), "Búsqueda por voz cancelada.", Toast.LENGTH_SHORT).show()
@@ -79,24 +88,25 @@ class SearchFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         Log.d("SearchFragment", "onViewCreated: Fragment started")
 
-        // Configurar la ActionBar de la actividad principal
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
             title = getString(R.string.search_title)
             setDisplayHomeAsUpEnabled(true)
         }
 
-        // Manejar el clic en el botón de volver de la ActionBar
         (activity as? AppCompatActivity)?.findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)?.setNavigationOnClickListener {
             findNavController().popBackStack()
         }
 
         searchEditText = view.findViewById(R.id.search_edit_text)
         voiceSearchButton = view.findViewById(R.id.voice_search_button)
-        recyclerView = view.findViewById(R.id.search_results_recycler_view)
+        clearTextButton = view.findViewById(R.id.clear_text_button)
+        searchResultsRecyclerView = view.findViewById(R.id.search_results_recycler_view)
         emptyResultsTextView = view.findViewById(R.id.empty_search_results_text)
+        searchHistoryRecyclerView = view.findViewById(R.id.search_history_recycler_view)
+        searchHistoryContainer = view.findViewById(R.id.search_history_container)
         Log.d("SearchFragment", "onViewCreated: Views initialized")
 
-        recyclerView.layoutManager = LinearLayoutManager(context)
+        searchResultsRecyclerView.layoutManager = LinearLayoutManager(context)
         searchAdapter = SearchAdapter(emptyList()) { catalogItem ->
             val itemType = when (catalogItem.javaClass.simpleName.lowercase()) {
                 "movie" -> "peliculas"
@@ -108,21 +118,44 @@ class SearchFragment : Fragment() {
             val action = SearchFragmentDirections.actionSearchFragmentToContentDetailFragment(catalogItem.id, itemType)
             findNavController().navigate(action)
         }
-        recyclerView.adapter = searchAdapter
-        Log.d("SearchFragment", "onViewCreated: RecyclerView and Adapter set")
+        searchResultsRecyclerView.adapter = searchAdapter
+        Log.d("SearchFragment", "onViewCreated: Search Results RecyclerView and Adapter set")
 
-        // Configurar listeners para la nueva barra de búsqueda
+        searchHistoryRecyclerView.layoutManager = LinearLayoutManager(context)
+        searchHistoryAdapter = SearchHistoryAdapter(
+            historyList = emptyList(),
+            onItemClick = { query ->
+                searchEditText.setText(query)
+            },
+            onItemLongClick = { query ->
+                showDeleteConfirmationDialog(query)
+                true
+            }
+        )
+        searchHistoryRecyclerView.adapter = searchHistoryAdapter
+        Log.d("SearchFragment", "onViewCreated: Search History RecyclerView and Adapter set")
+
         voiceSearchButton.setOnClickListener { checkPermissionAndStartVoiceRecognition() }
+        clearTextButton.setOnClickListener { searchEditText.text.clear() }
+
+        searchEditText.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                viewModel.setSearchQuery(s.toString())
+                clearTextButton.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
+            }
+        })
 
         searchEditText.setOnEditorActionListener { v, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                performSearch()
+                val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                imm?.hideSoftInputFromWindow(view?.windowToken, 0)
                 true
             }
             false
         }
 
-        // Mostrar el teclado virtual automáticamente
         searchEditText.requestFocus()
         searchEditText.postDelayed({
             val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
@@ -130,6 +163,7 @@ class SearchFragment : Fragment() {
         }, 200)
 
         observeViewModel()
+        observeRecentSearches()
         Log.d("SearchFragment", "onViewCreated: ViewModel observed")
     }
 
@@ -154,7 +188,7 @@ class SearchFragment : Fragment() {
     private fun startVoiceRecognition() {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES") // O el idioma que prefieras
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES")
             putExtra(RecognizerIntent.EXTRA_PROMPT, "Di algo para buscar...")
         }
         try {
@@ -164,43 +198,84 @@ class SearchFragment : Fragment() {
         }
     }
 
-    private fun performSearch() {
-        val query = searchEditText.text.toString()
-        viewModel.setSearchQuery(query)
-        // Ocultar el teclado
-        val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-        imm?.hideSoftInputFromWindow(view?.windowToken, 0)
-    }
-
     override fun onDestroyView() {
         super.onDestroyView()
-        // Restaurar la ActionBar de la actividad principal
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
             title = getString(R.string.app_name)
             setDisplayHomeAsUpEnabled(false)
-            show() // Mostrar la ActionBar de la actividad principal
+            show()
         }
-        // Limpiar referencias para evitar leaks
         searchEditText.setOnEditorActionListener(null)
     }
 
     private fun observeViewModel() {
         lifecycleScope.launch {
-            viewModel.searchResults.collect {
-                searchAdapter.updateList(it)
-                if (it.isEmpty() && !viewModel.searchQuery.value.isNullOrBlank()) {
-                    emptyResultsTextView.text = "No se encontraron resultados para \"${viewModel.searchQuery.value}\"";
-                    emptyResultsTextView.visibility = View.VISIBLE
-                    recyclerView.visibility = View.GONE
-                } else if (viewModel.searchQuery.value.isNullOrBlank()) {
-                    emptyResultsTextView.text = "Escribe algo para buscar...";
-                    emptyResultsTextView.visibility = View.VISIBLE
-                    recyclerView.visibility = View.GONE
-                } else {
-                    emptyResultsTextView.visibility = View.GONE
-                    recyclerView.visibility = View.VISIBLE
+            viewModel.searchState.collect { state ->
+                when (state) {
+                    is SearchState.Initial -> {
+                        searchAdapter.updateList(emptyList(), "")
+                        emptyResultsTextView.text = "Los resultados de búsqueda irán apareciendo aquí"
+                        emptyResultsTextView.visibility = View.VISIBLE
+                        searchResultsRecyclerView.visibility = View.GONE
+                        searchHistoryContainer.visibility = View.VISIBLE
+                    }
+                    is SearchState.Loading -> {
+                        searchAdapter.updateList(emptyList(), "")
+                        emptyResultsTextView.text = "Buscando resultados..."
+                        emptyResultsTextView.visibility = View.VISIBLE
+                        searchResultsRecyclerView.visibility = View.GONE
+                        searchHistoryContainer.visibility = View.GONE
+                    }
+                    is SearchState.NoResults -> {
+                        searchAdapter.updateList(emptyList(), state.query)
+                        emptyResultsTextView.text = "Ups, al parecer aún no contamos con el titulo de ${state.query}, ven más adelante para comprovar la disponivilidad"
+                        emptyResultsTextView.visibility = View.VISIBLE
+                        searchResultsRecyclerView.visibility = View.GONE
+                        searchHistoryContainer.visibility = View.GONE
+                    }
+                    is SearchState.HasResults -> {
+                        searchAdapter.updateList(state.results, state.query)
+                        emptyResultsTextView.visibility = View.GONE
+                        searchResultsRecyclerView.visibility = View.VISIBLE
+                        searchHistoryContainer.visibility = View.GONE
+
+                        if (focusFirstResultAfterVoiceSearch) {
+                            searchResultsRecyclerView.post {
+                                val firstItemView = searchResultsRecyclerView.layoutManager?.findViewByPosition(0)
+                                firstItemView?.requestFocus()
+                                // Forzar el cierre del teclado
+                                val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                                imm?.hideSoftInputFromWindow(view?.windowToken, 0)
+                            }
+                            focusFirstResultAfterVoiceSearch = false
+                        }
+                    }
                 }
             }
         }
     }
+
+    private fun observeRecentSearches() {
+        lifecycleScope.launch {
+            viewModel.recentSearches.collect { history ->
+                searchHistoryAdapter.updateList(history)
+            }
+        }
+    }
+
+    private fun showDeleteConfirmationDialog(queryToDelete: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Eliminar del historial")
+            .setMessage("¿Estás seguro de que quieres eliminar \"$queryToDelete\" del historial de búsqueda?")
+            .setPositiveButton("Eliminar") { dialog, _ ->
+                viewModel.deleteSearchHistoryItem(queryToDelete)
+                Toast.makeText(requireContext(), "\"$queryToDelete\" eliminado del historial.", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancelar") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
 }
+

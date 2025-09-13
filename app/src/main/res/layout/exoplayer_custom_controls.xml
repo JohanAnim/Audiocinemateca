@@ -82,6 +82,7 @@
             android:layout_height="wrap_content"
             android:textColor="@android:color/white"
             android:textSize="14sp"
+            android:importantForAccessibility="no"
             tools:text="01:23" />
 
         <!-- Barra de Progreso (Estándar de ExoPlayer) -->
@@ -92,7 +93,7 @@
             android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
             android:layout_weight="1"
-            android:tooltipText="Barra de tiempo"
+            android:contentDescription="Control de tiempo"
             app:buffered_color="#99FFFFFF"
             app:played_color="#FF0000"
             app:unplayed_color="#4DFFFFFF" />

@@ -31,6 +31,7 @@ import com.johang.audiocinemateca.data.model.Serie
 import com.johang.audiocinemateca.data.model.ShortFilm
 import com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
 import com.johang.audiocinemateca.domain.model.CatalogItem
+import com.johang.audiocinemateca.util.TimeFormatUtils
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -83,7 +84,8 @@ class ContentDetailFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ):
+     View? {
         return inflater.inflate(R.layout.fragment_content_detail, container, false)
     }
 
@@ -155,14 +157,15 @@ class ContentDetailFragment : Fragment() {
         contentGenre.text = "Género: ${item.genero}"
         contentCountry.text = "País: ${item.pais}"
         contentDirector.text = "Director: ${item.director}"
-                        contentScreenwriter.text = "Escrito por: ${item.guion}"
-                contentTitleHeader.text = item.title
+        contentScreenwriter.text = "Escrito por: ${item.guion}"
+        contentTitleHeader.text = item.title
         contentMusic.text = "Música: ${item.musica}"
         contentPhotography.text = "Fotografía: ${item.fotografia}"
         contentCast.text = "Reparto: ${item.reparto}"
         contentProducer.text = "Productora: ${item.productora}"
         contentNarration.text = "Narración: ${item.narracion}"
-        contentDuration.text = "Duración: ${item.duracion} minutos"
+        val durationInMinutes = item.duracion.toIntOrNull() ?: 0
+        contentDuration.text = "Duración: ${TimeFormatUtils.formatDuration(durationInMinutes)}"
         contentLanguage.text = "Idioma: " + when (item.idioma) {
             "1" -> "Español de España"
             "2" -> "Español Latino"
@@ -181,7 +184,6 @@ class ContentDetailFragment : Fragment() {
         when (item) {
             is Movie -> setupMovieUI(item)
             is Serie -> setupSeriesUI(item)
-            // Documentaries and ShortFilms might not have specific UI elements like parts or episodes
             is Documentary -> { /* Hide or handle UI for documentaries */ }
             is ShortFilm -> { /* Hide or handle UI for short films */ }
         }
@@ -326,17 +328,16 @@ class ContentDetailFragment : Fragment() {
 
         if (latestProgress != null && latestProgress.currentPositionMs < latestProgress.totalDurationMs) {
             val remainingMs = latestProgress.totalDurationMs - latestProgress.currentPositionMs
-            val remainingMinutes = remainingMs / (1000 * 60)
-            val remainingSeconds = (remainingMs / 1000) % 60
+            val remainingTimeFormatted = TimeFormatUtils.formatDuration(remainingMs)
 
             val progressText = when (item) {
                 is Serie -> {
                     val seasonKey = item.capitulos.keys.elementAtOrNull(latestProgress.partIndex)
                     val episode = item.capitulos[seasonKey]?.getOrNull(latestProgress.episodeIndex)
-                    episode?.let { "Continuar T${latestProgress.partIndex + 1}:E${it.capitulo} - ${it.titulo} (${remainingMinutes}m ${remainingSeconds}s restantes)" }
+                    episode?.let { "Continuar T${latestProgress.partIndex + 1}:E${it.capitulo} - ${it.titulo} (${remainingTimeFormatted} restantes)" }
                         ?: "Continuar escuchando..."
                 }
-                else -> "Continuar escuchando (${remainingMinutes}m ${remainingSeconds}s restantes)"
+                else -> "Continuar escuchando (${remainingTimeFormatted} restantes)"
             }
             listenNowButton.text = progressText
             listenNowButton.setOnClickListener {
@@ -367,9 +368,8 @@ class ContentDetailFragment : Fragment() {
                 val progress = allProgress.find { it.partIndex == i }
                 it.text = if (progress != null && progress.currentPositionMs < progress.totalDurationMs) {
                     val remainingMs = progress.totalDurationMs - progress.currentPositionMs
-                    val remainingMinutes = remainingMs / (1000 * 60)
-                    val remainingSeconds = (remainingMs / 1000) % 60
-                    "Parte ${i + 1}: Continuar (${remainingMinutes}m ${remainingSeconds}s restantes)"
+                    val remainingTimeFormatted = TimeFormatUtils.formatDuration(remainingMs)
+                    "Parte ${i + 1}: Continuar (${remainingTimeFormatted} restantes)"
                 } else if (progress != null) {
                     "Parte ${i + 1}: Completado"
                 } else {
@@ -392,9 +392,8 @@ class ContentDetailFragment : Fragment() {
                 val progress = allProgress.find { it.partIndex == selectedSeasonIndex && it.episodeIndex == episodeIndex }
                 it.text = if (progress != null && progress.currentPositionMs < progress.totalDurationMs) {
                     val remainingMs = progress.totalDurationMs - progress.currentPositionMs
-                    val remainingMinutes = remainingMs / (1000 * 60)
-                    val remainingSeconds = (remainingMs / 1000) % 60
-                    "Episodio ${episode.capitulo}: ${episode.titulo} (Continuar: ${remainingMinutes}m ${remainingSeconds}s restantes)"
+                    val remainingTimeFormatted = TimeFormatUtils.formatDuration(remainingMs)
+                    "Episodio ${episode.capitulo}: ${episode.titulo} (Continuar: ${remainingTimeFormatted} restantes)"
                 } else if (progress != null) {
                     "Episodio ${episode.capitulo}: ${episode.titulo} (Completado)"
                 } else {

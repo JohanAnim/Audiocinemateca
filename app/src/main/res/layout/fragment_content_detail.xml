@@ -34,9 +34,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 tools:text="Título de la Película"
-                android:textSize="18sp"
+                android:textSize="24sp"
                 android:textStyle="bold"
-                android:gravity="center_horizontal"
+                android:textAlignment="center"
                 android:layout_marginTop="32dp" />
 
             <!-- Botón Escuchar ahora -->
@@ -46,10 +46,25 @@
                 android:layout_height="wrap_content"
                 android:text="Comenzar a oír"
                 android:layout_marginTop="32dp"
-                android:layout_marginBottom="32dp"
                 android:layout_gravity="center_horizontal" />
 
+            <!-- Sinopsis -->
+            <TextView
+                android:id="@+id/sinopsis_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Sinopsis:"
+                android:textStyle="bold"
+                android:textSize="18sp"
+                android:layout_marginTop="32dp" />
 
+            <TextView
+                android:id="@+id/content_sinopsis"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:layout_marginTop="8dp"
+                tools:text="Esta es la sinopsis del contenido." />
 
             <!-- Contenedor para la información general en una cuadrícula -->
             <GridLayout
@@ -57,7 +72,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:columnCount="3"
-                android:layout_marginTop="16dp">
+                android:layout_marginTop="32dp">
 
                 <!-- Fila 1 -->
                 <TextView
@@ -149,6 +164,8 @@
                     android:textSize="16sp"
                     tools:text="Productora: Studio XYZ" />
 
+
+
                 <!-- Fila 4 -->
                 <TextView
                     android:id="@+id/content_narration"
@@ -210,24 +227,6 @@
                     tools:text="Temporadas: 3" />
 
             </GridLayout>
-
-            <!-- Sinopsis -->
-            <TextView
-                android:id="@+id/sinopsis_label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Sinopsis:"
-                android:textStyle="bold"
-                android:textSize="18sp"
-                android:layout_marginTop="16dp" />
-
-            <TextView
-                android:id="@+id/content_sinopsis"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="16sp"
-                android:layout_marginTop="8dp"
-                tools:text="Esta es la sinopsis del contenido." />
 
             <!-- Contenedor para partes de películas -->
             <LinearLayout

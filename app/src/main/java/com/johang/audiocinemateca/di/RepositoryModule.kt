@@ -17,6 +17,7 @@ import com.johang.audiocinemateca.data.repository.LoginRepository
 import com.johang.audiocinemateca.data.repository.SearchRepository
 import com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
 import com.johang.audiocinemateca.data.local.dao.PlaybackProgressDao
+import com.johang.audiocinemateca.data.local.dao.SearchHistoryDao
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -52,6 +53,14 @@ object RepositoryModule {
         playbackProgressDao: PlaybackProgressDao
     ): PlaybackProgressRepository {
         return PlaybackProgressRepository(playbackProgressDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSearchHistoryRepository(
+        searchHistoryDao: SearchHistoryDao
+    ): com.johang.audiocinemateca.data.repository.SearchHistoryRepository {
+        return com.johang.audiocinemateca.data.repository.SearchHistoryRepository(searchHistoryDao)
     }
 
     @Provides

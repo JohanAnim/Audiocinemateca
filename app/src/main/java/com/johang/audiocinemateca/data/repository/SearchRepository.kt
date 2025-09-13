@@ -28,35 +28,27 @@ class SearchRepository @Inject constructor(
             it.shortFilms?.let { shorts -> allItems.addAll(shorts) }
         }
 
-        return allItems.filter { item ->
-            when (item) {
-                is Movie -> {
-                    item.title.lowercase().contains(lowerCaseQuery) ||
-                    item.director.lowercase().contains(lowerCaseQuery) ||
-                    item.reparto.lowercase().contains(lowerCaseQuery) ||
-                    item.sinopsis.lowercase().contains(lowerCaseQuery)
-                }
-                is Serie -> {
-                    item.title.lowercase().contains(lowerCaseQuery) ||
-                    item.director.lowercase().contains(lowerCaseQuery) ||
-                    item.reparto.lowercase().contains(lowerCaseQuery) ||
-                    item.sinopsis.lowercase().contains(lowerCaseQuery)
-                }
-                is Documentary -> {
-                    item.title.lowercase().contains(lowerCaseQuery) ||
-                    item.director.lowercase().contains(lowerCaseQuery) ||
-                    item.reparto.lowercase().contains(lowerCaseQuery) ||
-                    item.sinopsis.lowercase().contains(lowerCaseQuery)
-                }
-                is ShortFilm -> {
-                    item.title.lowercase().contains(lowerCaseQuery) ||
-                    item.director.lowercase().contains(lowerCaseQuery) ||
-                    item.reparto.lowercase().contains(lowerCaseQuery) ||
-                    item.sinopsis.lowercase().contains(lowerCaseQuery)
-                }
-                else -> false
+        val scoredItems = allItems.mapNotNull { item ->
+            val score = when {
+                item.title.equals(query, ignoreCase = true) -> 3 // Coincidencia exacta del título
+                item.title.startsWith(query, ignoreCase = true) -> 2 // El título comienza con la búsqueda (para secuelas)
+                item.title.lowercase().contains(lowerCaseQuery) ||
+                item.director.lowercase().contains(lowerCaseQuery) ||
+                item.reparto.lowercase().contains(lowerCaseQuery) ||
+                item.sinopsis.lowercase().contains(lowerCaseQuery) -> 1 // Coincidencia en otros campos
+                else -> 0
             }
+
+            if (score > 0) item to score else null
         }
+
+        // Ordenar por puntuación (descendente) y luego por año (ascendente)
+        val sortedItems = scoredItems.sortedWith(
+            compareByDescending<Pair<CatalogItem, Int>> { it.second } // Primero por puntuación
+                .thenBy { it.first.anio } // Luego por año
+        ).map { it.first } // Extraer solo los elementos del catálogo
+
+        return sortedItems
     }
 
     suspend fun getRandomCatalogItem(): CatalogItem? {
