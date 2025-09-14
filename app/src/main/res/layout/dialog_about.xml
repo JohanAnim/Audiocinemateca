@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Audiocinemateca es una aplicación que te permite disfrutar de un amplio catálogo de películas, series, documentales y más, en formato de audio. Ha sido diseñada desde cero pensando en la accesibilidad, con el objetivo de ofrecer una experiencia de usuario sencilla e intuitiva para personas con discapacidad visual."
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Propósito"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Esta aplicación nació como un proyecto personal y ha evolucionado para convertirse en una extensión no oficial de la página audiocinemateca.com, buscando acercar su valioso contenido a la gran comunidad de usuarios de Android." />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Desarrolladores"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="• Johan G." />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="• Cesar Verástegui (metalalchemist)" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Agradecimientos y Derechos"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Extendemos un agradecimiento especial a José Manuel Delicado, creador de la página oficial audiocinemateca.com. Todos los derechos sobre el contenido reproducido en esta aplicación pertenecen exclusivamente a él y a audiocinemateca.com." />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="¿Cómo puedo apoyar el proyecto?"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Puedes apoyar de dos maneras: al desarrollador, como agradecimiento por su esfuerzo, o a la página oficial, para ayudar con el mantenimiento del servidor. Ambas contribuciones son voluntarias y muy apreciadas. Encontrarás las opciones en el botón 'Donar' de la pantalla de Cuenta." />
+
+    </LinearLayout>
+</ScrollView>

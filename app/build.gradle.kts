@@ -16,7 +16,7 @@ android {
         minSdk = 25
         targetSdk = 35
         versionCode = 2
-        versionName = "2.8.3"
+        versionName = "2.8.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -85,6 +85,7 @@ dependencies {
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.preference)
 
     // Retrofit & OkHttp
     implementation(libs.retrofit)

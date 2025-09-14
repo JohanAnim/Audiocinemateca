@@ -1,6 +1,7 @@
 package com.johang.audiocinemateca.presentation.account
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -15,6 +16,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import androidx.navigation.fragment.findNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.johang.audiocinemateca.LoginActivity
 import com.johang.audiocinemateca.MainActivity
@@ -47,7 +49,6 @@ class AccountFragment : Fragment() {
     private var progressText: TextView? = null
 
     private lateinit var appUpdateButton: Button
-    private lateinit var novedadesButton: Button
     private var updateInfo: UpdateInfo? = null
 
     override fun onCreateView(
@@ -65,12 +66,13 @@ class AccountFragment : Fragment() {
         val downloadCountText: TextView = view.findViewById(R.id.download_count_text)
         val settingsButton: Button = view.findViewById(R.id.settings_button)
         val aboutButton: Button = view.findViewById(R.id.about_button)
+        val donateButton: Button = view.findViewById(R.id.donate_button)
         val logoutButton: Button = view.findViewById(R.id.logout_button)
         val catalogVersionText: TextView = view.findViewById(R.id.catalog_version_text)
         val appVersionText: TextView = view.findViewById(R.id.app_version_text)
         val checkUpdatesButton: Button = view.findViewById(R.id.check_updates_button)
         appUpdateButton = view.findViewById(R.id.app_update_button)
-        novedadesButton = view.findViewById(R.id.novedades_button)
+        val novedadesButton: Button = view.findViewById(R.id.novedades_button)
 
         // Mostrar nombre de usuario
         lifecycleScope.launch {
@@ -105,8 +107,8 @@ class AccountFragment : Fragment() {
 
         // Mostrar versión de la aplicación
         try {
-            requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName?.let { currentVersion ->
-                appVersionText.text = "Versión de la Aplicación: $currentVersion"
+            requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName?.let {
+                appVersionText.text = "Versión de la Aplicación: $it"
             } ?: run {
                 appVersionText.text = "Versión de la Aplicación: N/A"
             }
@@ -117,9 +119,40 @@ class AccountFragment : Fragment() {
         observeUpdateState()
 
         // Configurar listeners de botones
-        settingsButton.setOnClickListener { /* Lógica para Configuración */ }
-        aboutButton.setOnClickListener { /* Lógica para Acerca de */ }
-        
+        settingsButton.setOnClickListener {
+            findNavController().navigate(R.id.action_accountFragment_to_settingsFragment)
+        }
+        aboutButton.setOnClickListener {
+            val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_about, null)
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Acerca de Audiocinemateca")
+                .setView(dialogView)
+                .setPositiveButton("Aceptar") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .show()
+        }
+
+        donateButton.setOnClickListener {
+            val options = arrayOf("Invítame un refresco por el desarrollo de la app", "Dona directamente a la página de la audiocinemateca.com")
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Apoya el proyecto")
+                .setItems(options) { dialog, which ->
+                    val url = when (which) {
+                        0 -> "https://paypal.me/johananimg?locale.x=es_XC&country.x=CO"
+                        1 -> "https://audiocinemateca.com/donaciones"
+                        else -> null
+                    }
+                    url?.let {
+                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(it))
+                        startActivity(intent)
+                    }
+                    dialog.dismiss()
+                }
+                .setNegativeButton("Cancelar", null)
+                .show()
+        }
+
         novedadesButton.setOnClickListener {
             if (updateInfo != null) {
                 showNovedadesDialog(updateInfo!!)
@@ -127,14 +160,24 @@ class AccountFragment : Fragment() {
                 Toast.makeText(requireContext(), "No hay novedades disponibles en este momento.", Toast.LENGTH_SHORT).show()
             }
         }
-        
+
         logoutButton.setOnClickListener {
-            lifecycleScope.launch {
-                authCatalogRepository.logout()
-                val intent = Intent(requireContext(), LoginActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(intent)
-            }
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Cerrar Sesión")
+                .setMessage("¿Estás seguro de que quieres cerrar la sesión actual?")
+                .setNegativeButton("No") { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .setPositiveButton("Sí") { dialog, _ ->
+                    lifecycleScope.launch {
+                        authCatalogRepository.logout()
+                        val intent = Intent(requireContext(), LoginActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        startActivity(intent)
+                    }
+                    dialog.dismiss()
+                }
+                .show()
         }
 
         checkUpdatesButton.setOnClickListener {
@@ -180,22 +223,24 @@ class AccountFragment : Fragment() {
             viewModel.updateState.collect { result ->
                 when (result) {
                     is UpdateCheckResult.UpdateAvailable -> {
-                        appUpdateButton.visibility = View.VISIBLE
                         this@AccountFragment.updateInfo = result.updateInfo
+                        appUpdateButton.visibility = View.VISIBLE
                         appUpdateButton.setOnClickListener {
-                            showUpdateDialog(result.updateInfo)
+                            this@AccountFragment.updateInfo?.let { info ->
+                                showUpdateDialog(info)
+                            }
                         }
                         sendUpdateIndicatorBroadcast(true)
                     }
                     is UpdateCheckResult.NoUpdateAvailable -> {
-                        appUpdateButton.visibility = View.GONE
                         this@AccountFragment.updateInfo = result.updateInfo
+                        appUpdateButton.visibility = View.GONE
                         sendUpdateIndicatorBroadcast(false)
                     }
                     is UpdateCheckResult.Error -> {
+                        this@AccountFragment.updateInfo = null
                         Log.e("AccountFragment", "Error checking for app update: ${result.message}")
                         appUpdateButton.visibility = View.GONE
-                        this@AccountFragment.updateInfo = null
                         sendUpdateIndicatorBroadcast(false)
                     }
                     is UpdateCheckResult.Loading -> {

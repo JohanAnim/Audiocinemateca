@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme -->
+    <string-array name="theme_entries">
+        <item>Claro</item>
+        <item>Oscuro</item>
+        <item>Predeterminado del sistema</item>
+    </string-array>
+
+    <string-array name="theme_values">
+        <item>light</item>
+        <item>dark</item>
+        <item>system</item>
+    </string-array>
+
+    <!-- Rewind Interval -->
+    <string-array name="rewind_interval_entries">
+        <item>5 segundos</item>
+        <item>10 segundos</item>
+        <item>15 segundos</item>
+        <item>30 segundos</item>
+    </string-array>
+
+    <string-array name="rewind_interval_values">
+        <item>5</item>
+        <item>10</item>
+        <item>15</item>
+        <item>30</item>
+    </string-array>
+
+    <!-- Forward Interval -->
+    <string-array name="forward_interval_entries">
+        <item>10 segundos</item>
+        <item>15 segundos</item>
+        <item>30 segundos</item>
+        <item>60 segundos</item>
+    </string-array>
+
+    <string-array name="forward_interval_values">
+        <item>10</item>
+        <item>15</item>
+        <item>30</item>
+        <item>60</item>
+    </string-array>
+
+    <!-- Sleep Timer -->
+    <string-array name="sleep_timer_entries">
+        <item>30 minutos</item>
+        <item>1 hora</item>
+        <item>2 horas</item>
+    </string-array>
+
+    <string-array name="sleep_timer_values">
+        <item>30</item>
+        <item>60</item>
+        <item>120</item>
+    </string-array>
+
+    <!-- Startup Tab -->
+    <string-array name="startup_tab_entries">
+        <item>Inicio (Catálogo)</item>
+        <item>Mis Listas</item>
+        <item>Cuenta</item>
+    </string-array>
+
+    <string-array name="startup_tab_values">
+        <item>catalog</item>
+        <item>mylists</item>
+        <item>account</item>
+    </string-array>
+
+    <!-- Default Content Tab -->
+    <string-array name="default_content_tab_entries">
+        <item>Películas</item>
+        <item>Series</item>
+        <item>Documentales</item>
+        <item>Cortometrajes</item>
+    </string-array>
+
+    <string-array name="default_content_tab_values">
+        <item>peliculas</item>
+        <item>series</item>
+        <item>documentales</item>
+        <item>cortometrajes</item>
+    </string-array>
+
+</resources>

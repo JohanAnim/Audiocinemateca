@@ -1,10 +1,36 @@
-# Versión 2.8.3
+# Versión 2.8.5
 
-## Cambios Principales
+## Nuevas Características
+
+### Ajustes de la Aplicación
+- Se ha implementado una nueva pantalla de Ajustes completa, accesible desde la pantalla de Cuenta.
+- **General:**
+    - Opción para elegir la pestaña de inicio de la aplicación (Catálogo, Mis Listas, Cuenta).
+    - Opción para elegir la pestaña de contenido predeterminada en el Catálogo (Películas, Series, Documentales, Cortometrajes).
+    - Opciones para la comprobación automática de actualizaciones del catálogo y de la aplicación.
+- **Accesibilidad:**
+    - Opciones para activar el alto contraste y el tamaño de letra grande.
+- **Reproducción:**
+    - Opción para activar/desactivar la reproducción automática de siguiente parte/episodio.
+    - Implementación de un temporizador de descanso con opción de tiempo de inactividad.
+    - Campo para definir el límite del historial de búsqueda.
+    - Botones para eliminar el historial de búsqueda y el historial de reproducción.
+    - Opciones para configurar los intervalos de retroceso y avance rápido.
+    - Nota informativa sobre la configuración de los botones de reproducción.
+- **Funciones de Inteligencia Artificial:**
+    - Campo para introducir la clave API de Gemini.
+    - Botón para comprobar el estado de la API.
 
 ### Mejoras
+
 - Se ha rediseñado la barra de búsqueda para una mejor experiencia de usuario.
 - Se ha añadido un botón para limpiar el campo de búsqueda que aparece dinámicamente.
+- Se ha añadido un diálogo de confirmación al cerrar sesión.
+- Se ha implementado un botón de "Donar" con opciones para apoyar al desarrollador y a la página oficial.
+- El diálogo "Acerca de" ha sido mejorado con información detallada y estructurada sobre la aplicación y sus creadores, incluyendo una sección sobre cómo apoyar el proyecto.
+- Se ha mejorado la compatibilidad del proceso de descarga e instalación de actualizaciones de la aplicación, especialmente para versiones antiguas de Android.
+- Se ha reordenado la visualización de las pestañas en "Mis Listas" a: Historial, Favoritos, Recomendaciones.
+- Se ha refactorizado la agrupación de elementos en el historial de reproducción para una mejor organización.
 
 ### Corrección de Errores
 - Se ha solucionado un error que causaba que la aplicación fallara al salir de la pantalla de búsqueda.
@@ -13,4 +39,9 @@
 - El teclado ahora se oculta automáticamente después de realizar una búsqueda por voz.
 
 ### Refactorización
-- Se ha eliminado el botón para borrar todo el historial de la pantalla de búsqueda. Esta función se reubicará en los ajustes de la aplicación en una futura versión.
+- Se ha eliminado el botón para borrar todo el historial de la pantalla de búsqueda. Esta función se ubicará en los ajustes de la aplicación.
+
+## Actualizaciones Técnicas
+- Se ha actualizado la versión de la aplicación a 2.8.5.
+- Se ha añadido la dependencia de la biblioteca `androidx.preference:preference-ktx`.
+- Se han corregido errores de compilación relacionados con la resolución de referencias y la gestión de variables de estado.

@@ -78,11 +78,9 @@ class PlaybackHistoryAdapter(
             titleTextView.text = catalogItem?.title ?: "Título desconocido"
 
             val remainingMs = playbackProgress.totalDurationMs - playbackProgress.currentPositionMs
-            val remainingMinutes = remainingMs / (1000 * 60)
-            val remainingSeconds = (remainingMs / 1000) % 60
-
-            val timeRemainingText = if (remainingMs > 0) {
-                "Continuar: ${remainingMinutes}m ${remainingSeconds}s restantes"
+            val timeRemainingText = if (remainingMs > 1000) { // Considerar completado si queda menos de 1 segundo
+                val formattedDuration = com.johang.audiocinemateca.util.TimeFormatUtils.formatDuration(remainingMs)
+                "Continuar: $formattedDuration restantes"
             } else {
                 "Completado"
             }

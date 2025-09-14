@@ -50,9 +50,9 @@ class MyListsFragment : Fragment() {
 
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
             tab.text = when (position) {
-                0 -> "Recomendaciones"
+                0 -> "Historial"
                 1 -> "Favoritos"
-                2 -> "Historial"
+                2 -> "Recomendaciones"
                 else -> null
             }
         }.attach()
@@ -68,7 +68,7 @@ class MyListsFragment : Fragment() {
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         menu.clear()
 
-        if (viewPager.currentItem == 2) { // Pestaña "Historial"
+        if (viewPager.currentItem == 0) { // Pestaña "Historial"
             inflater.inflate(R.menu.history_menu, menu)
         }
         super.onCreateOptionsMenu(menu, inflater)
@@ -76,7 +76,7 @@ class MyListsFragment : Fragment() {
 
     override fun onPrepareOptionsMenu(menu: Menu) {
         super.onPrepareOptionsMenu(menu)
-        if (viewPager.currentItem == 2) { // Pestaña "Historial"
+        if (viewPager.currentItem == 0) { // Pestaña "Historial"
             val clearHistoryItem = menu.findItem(R.id.action_clear_history)
             lifecycleScope.launch {
                 // Observar el StateFlow para obtener el estado actual del historial
