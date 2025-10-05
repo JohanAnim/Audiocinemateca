@@ -1,33 +1,47 @@
 package com.johang.audiocinemateca.presentation.player
 
+import android.content.BroadcastReceiver
 import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
-import android.util.Base64
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.ui.PlayerView
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.johang.audiocinemateca.MainActivity
+import com.johang.audiocinemateca.MainNavGraphDirections
+import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
-import com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity
 import com.johang.audiocinemateca.data.model.Documentary
 import com.johang.audiocinemateca.data.model.Movie
 import com.johang.audiocinemateca.data.model.Serie
@@ -35,22 +49,12 @@ import com.johang.audiocinemateca.data.model.ShortFilm
 import com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
 import com.johang.audiocinemateca.databinding.FragmentPlayerBinding
 import com.johang.audiocinemateca.domain.model.CatalogItem
-import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import javax.inject.Inject
-import android.content.Intent
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.IntentFilter
-import android.widget.TextView
-import androidx.core.content.ContextCompat
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import androidx.media3.common.C
-import com.johang.audiocinemateca.MainActivity
-import com.johang.audiocinemateca.R
+import com.johang.audiocinemateca.presentation.equalizer.EqualizerDialogFragment
 import com.johang.audiocinemateca.util.TimeFormatUtils
-import com.johang.audiocinemateca.MainNavGraphDirections
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class PlayerFragment : Fragment() {
@@ -60,8 +64,6 @@ class PlayerFragment : Fragment() {
 
     private val viewModel: PlayerViewModel by viewModels()
     private val args: PlayerFragmentArgs by navArgs()
-
-    
 
     @Inject
     lateinit var sharedPreferencesManager: SharedPreferencesManager
@@ -76,9 +78,14 @@ class PlayerFragment : Fragment() {
     private var currentPartIndex: Int = -1
     private var currentEpisodeIndex: Int = -1
     private var autoAdvanceTriggeredForCurrentItem = false
+    private var isInitialLoading = true
 
     private lateinit var customPrevMediaButton: ImageButton
     private lateinit var customNextMediaButton: ImageButton
+    private lateinit var preferenceChangeListener: SharedPreferences.OnSharedPreferenceChangeListener
+
+    private var sleepTimer: CountDownTimer? = null
+    private var sleepTimerMenuItem: MenuItem? = null
 
     private val BASE_URL = "https://audiocinemateca.com/"
 
@@ -96,16 +103,13 @@ class PlayerFragment : Fragment() {
             when (intent?.action) {
                 MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON -> {
                     val isPlaying = intent.getBooleanExtra(MainActivity.EXTRA_IS_PLAYING, false)
-                    // Update the play/pause button in the custom controls
                     binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_play_pause)?.apply {
                         if (isPlaying) {
-                            // Comentario añadido por Gemini para forzar un cambio en el archivo.
                             setImageDrawable(ContextCompat.getDrawable(requireContext(), androidx.media3.ui.R.drawable.exo_ic_pause_circle_filled))
                         } else {
                             setImageDrawable(ContextCompat.getDrawable(requireContext(), androidx.media3.ui.R.drawable.exo_ic_play_circle_filled))
                         }
                     }
-                    Log.d("PlayerFragment", "playerStateReceiver: Received ACTION_UPDATE_PLAY_PAUSE_BUTTON. isPlaying = $isPlaying")
                 }
             }
         }
@@ -134,38 +138,46 @@ class PlayerFragment : Fragment() {
         val filter = IntentFilter(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON)
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(playerStateReceiver, filter)
 
-        // Initialize MediaController once the view is created
+        preferenceChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                    if (key == "rewind_interval" || key == "forward_interval") {
+                        activity?.runOnUiThread {
+                            updateSkipButtonsContentDescription()
+                        }
+                    }        }
+
         initializeMediaController()
     }
 
     override fun onStart() {
         super.onStart()
-        // Notify MainActivity that PlayerFragment is active to hide the mini-player
         val intent = Intent(MainActivity.ACTION_HIDE_MINI_PLAYER)
         LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(intent)
     }
 
     override fun onResume() {
         super.onResume()
-        // Request current playback state from PlayerService to ensure UI is synchronized
         val requestIntent = Intent(MainActivity.ACTION_REQUEST_PLAYBACK_STATE)
         LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(requestIntent)
-        Log.d("PlayerFragment", "onResume: Sent ACTION_REQUEST_PLAYBACK_STATE to PlayerService.")
         updateNavigationButtonsState()
+        setupInitialTimerState()
+        sharedPreferencesManager.getPrefs().registerOnSharedPreferenceChangeListener(preferenceChangeListener)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sharedPreferencesManager.getPrefs().unregisterOnSharedPreferenceChangeListener(preferenceChangeListener)
     }
 
     override fun onStop() {
         super.onStop()
-        // The controller is no longer released here.
-        // We only save the progress when the fragment is stopped.
         val saveProgressIntent = Intent(MainActivity.ACTION_SAVE_PLAYBACK_PROGRESS)
         LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(saveProgressIntent)
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        cancelSleepTimer(updatePreference = false)
 
-        // Show the mini-player only if the user is navigating away and something is playing or paused.
         val playbackState = mediaController?.playbackState
         if (playbackState == Player.STATE_READY || playbackState == Player.STATE_BUFFERING) {
             currentContentItem?.let {
@@ -180,9 +192,7 @@ class PlayerFragment : Fragment() {
                     val metadata = mediaController?.currentMediaItem?.mediaMetadata
                     putExtra(MainActivity.EXTRA_TITLE, metadata?.albumTitle?.toString() ?: metadata?.title?.toString())
                     putExtra(MainActivity.EXTRA_SUBTITLE, metadata?.displayTitle?.toString())
-                    val isPlayingState = mediaController?.isPlaying == true
-                    putExtra(MainActivity.EXTRA_IS_PLAYING, isPlayingState)
-                    Log.d("PlayerFragment", "onDestroyView: Sending EXTRA_IS_PLAYING = $isPlayingState")
+                    putExtra(MainActivity.EXTRA_IS_PLAYING, mediaController?.isPlaying == true)
                     putExtra(MainActivity.EXTRA_ITEM_ID, it.id)
                     putExtra(MainActivity.EXTRA_ITEM_TYPE, contentType)
                     putExtra(MainActivity.EXTRA_PART_INDEX, currentPartIndex)
@@ -192,7 +202,6 @@ class PlayerFragment : Fragment() {
             }
         }
 
-        // Release the controller and clean up resources only when the view is destroyed
         binding.exoplayerView.player = null
         if (::controllerFuture.isInitialized) {
             MediaController.releaseFuture(controllerFuture)
@@ -206,29 +215,55 @@ class PlayerFragment : Fragment() {
     private fun updateTimestamps() {
         val currentPosition = mediaController?.currentPosition ?: 0L
         val duration = mediaController?.duration ?: 0L
-
         binding.exoplayerView.findViewById<TextView>(androidx.media3.ui.R.id.exo_position)?.text = TimeFormatUtils.formatDuration(currentPosition)
         binding.exoplayerView.findViewById<TextView>(androidx.media3.ui.R.id.exo_duration)?.text = TimeFormatUtils.formatDuration(duration)
     }
 
     private fun setupToolbar() {
         binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
-        binding.toolbar.navigationContentDescription = getString(com.johang.audiocinemateca.R.string.close_button_description)
-        binding.toolbar.inflateMenu(com.johang.audiocinemateca.R.menu.player_toolbar_menu)
+        binding.toolbar.navigationContentDescription = getString(R.string.close_button_description)
+        binding.toolbar.inflateMenu(R.menu.player_toolbar_menu)
 
-        // Add click listener to the toolbar title
-        binding.toolbar.setOnClickListener { 
+        val moreOptionsMenu = binding.toolbar.menu.findItem(R.id.action_more_options)
+        val subMenu = moreOptionsMenu?.subMenu
+
+        val autoplayMenuItem = subMenu?.findItem(R.id.action_autoplay)
+        autoplayMenuItem?.isChecked = sharedPreferencesManager.getBoolean("autoplay", true)
+
+        sleepTimerMenuItem = subMenu?.findItem(R.id.action_sleep_timer)
+
+        binding.toolbar.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.action_playback_speed -> {
+                    showPlaybackSpeedDialog()
+                    true
+                }
+                R.id.action_equalizer -> {
+                    EqualizerDialogFragment().show(childFragmentManager, "EqualizerDialogFragment")
+                    true
+                }
+                R.id.action_autoplay -> {
+                    menuItem.isChecked = !menuItem.isChecked
+                    sharedPreferencesManager.saveBoolean("autoplay", menuItem.isChecked)
+                    true
+                }
+                R.id.action_sleep_timer -> {
+                    showSleepTimerDialog()
+                    true
+                }
+                else -> false
+            }
+        }
+
+        binding.toolbar.setOnClickListener {
             currentContentItem?.let { item ->
                 val previousBackStackEntry = findNavController().previousBackStackEntry
                 val previousDestinationId = previousBackStackEntry?.destination?.id
                 val previousItemId = previousBackStackEntry?.arguments?.getString("itemId")
 
-                // Check if the previous screen was the detail screen for the *same item*
-                if (previousDestinationId == com.johang.audiocinemateca.R.id.contentDetailFragment && previousItemId == item.id) {
-                    // If so, just pop back to it
+                if (previousDestinationId == R.id.contentDetailFragment && previousItemId == item.id) {
                     findNavController().popBackStack()
                 } else {
-                    // Otherwise, pop the player and navigate to the correct detail screen
                     val itemType = when (item) {
                         is Movie -> "peliculas"
                         is Serie -> "series"
@@ -236,29 +271,199 @@ class PlayerFragment : Fragment() {
                         is ShortFilm -> "cortometrajes"
                         else -> "unknown"
                     }
-                    // Pop back from player fragment first
                     findNavController().popBackStack()
-                    // Then navigate to the content detail fragment
                     val action = MainNavGraphDirections.actionGlobalContentDetailFragment(itemId = item.id, itemType = itemType)
                     findNavController().navigate(action)
                 }
             }
         }
+    }
 
-        val autoplaySwitch = binding.toolbar.menu.findItem(com.johang.audiocinemateca.R.id.action_autoplay).actionView?.findViewById<androidx.appcompat.widget.SwitchCompat>(com.johang.audiocinemateca.R.id.autoplay_switch)
-        autoplaySwitch?.isChecked = sharedPreferencesManager.getBoolean("autoplay_enabled", true)
-
-        autoplaySwitch?.setOnCheckedChangeListener { _, isChecked ->
-            sharedPreferencesManager.saveBoolean("autoplay_enabled", isChecked)
+    private fun setupInitialTimerState() {
+        if (sharedPreferencesManager.getBoolean("sleep_timer_enabled", false)) {
+            val durationMinutes = sharedPreferencesManager.getString("sleep_timer_duration", "60")?.toLongOrNull() ?: 60L
+            startSleepTimer(durationMinutes * 60 * 1000)
+        } else {
+            cancelSleepTimer(updatePreference = false)
         }
     }
 
+    private fun showPlaybackSpeedDialog() {
+        val speedOptions = arrayOf("0.75x", "Normal", "1.25x", "1.5x", "2x")
+        val speedValues = floatArrayOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
+        val currentSpeed = mediaController?.playbackParameters?.speed ?: 1.0f
+        val checkedItem = speedValues.asList().indexOf(currentSpeed).takeIf { it != -1 } ?: 1
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Velocidad de reproducción")
+            .setSingleChoiceItems(speedOptions, checkedItem) { dialog, which ->
+                val selectedSpeed = speedValues[which]
+                mediaController?.playbackParameters = PlaybackParameters(selectedSpeed)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun showSleepTimerDialog() {
+        val timerOptions = arrayOf("Desactivado", "30 minutos", "1 hora", "2 horas")
+        val timerValuesMinutes = arrayOf(0L, 30L, 60L, 120L)
+
+        val isEnabled = sharedPreferencesManager.getBoolean("sleep_timer_enabled", false)
+        val currentDurationMinutes = sharedPreferencesManager.getString("sleep_timer_duration", "60")?.toLongOrNull() ?: 60L
+
+        val checkedItem = if (!isEnabled) {
+            0
+        } else {
+            timerValuesMinutes.indexOf(currentDurationMinutes).takeIf { it != -1 } ?: 2
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Temporizador de apagado")
+            .setSingleChoiceItems(timerOptions, checkedItem) { dialog, which ->
+                val selectedMinutes = timerValuesMinutes[which]
+                if (selectedMinutes == 0L) {
+                    cancelSleepTimer(updatePreference = true)
+                } else {
+                    sharedPreferencesManager.saveBoolean("sleep_timer_enabled", true)
+                    sharedPreferencesManager.saveString("sleep_timer_duration", selectedMinutes.toString())
+                    startSleepTimer(selectedMinutes * 60 * 1000)
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun startSleepTimer(durationInMillis: Long) {
+        cancelSleepTimer(updatePreference = false)
+        sleepTimer = object : CountDownTimer(durationInMillis, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                val minutes = (millisUntilFinished / 1000) / 60
+                val seconds = (millisUntilFinished / 1000) % 60
+                sleepTimerMenuItem?.title = String.format("Temporizador: %02d:%02d", minutes, seconds)
+            }
+
+            override fun onFinish() {
+                mediaController?.pause()
+                if (isAdded) {
+                    showStillListeningDialog()
+                }
+            }
+        }.start()
+    }
+
+    private fun cancelSleepTimer(updatePreference: Boolean) {
+        sleepTimer?.cancel()
+        sleepTimer = null
+        sleepTimerMenuItem?.title = "Temporizador de apagado"
+        if (updatePreference) {
+            sharedPreferencesManager.saveBoolean("sleep_timer_enabled", false)
+        }
+    }
+
+    private fun showStillListeningDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Oye, ¿sigues ahí?")
+            .setMessage("Pausaremos la reproducción por ti para que no te pierdas en lo que estás escuchando y no te siga consumiendo batería.")
+            .setPositiveButton("Sí, aún estoy aquí") { dialog, _ ->
+                mediaController?.play()
+                cancelSleepTimer(updatePreference = true)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cerrar") { dialog, _ ->
+                cancelSleepTimer(updatePreference = true)
+                dialog.dismiss()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
     private fun setupCustomControlListeners() {
-        customPrevMediaButton = binding.exoplayerView.findViewById(com.johang.audiocinemateca.R.id.custom_prev_media)!!
-        customNextMediaButton = binding.exoplayerView.findViewById(com.johang.audiocinemateca.R.id.custom_next_media)!!
+        customPrevMediaButton = binding.exoplayerView.findViewById(R.id.custom_prev_media)!!
+        customNextMediaButton = binding.exoplayerView.findViewById(R.id.custom_next_media)!!
+
+        val rewindButton = binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_rew)
+        val forwardButton = binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_ffwd)
+
+        rewindButton?.setOnClickListener {
+            val rewindMs = (sharedPreferencesManager.getString("rewind_interval", "5")?.toLongOrNull() ?: 5L) * 1000
+            val newPosition = (mediaController?.currentPosition ?: 0) - rewindMs
+            mediaController?.seekTo(newPosition.coerceAtLeast(0))
+            timeUpdateHandler.postDelayed({ updateSkipButtonsContentDescription() }, 100)
+        }
+
+        forwardButton?.setOnClickListener {
+            val forwardMs = (sharedPreferencesManager.getString("forward_interval", "15")?.toLongOrNull() ?: 15L) * 1000
+            val newPosition = (mediaController?.currentPosition ?: 0) + forwardMs
+            val duration = mediaController?.duration ?: 0
+            if (duration > 0) {
+                mediaController?.seekTo(newPosition.coerceAtMost(duration))
+            } else {
+                mediaController?.seekTo(newPosition)
+            }
+            timeUpdateHandler.postDelayed({ updateSkipButtonsContentDescription() }, 100)
+        }
+
+        rewindButton?.setOnLongClickListener {
+            showRewindIntervalDialog()
+            true
+        }
+
+        forwardButton?.setOnLongClickListener {
+            showForwardIntervalDialog()
+            true
+        }
 
         customPrevMediaButton.setOnClickListener { handlePrevious() }
         customNextMediaButton.setOnClickListener { handleNext() }
+    }
+
+    private fun updateSkipButtonsContentDescription() {
+        val rewindSeconds = sharedPreferencesManager.getString("rewind_interval", "5")
+        val forwardSeconds = sharedPreferencesManager.getString("forward_interval", "15")
+        binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_rew)?.contentDescription = "Retroceder ${rewindSeconds} segundos"
+        binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_ffwd)?.contentDescription = "Adelantar ${forwardSeconds} segundos"
+    }
+
+    private fun setPlayerControlsEnabled(enabled: Boolean) {
+        binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_play_pause)?.isEnabled = enabled
+        binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_rew)?.isEnabled = enabled
+        binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_ffwd)?.isEnabled = enabled
+    }
+
+    private fun showRewindIntervalDialog() {
+        val entries = resources.getStringArray(R.array.rewind_interval_entries)
+        val values = resources.getStringArray(R.array.rewind_interval_values)
+        val currentValue = sharedPreferencesManager.getString("rewind_interval", "5")
+        val checkedItem = values.indexOf(currentValue).takeIf { it != -1 } ?: 0
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Intervalo de retroceso")
+            .setSingleChoiceItems(entries, checkedItem) { dialog, which ->
+                val selectedValue = values[which]
+                sharedPreferencesManager.saveString("rewind_interval", selectedValue)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun showForwardIntervalDialog() {
+        val entries = resources.getStringArray(R.array.forward_interval_entries)
+        val values = resources.getStringArray(R.array.forward_interval_values)
+        val currentValue = sharedPreferencesManager.getString("forward_interval", "15")
+        val checkedItem = values.indexOf(currentValue).takeIf { it != -1 } ?: 0
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Intervalo de avance")
+            .setSingleChoiceItems(entries, checkedItem) { dialog, which ->
+                val selectedValue = values[which]
+                sharedPreferencesManager.saveString("forward_interval", selectedValue)
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 
     private fun initializeMediaController() {
@@ -274,6 +479,7 @@ class PlayerFragment : Fragment() {
                 binding.exoplayerView.controllerAutoShow = false
                 binding.exoplayerView.controllerHideOnTouch = false
                 binding.exoplayerView.controllerShowTimeoutMs = 0
+
                 binding.exoplayerView.showController()
                 mediaController?.addListener(createPlayerListener())
                 prepareAndPlay()
@@ -285,8 +491,8 @@ class PlayerFragment : Fragment() {
     }
 
     private fun prepareAndPlay() {
+        setPlayerControlsEnabled(false)
         val catalogItem = currentContentItem ?: return
-
         val mediaItems = createMediaItems(catalogItem)
         if (mediaItems.isEmpty()) {
             showErrorDialog("Error de Reproducción", "No se pudo encontrar el medio para reproducir.")
@@ -297,16 +503,13 @@ class PlayerFragment : Fragment() {
             var startIndex = 0
             var startPosition = 0L
 
-            // Find the correct startIndex based on currentPartIndex and currentEpisodeIndex
             if (catalogItem is Movie) {
                 startIndex = currentPartIndex.coerceAtLeast(0).coerceAtMost(mediaItems.size - 1)
             } else if (catalogItem is Serie) {
-                // Iterate through mediaItems to find the matching episode
                 for ((index, mediaItem) in mediaItems.withIndex()) {
                     val extras = mediaItem.mediaMetadata.extras
                     val itemPartIndex = extras?.getInt("partIndex", -1) ?: -1
                     val itemEpisodeIndex = extras?.getInt("episodeIndex", -1) ?: -1
-
                     if (itemPartIndex == currentPartIndex && itemEpisodeIndex == currentEpisodeIndex) {
                         startIndex = index
                         break
@@ -316,34 +519,42 @@ class PlayerFragment : Fragment() {
 
             val savedProgress = playbackProgressRepository.getPlaybackProgress(catalogItem.id, currentPartIndex, currentEpisodeIndex)
             startPosition = savedProgress?.currentPositionMs ?: 0L
-            Log.d("PlayerFragment", "prepareAndPlay: savedProgress.currentPositionMs = ${savedProgress?.currentPositionMs}, startPosition = $startPosition")
-
-            // Add a small delay to ensure player is ready
-            delay(100) // Delay for 100 milliseconds
+            delay(100)
 
             mediaController?.setMediaItems(mediaItems, startIndex, startPosition)
             mediaController?.prepare()
             mediaController?.playWhenReady = true
             updateToolbarTitle()
-            updateNavigationButtonsState() // Update after media item is set
+            updateNavigationButtonsState()
         }
     }
 
     private fun createPlayerListener(): Player.Listener {
         return object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_ENDED) {
-                    Toast.makeText(requireContext(), "Reproducción finalizada", Toast.LENGTH_SHORT).show()
-                    val currentItem = currentContentItem ?: return
-                    lifecycleScope.launch {
-                        playbackProgressRepository.deletePlaybackProgress(currentItem.id, currentPartIndex, currentEpisodeIndex)
-                        Log.d("PlayerFragment", "Progreso reiniciado para: ${currentItem.title}")
+                when (playbackState) {
+                    Player.STATE_BUFFERING -> {
+                        setPlayerControlsEnabled(false)
+                        if (isInitialLoading) {
+                            Toast.makeText(requireContext(), "Cargando reproductor...", Toast.LENGTH_SHORT).show()
+                        }
                     }
-                } else if (playbackState == Player.STATE_READY) {
-                    // No longer seek here. Initial seek is handled in prepareAndPlay.
-                    // Seek on media item transition is handled in onMediaItemTransition.
+                    Player.STATE_READY -> {
+                        setPlayerControlsEnabled(true)
+                        if (isInitialLoading) {
+                            Toast.makeText(requireContext(), "Listo", Toast.LENGTH_SHORT).show()
+                            isInitialLoading = false
+                        }
+                        updateSkipButtonsContentDescription()
+                    }
+                    Player.STATE_ENDED -> {
+                        Toast.makeText(requireContext(), "Reproducción finalizada", Toast.LENGTH_SHORT).show()
+                        val currentItem = currentContentItem ?: return
+                        lifecycleScope.launch {
+                            playbackProgressRepository.deletePlaybackProgress(currentItem.id, currentPartIndex, currentEpisodeIndex)
+                        }
+                    }
                 }
-                // Update mini-player play/pause button
                 val playPauseIntent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply {
                     putExtra(MainActivity.EXTRA_IS_PLAYING, mediaController?.isPlaying == true)
                 }
@@ -358,16 +569,10 @@ class PlayerFragment : Fragment() {
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 super.onMediaItemTransition(mediaItem, reason)
-                Log.d("PlayerFragment", "onMediaItemTransition: New media item loaded. Reason: $reason")
-
-                // Update currentPartIndex and currentEpisodeIndex based on the new media item
                 val extras = mediaItem?.mediaMetadata?.extras
                 val newPartIndex = extras?.getInt("partIndex", -1) ?: -1
                 val newEpisodeIndex = extras?.getInt("episodeIndex", -1) ?: -1
 
-                Log.d("PlayerFragment", "onMediaItemTransition: Extracted newPartIndex = $newPartIndex, newEpisodeIndex = $newEpisodeIndex")
-
-                // IMPORTANT: Update fragment's current indices BEFORE fetching saved progress
                 if (newPartIndex != -1) {
                     currentPartIndex = newPartIndex
                 }
@@ -375,24 +580,18 @@ class PlayerFragment : Fragment() {
                     currentEpisodeIndex = newEpisodeIndex
                 }
 
-                // Seek to saved progress for the new media item
                 lifecycleScope.launch {
                     val savedProgress = playbackProgressRepository.getPlaybackProgress(currentContentItem!!.id, currentPartIndex, currentEpisodeIndex)
                     val startPosition = savedProgress?.currentPositionMs ?: 0L
-                    Log.d("PlayerFragment", "onMediaItemTransition: Saved progress for current item: $savedProgress. Start position: $startPosition")
-
                     if (startPosition > 0) {
-                        delay(100) // Add a small delay to ensure player is ready for seek
+                        delay(100)
                         mediaController?.seekTo(startPosition)
-                        Log.d("PlayerFragment", "Seeked to saved position on transition: $startPosition")
-                    } else {
-                        Log.d("PlayerFragment", "No saved progress found or startPosition is 0. Starting from beginning.")
                     }
                 }
 
-                updateToolbarTitle() // Update toolbar title for the new media item
-                updateNavigationButtonsState() // Update navigation buttons for the new media item
-                autoAdvanceTriggeredForCurrentItem = false // Reset for the new item
+                updateToolbarTitle()
+                updateNavigationButtonsState()
+                autoAdvanceTriggeredForCurrentItem = false
             }
         }
     }
@@ -400,32 +599,27 @@ class PlayerFragment : Fragment() {
     private fun checkAutoAdvanceAndNotify() {
         val player = mediaController ?: return
         val currentItem = currentContentItem ?: return
-
         val duration = player.duration
         val currentPosition = player.currentPosition
-
         if (duration == C.TIME_UNSET || duration <= 0) return
-
         val timeLeft = duration - currentPosition
         val timeLeftSeconds = timeLeft / 1000
 
-        // Only auto-advance for Movies with multiple parts or Series
         val shouldAutoAdvance = when (currentItem) {
             is Movie -> currentItem.enlaces.size > 1
             is Serie -> true
             else -> false
         }
 
-        val autoplayEnabled = sharedPreferencesManager.getBoolean("autoplay_enabled", true)
+        val autoplayEnabled = sharedPreferencesManager.getBoolean("autoplay", true)
 
         if (shouldAutoAdvance && autoplayEnabled && timeLeftSeconds <= 10 && timeLeftSeconds > 0 && !autoAdvanceTriggeredForCurrentItem) {
             val nextItemText = if (currentItem is Serie) "próximo episodio" else "próxima parte"
             Toast.makeText(requireContext(), "$nextItemText en ${timeLeftSeconds} segundos", Toast.LENGTH_SHORT).show()
             autoAdvanceTriggeredForCurrentItem = true
         } else if (shouldAutoAdvance && timeLeftSeconds <= 1 && autoAdvanceTriggeredForCurrentItem) {
-            // Trigger auto-advance when time is almost up and notification has been shown
-            handleNext() // This will trigger the service to save and seek
-            autoAdvanceTriggeredForCurrentItem = false // Reset for next item
+            handleNext()
+            autoAdvanceTriggeredForCurrentItem = false
         }
     }
 
@@ -475,7 +669,6 @@ class PlayerFragment : Fragment() {
 
     private fun updateNavigationButtonsState() {
         val item = currentContentItem ?: return
-
         when (item) {
             is Movie -> {
                 val totalParts = item.enlaces.size
@@ -502,11 +695,8 @@ class PlayerFragment : Fragment() {
         }
     }
 
-    
-
     private fun createMediaItems(catalogItem: CatalogItem): List<MediaItem> {
         val mediaItems = mutableListOf<MediaItem>()
-
         when (catalogItem) {
             is Movie -> {
                 catalogItem.enlaces.forEachIndexed { index, urlPath ->
@@ -529,7 +719,7 @@ class PlayerFragment : Fragment() {
                                 MediaMetadata.Builder()
                                     .setTitle(notificationTitle)
                                     .setAlbumTitle(catalogItem.title)
-                                    .setDisplayTitle(partTitle) // Correct subtitle for UI
+                                    .setDisplayTitle(partTitle)
                                     .setArtist(catalogItem.narracion ?: catalogItem.director)
                                     .setExtras(customMetadata)
                                     .build()
@@ -559,7 +749,7 @@ class PlayerFragment : Fragment() {
                                     MediaMetadata.Builder()
                                         .setTitle(notificationTitle)
                                         .setAlbumTitle(catalogItem.title)
-                                        .setDisplayTitle(episodeTitleForUi) // Correct subtitle for UI
+                                        .setDisplayTitle(episodeTitleForUi)
                                         .setArtist(catalogItem.narracion ?: catalogItem.director)
                                         .setExtras(customMetadata)
                                         .build()

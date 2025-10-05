@@ -12,7 +12,7 @@ import com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity
 import com.johang.audiocinemateca.data.local.entities.SearchHistoryEntity
 import com.johang.audiocinemateca.data.local.migrations.Migration4To5
 
-@Database(entities = [CatalogVersionEntity::class, CatalogDataEntity::class, PlaybackProgressEntity::class, SearchHistoryEntity::class], version = 5, exportSchema = true, autoMigrations = [AutoMigration(from = 4, to = 5, spec = Migration4To5::class)])
+@Database(entities = [CatalogVersionEntity::class, CatalogDataEntity::class, PlaybackProgressEntity::class, SearchHistoryEntity::class], version = 6, exportSchema = true, autoMigrations = [AutoMigration(from = 4, to = 5, spec = Migration4To5::class)])
 abstract class AppDatabase : RoomDatabase() {
     abstract fun catalogDao(): CatalogDao
     abstract fun playbackProgressDao(): PlaybackProgressDao

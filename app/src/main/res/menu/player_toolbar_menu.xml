@@ -1,9 +1,30 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <!-- More options menu -->
     <item
-        android:id="@+id/action_autoplay"
-        android:title="Reproducción automática"
-        app:actionLayout="@layout/switch_item"
-        app:showAsAction="always" />
+        android:id="@+id/action_more_options"
+        android:icon="@drawable/ic_more_vert"
+        android:title="Más opciones"
+        app:showAsAction="ifRoom">
+        <menu>
+            <item
+                android:id="@+id/action_playback_speed"
+                android:title="Velocidad de reproducción"
+                app:showAsAction="never" />
+            <item
+                android:id="@+id/action_equalizer"
+                android:title="Ecualizador"
+                app:showAsAction="never" />
+            <item
+                android:id="@+id/action_sleep_timer"
+                android:title="Temporizador de apagado"
+                app:showAsAction="never" />
+            <item
+                android:id="@+id/action_autoplay"
+                android:title="Reproducción automática"
+                android:checkable="true"
+                app:showAsAction="never" />
+        </menu>
+    </item>
 </menu>

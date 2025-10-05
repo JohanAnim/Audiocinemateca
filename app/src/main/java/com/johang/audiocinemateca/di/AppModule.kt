@@ -14,6 +14,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.johang.audiocinemateca.data.local.dao.SearchHistoryDao
 
 @Module
@@ -25,11 +27,17 @@ object AppModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE playback_progress ADD COLUMN isFinished INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             "audiocinemateca.db"
-        ).fallbackToDestructiveMigration().build()
+        ).addMigrations(MIGRATION_5_6).build()
     }
 
     @Provides

@@ -23,6 +23,7 @@ import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import com.johang.audiocinemateca.R
+import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.data.repository.SearchRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
@@ -38,6 +39,9 @@ class CatalogFragment : Fragment() {
 
     @Inject
     lateinit var searchRepository: SearchRepository
+
+    @Inject
+    lateinit var sharedPreferencesManager: SharedPreferencesManager
 
     private val viewModel: CatalogViewModel by viewModels()
     private lateinit var pagerAdapter: CatalogPagerAdapter
@@ -73,6 +77,15 @@ class CatalogFragment : Fragment() {
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
             tab.text = pagerAdapter.getPageTitle(position)
         }.attach()
+
+        val defaultTab = sharedPreferencesManager.getString("default_content_tab", "peliculas")
+        val tabPosition = when (defaultTab) {
+            "series" -> 1
+            "cortometrajes" -> 2
+            "documentales" -> 3
+            else -> 0
+        }
+        viewPager.setCurrentItem(tabPosition, false)
 
         // Track current category based on ViewPager selection
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {

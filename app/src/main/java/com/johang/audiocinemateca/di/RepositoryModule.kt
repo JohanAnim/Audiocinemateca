@@ -58,9 +58,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideSearchHistoryRepository(
-        searchHistoryDao: SearchHistoryDao
+        searchHistoryDao: SearchHistoryDao,
+        sharedPreferencesManager: SharedPreferencesManager
     ): com.johang.audiocinemateca.data.repository.SearchHistoryRepository {
-        return com.johang.audiocinemateca.data.repository.SearchHistoryRepository(searchHistoryDao)
+        return com.johang.audiocinemateca.data.repository.SearchHistoryRepository(searchHistoryDao, sharedPreferencesManager)
     }
 
     @Provides

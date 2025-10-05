@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
 import androidx.media3.common.AudioAttributes
+import android.media.audiofx.Equalizer
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
@@ -194,6 +195,20 @@ class PlayerService : MediaSessionService() {
                 }
                 Log.d("PlayerService", "onPlaybackStateChanged: playbackState = $stateString")
             }
+
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                if (equalizer == null) {
+                    equalizer = Equalizer(0, audioSessionId)
+                    val enabled = sharedPreferencesManager.getBoolean("equalizer_enabled", false)
+                    equalizer?.enabled = enabled
+                    if (enabled) {
+                        for (i in 0 until equalizer!!.numberOfBands) {
+                            val level = sharedPreferencesManager.getInt("equalizer_band_${i}", 0)
+                            equalizer?.setBandLevel(i.toShort(), level.toShort())
+                        }
+                    }
+                }
+            }
         }
         player.addListener(playerListener)
 
@@ -311,6 +326,7 @@ class PlayerService : MediaSessionService() {
     }
 
     companion object {
+        var equalizer: Equalizer? = null
         const val ACTION_PLAY_PAUSE = "com.johang.audiocinemateca.PLAY_PAUSE"
         const val ACTION_STOP = "com.johang.audiocinemateca.STOP"
     }

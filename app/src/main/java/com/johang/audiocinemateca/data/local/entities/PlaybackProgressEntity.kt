@@ -11,5 +11,6 @@ data class PlaybackProgressEntity(
     val totalDurationMs: Long,
     val partIndex: Int, // Para películas/documentales con partes, o temporada para series
     val episodeIndex: Int, // Para series
-    val lastPlayedTimestamp: Long
+    val lastPlayedTimestamp: Long,
+    val isFinished: Boolean = false
 )

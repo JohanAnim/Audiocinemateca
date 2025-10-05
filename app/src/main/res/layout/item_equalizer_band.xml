@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <TextView
+        android:id="@+id/band_description_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Ajustar Graves (60 Hz):" />
+
+    <TextView
+        android:id="@+id/band_explanation_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Aumenta o disminuye la ganancia de esta frecuencia."
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/min_db_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="-15 dB" />
+
+        <SeekBar
+            android:id="@+id/band_seekbar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/max_db_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="+15 dB" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/current_db_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="0 dB" />
+
+</LinearLayout>

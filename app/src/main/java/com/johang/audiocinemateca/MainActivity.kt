@@ -30,6 +30,7 @@ import com.johang.audiocinemateca.data.repository.SearchRepository
 import com.johang.audiocinemateca.presentation.account.AccountViewModel
 import com.johang.audiocinemateca.presentation.player.PlayerService
 import com.johang.audiocinemateca.data.AuthCatalogRepository
+import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -44,6 +45,9 @@ class MainActivity : AppCompatActivity() {
 
     @Inject
     lateinit var authCatalogRepository: com.johang.audiocinemateca.data.AuthCatalogRepository
+
+    @Inject
+    lateinit var sharedPreferencesManager: SharedPreferencesManager
 
     private val accountViewModel: AccountViewModel by viewModels()
 
@@ -116,39 +120,40 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(findViewById(R.id.toolbar))
 
         // Automatic catalog update check
-        val sharedPrefs = getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE)
-        val lastUpdateTimestamp = sharedPrefs.getLong(LAST_CATALOG_UPDATE_TIMESTAMP_KEY, 0L)
-        val currentTime = System.currentTimeMillis()
+        if (sharedPreferencesManager.getBoolean("auto_check_catalog", true)) {
+            val lastUpdateTimestamp = sharedPreferencesManager.getLong(LAST_CATALOG_UPDATE_TIMESTAMP_KEY, 0L)
+            val currentTime = System.currentTimeMillis()
 
-        if (currentTime - lastUpdateTimestamp > CATALOG_UPDATE_INTERVAL_MS) {
-            lifecycleScope.launch {
-                Log.d("MainActivity", "Checking for silent catalog update...")
-                authCatalogRepository.loadCatalog().collect { result ->
-                    when (result) {
-                        is AuthCatalogRepository.LoadCatalogResultWithProgress.UpdateAvailable -> {
-                            Log.d("MainActivity", "Silent catalog update available. Downloading...")
-                            authCatalogRepository.downloadAndSaveCatalog(result.serverVersion).collect { downloadResult ->
-                                when (downloadResult) {
-                                    is AuthCatalogRepository.LoadCatalogResultWithProgress.Success -> {
-                                        Log.d("MainActivity", "Silent catalog update downloaded and saved successfully.")
-                                        sharedPrefs.edit().putLong(LAST_CATALOG_UPDATE_TIMESTAMP_KEY, currentTime).apply()
+            if (currentTime - lastUpdateTimestamp > CATALOG_UPDATE_INTERVAL_MS) {
+                lifecycleScope.launch {
+                    Log.d("MainActivity", "Checking for silent catalog update...")
+                    authCatalogRepository.loadCatalog().collect { result ->
+                        when (result) {
+                            is AuthCatalogRepository.LoadCatalogResultWithProgress.UpdateAvailable -> {
+                                Log.d("MainActivity", "Silent catalog update available. Downloading...")
+                                authCatalogRepository.downloadAndSaveCatalog(result.serverVersion).collect { downloadResult ->
+                                    when (downloadResult) {
+                                        is AuthCatalogRepository.LoadCatalogResultWithProgress.Success -> {
+                                            Log.d("MainActivity", "Silent catalog update downloaded and saved successfully.")
+                                            sharedPreferencesManager.saveLong(LAST_CATALOG_UPDATE_TIMESTAMP_KEY, currentTime)
+                                        }
+                                        is AuthCatalogRepository.LoadCatalogResultWithProgress.Error -> {
+                                            Log.e("MainActivity", "Error during silent catalog download: ${downloadResult.message}")
+                                        }
+                                        else -> { /* Ignore progress and other states for silent update */ }
                                     }
-                                    is AuthCatalogRepository.LoadCatalogResultWithProgress.Error -> {
-                                        Log.e("MainActivity", "Error during silent catalog download: ${downloadResult.message}")
-                                    }
-                                    else -> { /* Ignore progress and other states for silent update */ }
                                 }
                             }
+                            is AuthCatalogRepository.LoadCatalogResultWithProgress.Error -> {
+                                Log.e("MainActivity", "Error checking for silent catalog update: ${result.message}")
+                            }
+                            else -> { /* No update available or still loading, ignore for silent check */ }
                         }
-                        is AuthCatalogRepository.LoadCatalogResultWithProgress.Error -> {
-                            Log.e("MainActivity", "Error checking for silent catalog update: ${result.message}")
-                        }
-                        else -> { /* No update available or still loading, ignore for silent check */ }
                     }
                 }
+            } else {
+                Log.d("MainActivity", "Silent catalog update check skipped. Less than 24 hours since last check.")
             }
-        } else {
-            Log.d("MainActivity", "Silent catalog update check skipped. Less than 24 hours since last check.")
         }
 
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
@@ -162,6 +167,14 @@ class MainActivity : AppCompatActivity() {
         miniPlayerCloseButton = miniPlayerContainer.findViewById(R.id.mini_player_close)
 
         bottomNavigationView.setupWithNavController(navController)
+
+        val startupTab = sharedPreferencesManager.getString("startup_tab", "catalog")
+        val startupItemId = when (startupTab) {
+            "mylists" -> R.id.myListsFragment
+            "account" -> R.id.accountFragment
+            else -> R.id.catalogFragment
+        }
+        bottomNavigationView.selectedItemId = startupItemId
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
             when (destination.id) {
@@ -240,41 +253,43 @@ class MainActivity : AppCompatActivity() {
         handleIntent(intent)
 
         // Check for app updates
-        try {
-            packageManager.getPackageInfo(packageName, 0).versionName?.let { currentVersion ->
-                accountViewModel.checkForUpdates(currentVersion)
+        if (sharedPreferencesManager.getBoolean("auto_check_app", true)) {
+            try {
+                packageManager.getPackageInfo(packageName, 0).versionName?.let { currentVersion ->
+                    accountViewModel.checkForUpdates(currentVersion)
 
-                // Observe the updateState and send broadcast accordingly
-                lifecycleScope.launch {
-                    delay(1000) // Delay for 1 second
-                    accountViewModel.updateState.collect { result ->
-                        when (result) {
-                            is UpdateCheckResult.UpdateAvailable -> {
-                                Log.d("MainActivity", "Update available: ${result.updateInfo.version}")
-                                val intent = Intent(ACTION_SHOW_UPDATE_INDICATOR)
-                                LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
-                                Toast.makeText(this@MainActivity, "Hola. Hay una nueva versión de la app disponible! Para ver más detalles, dirígete a la pestaña de cuenta", Toast.LENGTH_LONG).show()
-                            }
-                            is UpdateCheckResult.NoUpdateAvailable -> {
-                                Log.d("MainActivity", "No update available.")
-                                val intent = Intent(ACTION_HIDE_UPDATE_INDICATOR)
-                                LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
-                            }
-                            is UpdateCheckResult.Error -> {
-                                Log.e("MainActivity", "Error checking for update: ${result.message}")
-                                val intent = Intent(ACTION_HIDE_UPDATE_INDICATOR)
-                                LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
-                                // Optionally, show a toast or other UI feedback for the error
-                            }
-                            UpdateCheckResult.Loading -> {
-                                // Optionally, show a loading indicator
+                    // Observe the updateState and send broadcast accordingly
+                    lifecycleScope.launch {
+                        delay(1000) // Delay for 1 second
+                        accountViewModel.updateState.collect { result ->
+                            when (result) {
+                                is UpdateCheckResult.UpdateAvailable -> {
+                                    Log.d("MainActivity", "Update available: ${result.updateInfo.version}")
+                                    val intent = Intent(ACTION_SHOW_UPDATE_INDICATOR)
+                                    LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
+                                    Toast.makeText(this@MainActivity, "Hola. Hay una nueva versión de la app disponible! Para ver más detalles, dirígete a la pestaña de cuenta", Toast.LENGTH_LONG).show()
+                                }
+                                is UpdateCheckResult.NoUpdateAvailable -> {
+                                    Log.d("MainActivity", "No update available.")
+                                    val intent = Intent(ACTION_HIDE_UPDATE_INDICATOR)
+                                    LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
+                                }
+                                is UpdateCheckResult.Error -> {
+                                    Log.e("MainActivity", "Error checking for update: ${result.message}")
+                                    val intent = Intent(ACTION_HIDE_UPDATE_INDICATOR)
+                                    LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
+                                    // Optionally, show a toast or other UI feedback for the error
+                                }
+                                UpdateCheckResult.Loading -> {
+                                    // Optionally, show a loading indicator
+                                }
                             }
                         }
                     }
                 }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error checking for app update", e)
             }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error checking for app update", e)
         }
     }
 

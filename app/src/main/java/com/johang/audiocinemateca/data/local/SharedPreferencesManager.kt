@@ -29,6 +29,14 @@ class SharedPreferencesManager @Inject constructor(
         return prefs.getLong(key, defaultValue)
     }
 
+    fun saveInt(key: String, value: Int) {
+        prefs.edit().putInt(key, value).apply()
+    }
+
+    fun getInt(key: String, defaultValue: Int = 0): Int {
+        return prefs.getInt(key, defaultValue)
+    }
+
     fun remove(key: String) {
         prefs.edit().remove(key).apply()
     }
@@ -39,6 +47,10 @@ class SharedPreferencesManager @Inject constructor(
 
     fun getBoolean(key: String, defaultValue: Boolean = false): Boolean {
         return prefs.getBoolean(key, defaultValue)
+    }
+
+    fun getPrefs(): SharedPreferences {
+        return prefs
     }
 
     companion object {

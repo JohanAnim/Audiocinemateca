@@ -46,19 +46,21 @@
 
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="Accesibilidad">
+    <PreferenceCategory android:title="Búsqueda">
 
-        <SwitchPreferenceCompat
-            android:key="high_contrast"
-            android:title="Alto contraste"
-            android:summary="Aumenta el contraste de los colores en toda la aplicación."
-            android:defaultValue="false" />
+        <EditTextPreference
+            android:key="search_history_limit"
+            android:title="Límite del historial de búsqueda"
+            android:summary="Cantidad de elementos a guardar (por defecto: 10)"
+            android:defaultValue="10"
+            android:dialogMessage="Introduce la cantidad de elementos a guardar en el historial de búsqueda."
+            app:useSimpleSummaryProvider="true"
+            android:inputType="number" />
 
-        <SwitchPreferenceCompat
-            android:key="large_font"
-            android:title="Letra grande"
-            android:summary="Aumenta el tamaño de la fuente para una mejor legibilidad."
-            android:defaultValue="false" />
+        <Preference
+            android:key="clear_search_history"
+            android:title="Eliminar historial de búsqueda"
+            android:summary="Borra todas las búsquedas que has realizado."/>
 
     </PreferenceCategory>
 
@@ -84,20 +86,6 @@
             android:entryValues="@array/sleep_timer_values"
             android:defaultValue="60"
             android:dependency="sleep_timer_enabled" />
-
-        <EditTextPreference
-            android:key="search_history_limit"
-            android:title="Límite del historial de búsqueda"
-            android:summary="Cantidad de elementos a guardar (por defecto: 10)"
-            android:defaultValue="10"
-            android:dialogMessage="Introduce la cantidad de elementos a guardar en el historial de búsqueda."
-            app:useSimpleSummaryProvider="true"
-            android:inputType="number" />
-
-        <Preference
-            android:key="clear_search_history"
-            android:title="Eliminar historial de búsqueda"
-            android:summary="Borra todas las búsquedas que has realizado."/>
 
         <Preference
             android:key="clear_playback_history"
