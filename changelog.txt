@@ -1,35 +1,24 @@
-# Versión 2.9.0
+--- 
 
-## Nuevas Características
+**Audiocinemateca v2.9.1 - Novedades y Mejoras**
 
-### Ecualizador de Audio
-- Se ha añadido un ecualizador de audio accesible desde la pantalla de reproducción.
-- Permite al usuario ajustar las ganancias de las diferentes bandas de frecuencia.
-- Incluye un interruptor para activar/desactivar el ecualizador y un botón para restaurar los valores a "Plano".
-- Los ajustes del ecualizador (estado y niveles de las bandas) se guardan y se aplican en futuras sesiones de reproducción.
-- Se han añadido etiquetas descriptivas para cada banda, explicando el efecto de ajustar cada rango de frecuencia (Graves, Medios, Agudos, etc.).
+Esta actualización trae importantes mejoras en la experiencia de usuario, la transparencia sobre el estado de la aplicación y nuevas funcionalidades.
 
-## Mejoras
+**Nuevas Funcionalidades:**
 
-### Ajustes de la Aplicación
-- La configuración del "Límite del historial de búsqueda" ahora es funcional.
-- La configuración de la "Pestaña de inicio" ahora es funcional.
-- La configuración de la "Pestaña de contenido predeterminada" ahora es funcional.
-- La configuración de "Comprobación automática del catálogo" ahora es funcional.
-- La configuración de "Comprobación automática de la aplicación" ahora es funcional.
-- Se ha añadido un diálogo de confirmación para las acciones de "Eliminar historial de búsqueda" y "Eliminar historial de reproducción".
-- Se ha reorganizado la pantalla de ajustes, creando una nueva categoría "Búsqueda" para agrupar las opciones relacionadas.
+*   **Botón "Mi Cuenta" en la pantalla de Cuenta:** Accede directamente a tu perfil en `audiocinemateca.com` desde la sección de cuenta de la aplicación.
+*   **Botón "Lanzamientos" en la pantalla de Cuenta:** Consulta las últimas versiones y novedades de la aplicación directamente en GitHub.
+*   **Comprobación manual de actualizaciones:** Ahora puedes tocar el texto de la versión de la aplicación en la pantalla de Cuenta para buscar actualizaciones manualmente. Ideal para usuarios con la comprobación automática desactivada.
+*   **Aviso de fase Beta en el inicio de sesión:** Se ha añadido un aviso claro en la pantalla de inicio de sesión, informando a los usuarios que la aplicación está en fase beta.
+*   **Consentimiento de Beta Tester:** Para iniciar sesión, los usuarios deben aceptar explícitamente ser beta testers, entendiendo que su retroalimentación es crucial para el desarrollo.
+*   **Botón de Retroalimentación en "Acerca de":** En el diálogo "Acerca de Audiocinemateca", se ha añadido un botón para enviar comentarios directamente al desarrollador por correo electrónico.
 
-### Reproductor de Audio
-- Se han añadido indicadores de carga (un toast y la desactivación de los controles) mientras el reproductor está en estado de buffering.
-- Los toasts de "Cargando" y "Listo" ahora solo se muestran durante la carga inicial del medio.
+**Mejoras y Correcciones:**
 
-## Corrección de Errores
-
-- Se ha solucionado un error que causaba que las etiquetas de los botones de retroceso y avance no se actualizaran correctamente.
-- Se ha corregido un error de autenticación (401) que ocurría al intentar reproducir contenido, causado por un manejo inconsistente de las SharedPreferences.
-- Se han solucionado varios crashes que ocurrían al abrir el diálogo del ecualizador.
-- Se ha eliminado la sección "Accesibilidad" de la pantalla de ajustes para evitar confusión, ya que estas características se gestionan a nivel del sistema operativo.
-
-## Actualizaciones Técnicas
-- Se ha unificado el uso de SharedPreferences en toda la aplicación para garantizar la consistencia.
+*   **Aplicación Oficial:** La descripción en la pantalla "Acerca de" ha sido actualizada para reflejar que la aplicación es ahora el cliente oficial para Android de `audiocinemateca.com`.
+*   **Información del Desarrollador:** Se ha incluido una breve biografía del desarrollador principal (Johan G.) en primera persona en la pantalla "Acerca de".
+*   **Gestión unificada de actualizaciones:** Se ha refactorizado el proceso de descarga e instalación de actualizaciones de la aplicación para usar un componente reutilizable, evitando duplicidad de código y mejorando la consistencia.
+*   **Comportamiento de actualización automática:** La comprobación automática de actualizaciones ahora respeta la preferencia del usuario, mostrando un diálogo completo o un simple `Toast` según la configuración.
+*   **Corrección de error de doble diálogo:** Se ha solucionado un problema que causaba que el diálogo de actualización apareciera dos veces al tocar el texto de la versión.
+*   **Eliminación de botón redundante:** Se ha quitado el botón "Toque para actualizar ahora a la última versión de la app" de la pantalla de Cuenta, ya que la funcionalidad ahora se integra en el texto de la versión.
+*   **Corrección de dirección de correo electrónico:** Se ha corregido la dirección de correo electrónico del desarrollador para la retroalimentación.

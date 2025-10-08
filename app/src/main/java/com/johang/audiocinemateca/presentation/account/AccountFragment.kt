@@ -25,9 +25,9 @@ import com.johang.audiocinemateca.data.AuthCatalogRepository
 import com.johang.audiocinemateca.domain.model.UpdateInfo
 import com.johang.audiocinemateca.domain.usecase.UpdateCheckResult
 import com.johang.audiocinemateca.media.VoicePlayer
-import com.johang.audiocinemateca.util.DownloadProgress
 import dagger.hilt.android.AndroidEntryPoint
 import io.noties.markwon.Markwon
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -44,11 +44,11 @@ class AccountFragment : Fragment() {
 
     private val viewModel: AccountViewModel by activityViewModels()
 
-    private var loadingDialog: AlertDialog? = null
-    private var progressBar: ProgressBar? = null
-    private var progressText: TextView? = null
+    private var catalogLoadingDialog: AlertDialog? = null
+    private var catalogProgressBar: ProgressBar? = null
+    private var catalogProgressText: TextView? = null
+    private var checkingDialog: AlertDialog? = null
 
-    private lateinit var appUpdateButton: Button
     private var updateInfo: UpdateInfo? = null
 
     override fun onCreateView(
@@ -65,21 +65,21 @@ class AccountFragment : Fragment() {
         val welcomeText: TextView = view.findViewById(R.id.welcome_text)
         val downloadCountText: TextView = view.findViewById(R.id.download_count_text)
         val settingsButton: Button = view.findViewById(R.id.settings_button)
+        val myAccountButton: Button = view.findViewById(R.id.my_account_button)
         val aboutButton: Button = view.findViewById(R.id.about_button)
         val donateButton: Button = view.findViewById(R.id.donate_button)
         val logoutButton: Button = view.findViewById(R.id.logout_button)
         val catalogVersionText: TextView = view.findViewById(R.id.catalog_version_text)
         val appVersionText: TextView = view.findViewById(R.id.app_version_text)
         val checkUpdatesButton: Button = view.findViewById(R.id.check_updates_button)
-        appUpdateButton = view.findViewById(R.id.app_update_button)
         val novedadesButton: Button = view.findViewById(R.id.novedades_button)
+        val releasesButton: Button = view.findViewById(R.id.releases_button)
 
-        // Mostrar nombre de usuario
+        // User name display
         lifecycleScope.launch {
             val username = authCatalogRepository.getStoredUsername()
             welcomeText.text = "¡Bienvenido, ${username ?: "Usuario"}!"
 
-            // Mostrar contador de descargas si el usuario es "Johan-a-g"
             if (username == "Johan-a-g") {
                 viewModel.updateState.collect {
                     val currentUpdateInfo = when (it) {
@@ -102,13 +102,11 @@ class AccountFragment : Fragment() {
             }
         }
 
-        // Mostrar versión del catálogo
         updateCatalogVersionText(catalogVersionText)
 
-        // Mostrar versión de la aplicación
         try {
             requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName?.let {
-                appVersionText.text = "Versión de la Aplicación: $it"
+                appVersionText.text = "Versión de la Aplicación: $it (toca para buscar actualizaciones)"
             } ?: run {
                 appVersionText.text = "Versión de la Aplicación: N/A"
             }
@@ -118,18 +116,36 @@ class AccountFragment : Fragment() {
 
         observeUpdateState()
 
-        // Configurar listeners de botones
         settingsButton.setOnClickListener {
             findNavController().navigate(R.id.action_accountFragment_to_settingsFragment)
         }
+
+        myAccountButton.setOnClickListener {
+            val url = "https://audiocinemateca.com/usuario"
+            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            startActivity(intent)
+        }
+
         aboutButton.setOnClickListener {
             val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_about, null)
+            val feedbackButton: Button = dialogView.findViewById(R.id.feedback_button)
+            feedbackButton.setOnClickListener {
+                try {
+                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                        data = Uri.parse("mailto:") // only email apps should handle this
+                        putExtra(Intent.EXTRA_EMAIL, arrayOf("gutierrezjohanantonio@gmail.com"))
+                        putExtra(Intent.EXTRA_SUBJECT, "Retroalimentación de Audiocinemateca Beta")
+                    }
+                    startActivity(intent)
+                } catch (e: android.content.ActivityNotFoundException) {
+                    Toast.makeText(requireContext(), "No se encontró ninguna aplicación de correo electrónico.", Toast.LENGTH_SHORT).show()
+                }
+            }
+
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Acerca de Audiocinemateca")
                 .setView(dialogView)
-                .setPositiveButton("Aceptar") { dialog, _ ->
-                    dialog.dismiss()
-                }
+                .setPositiveButton("Aceptar", null)
                 .show()
         }
 
@@ -139,7 +155,7 @@ class AccountFragment : Fragment() {
                 .setTitle("Apoya el proyecto")
                 .setItems(options) { dialog, which ->
                     val url = when (which) {
-                        0 -> "https://paypal.me/johananimg?locale.x=es_XC&country.x=CO"
+                        0 -> "https://www.paypal.com/donate/?hosted_button_id=T4H2LCSZDRV8J"
                         1 -> "https://audiocinemateca.com/donaciones"
                         else -> null
                     }
@@ -161,13 +177,17 @@ class AccountFragment : Fragment() {
             }
         }
 
+        releasesButton.setOnClickListener {
+            val url = "https://github.com/JohanAnim/Audiocinemateca/releases"
+            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            startActivity(intent)
+        }
+
         logoutButton.setOnClickListener {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Cerrar Sesión")
                 .setMessage("¿Estás seguro de que quieres cerrar la sesión actual?")
-                .setNegativeButton("No") { dialog, _ ->
-                    dialog.dismiss()
-                }
+                .setNegativeButton("No", null)
                 .setPositiveButton("Sí") { dialog, _ ->
                     lifecycleScope.launch {
                         authCatalogRepository.logout()
@@ -211,9 +231,45 @@ class AccountFragment : Fragment() {
                                 .setPositiveButton("Aceptar", null)
                                 .show()
                         }
-                        else -> { /* No debería ocurrir */ }
+                        else -> {}
                     }
                 }
+            }
+        }
+
+        appVersionText.setOnClickListener {
+            try {
+                val currentVersion = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName
+                if (currentVersion != null) {
+                    showCheckingDialog()
+                    lifecycleScope.launch {
+                        val result = viewModel.manualCheckForUpdates(currentVersion)
+                        hideCheckingDialog()
+                        when (result) {
+                            is UpdateCheckResult.UpdateAvailable -> {
+                                showUpdateDialog(result.updateInfo)
+                            }
+                            is UpdateCheckResult.NoUpdateAvailable -> {
+                                MaterialAlertDialogBuilder(requireContext())
+                                    .setTitle("Aplicación Actualizada")
+                                    .setMessage("Ya tienes la última versión de la aplicación instalada.")
+                                    .setPositiveButton("Aceptar", null)
+                                    .show()
+                            }
+                            is UpdateCheckResult.Error -> {
+                                MaterialAlertDialogBuilder(requireContext())
+                                    .setTitle("Error")
+                                    .setMessage("No se pudo comprobar si hay actualizaciones: ${result.message}")
+                                    .setPositiveButton("Aceptar", null)
+                                    .show()
+                            }
+                            UpdateCheckResult.Loading -> { /* Unreachable but handled */ }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                hideCheckingDialog()
+                Toast.makeText(requireContext(), "No se pudo obtener la versión de la aplicación.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -224,67 +280,18 @@ class AccountFragment : Fragment() {
                 when (result) {
                     is UpdateCheckResult.UpdateAvailable -> {
                         this@AccountFragment.updateInfo = result.updateInfo
-                        appUpdateButton.visibility = View.VISIBLE
-                        appUpdateButton.setOnClickListener {
-                            this@AccountFragment.updateInfo?.let { info ->
-                                showUpdateDialog(info)
-                            }
-                        }
                         sendUpdateIndicatorBroadcast(true)
                     }
                     is UpdateCheckResult.NoUpdateAvailable -> {
                         this@AccountFragment.updateInfo = result.updateInfo
-                        appUpdateButton.visibility = View.GONE
                         sendUpdateIndicatorBroadcast(false)
                     }
                     is UpdateCheckResult.Error -> {
                         this@AccountFragment.updateInfo = null
                         Log.e("AccountFragment", "Error checking for app update: ${result.message}")
-                        appUpdateButton.visibility = View.GONE
                         sendUpdateIndicatorBroadcast(false)
                     }
-                    is UpdateCheckResult.Loading -> {
-                        // Can show a loading indicator if needed
-                    }
-                }
-            }
-        }
-
-        // Observar el progreso de la descarga
-        lifecycleScope.launch {
-            viewModel.downloadProgress.collect {
-                when (it) {
-                    is DownloadProgress.Idle -> {
-                        hideLoadingDialog()
-                    }
-                    is DownloadProgress.Progress -> {
-                        showLoadingDialog("Descargando Actualización", "Descargando la nueva versión de la app, por favor, espere un poco...")
-                        progressBar?.isIndeterminate = false
-                        progressBar?.progress = it.percent
-                        progressText?.visibility = View.VISIBLE
-                        progressText?.text = "${it.percent}%%"
-                    }
-                    is DownloadProgress.Success -> {
-                        hideLoadingDialog()
-                        MaterialAlertDialogBuilder(requireContext())
-                            .setTitle("Descarga Completa")
-                            .setMessage("La actualización se ha descargado correctamente. ¿Deseas instalarla ahora?")
-                            .setPositiveButton("Instalar") {
-                                dialog, _ ->
-                                viewModel.installUpdate(it.uri)
-                                dialog.dismiss()
-                            }
-                            .setNegativeButton("Más tarde", null)
-                            .show()
-                    }
-                    is DownloadProgress.Error -> {
-                        hideLoadingDialog()
-                        MaterialAlertDialogBuilder(requireContext())
-                            .setTitle("Error de Descarga")
-                            .setMessage("Ocurrió un error al descargar la actualización: ${it.message}")
-                            .setPositiveButton("Aceptar", null)
-                            .show()
-                    }
+                    is UpdateCheckResult.Loading -> {}
                 }
             }
         }
@@ -319,6 +326,7 @@ class AccountFragment : Fragment() {
             .setPositiveButton("Toque para actualizar ahora a la última versión de la app") {
                 dialog, _ ->
                 viewModel.downloadUpdate(updateInfo)
+                UpdateProgressDialogFragment().show(parentFragmentManager, "UpdateProgressDialog")
                 dialog.dismiss()
             }
             .setNegativeButton("Más tarde", null)
@@ -342,24 +350,21 @@ class AccountFragment : Fragment() {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Novedades de esta versión")
             .setView(dialogView)
-            .setPositiveButton("Cerrar") {
-                dialog, _ ->
-                dialog.dismiss()
-            }
+            .setPositiveButton("Cerrar", null)
             .show()
     }
 
     private fun downloadAndUpdateCatalog(serverVersion: java.util.Date) {
         lifecycleScope.launch {
-            showLoadingDialog("Actualizando Catálogo", "Por favor, espere mientras se actualiza el catálogo.")
+            showCatalogLoadingDialog("Actualizando Catálogo", "Por favor, espere mientras se actualiza el catálogo.")
             authCatalogRepository.downloadAndSaveCatalog(serverVersion).collect {
                 when (it) {
                     is AuthCatalogRepository.LoadCatalogResultWithProgress.Progress -> {
-                        progressBar?.progress = it.percent
-                        progressText?.text = "${it.percent}%%"
+                        catalogProgressBar?.progress = it.percent
+                        catalogProgressText?.text = "${it.percent}%%"
                     }
                     is AuthCatalogRepository.LoadCatalogResultWithProgress.Success -> {
-                        hideLoadingDialog()
+                        hideCatalogLoadingDialog()
                         MaterialAlertDialogBuilder(requireContext())
                             .setTitle("Actualización Completa")
                             .setMessage("El catálogo se ha actualizado correctamente.")
@@ -368,39 +373,55 @@ class AccountFragment : Fragment() {
                         updateCatalogVersionText(view?.findViewById(R.id.catalog_version_text)!!)
                     }
                     is AuthCatalogRepository.LoadCatalogResultWithProgress.Error -> {
-                        hideLoadingDialog()
+                        hideCatalogLoadingDialog()
                         MaterialAlertDialogBuilder(requireContext())
                             .setTitle("Error de Actualización")
                             .setMessage("Ocurrió un error al actualizar el catálogo: ${it.message}")
                             .setPositiveButton("Aceptar", null)
                             .show()
                     }
-                    else -> { /* No debería ocurrir */ }
+                    else -> {}
                 }
             }
         }
     }
 
-    private fun showLoadingDialog(title: String, message: String) {
-        if (loadingDialog == null) {
+    private fun showCatalogLoadingDialog(title: String, message: String) {
+        if (catalogLoadingDialog == null) {
             val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_loading_catalog, null)
-            progressBar = dialogView.findViewById(R.id.progress_bar)
-            progressText = dialogView.findViewById(R.id.progress_text)
+            catalogProgressBar = dialogView.findViewById(R.id.progress_bar)
+            catalogProgressText = dialogView.findViewById(R.id.progress_text)
 
-            loadingDialog = MaterialAlertDialogBuilder(requireContext())
+            catalogLoadingDialog = MaterialAlertDialogBuilder(requireContext())
                 .setTitle(title)
                 .setMessage(message)
                 .setView(dialogView)
                 .setCancelable(false)
                 .create()
         }
-        loadingDialog?.show()
-        progressText?.text = "${progressBar?.progress ?: 0}%%"
+        catalogLoadingDialog?.show()
+        catalogProgressText?.text = "${catalogProgressBar?.progress ?: 0}%%"
     }
 
-    private fun hideLoadingDialog() {
-        loadingDialog?.dismiss()
-        loadingDialog = null
+    private fun hideCatalogLoadingDialog() {
+        catalogLoadingDialog?.dismiss()
+        catalogLoadingDialog = null
+    }
+
+    private fun showCheckingDialog() {
+        if (checkingDialog == null) {
+            checkingDialog = MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Comprobando...")
+                .setMessage("Buscando nuevas actualizaciones.")
+                .setCancelable(false)
+                .create()
+        }
+        checkingDialog?.show()
+    }
+
+    private fun hideCheckingDialog() {
+        checkingDialog?.dismiss()
+        checkingDialog = null
     }
 
     private fun updateCatalogVersionText(catalogVersionText: TextView) {

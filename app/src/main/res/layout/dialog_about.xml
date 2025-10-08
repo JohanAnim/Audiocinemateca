@@ -30,7 +30,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Esta aplicación nació como un proyecto personal y ha evolucionado para convertirse en una extensión no oficial de la página audiocinemateca.com, buscando acercar su valioso contenido a la gran comunidad de usuarios de Android." />
+            android:text="Esta aplicación nació como un proyecto personal y ha evolucionado para convertirse en el cliente oficial para Android de la página audiocinemateca.com, buscando acercar su valioso contenido a la gran comunidad de usuarios de Android." />
 
         <TextView
             android:layout_width="wrap_content"
@@ -51,6 +51,43 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:text="• Cesar Verástegui (metalalchemist)" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sobre el desarrollador principal"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Soy Johan G., un programador con discapacidad visual apasionado por la accesibilidad en la web y en aplicaciones móviles. Esta app es el resultado de mi dedicación por crear una experiencia inclusiva y accesible para que toda la comunidad de la Audiocinemateca pueda disfrutar del contenido." />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nota sobre la Beta"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Actualmente, la aplicación se encuentra en una fase beta. Agradezco a todos los que la instalan, ya que se convierten en beta testers. Su retroalimentación es muy valiosa para mejorar la app. ¡Gracias por tu apoyo!" />
+
+        <Button
+            android:id="@+id/feedback_button"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:text="Dar una retroalimentación al desarrollador" />
 
         <TextView
             android:layout_width="wrap_content"

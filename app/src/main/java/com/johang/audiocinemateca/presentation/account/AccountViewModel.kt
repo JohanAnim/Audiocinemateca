@@ -41,4 +41,8 @@ class AccountViewModel @Inject constructor(
     fun installUpdate(uri: Uri) {
         appUpdateDownloader.installPackage(uri)
     }
+
+    suspend fun manualCheckForUpdates(currentVersion: String): UpdateCheckResult {
+        return checkForUpdateUseCase(currentVersion)
+    }
 }
