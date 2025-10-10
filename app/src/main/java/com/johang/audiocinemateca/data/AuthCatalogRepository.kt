@@ -114,7 +114,7 @@ class AuthCatalogRepository @Inject constructor(
 
     fun handleFailedLogin() {
         failedAttempts++
-        if (failedAttempts >= 10 && banEndTime == null) {
+        if (failedAttempts >= 3 && banEndTime == null) {
             banEndTime = System.currentTimeMillis() + BAN_DURATION_MS
         }
         saveBanState()

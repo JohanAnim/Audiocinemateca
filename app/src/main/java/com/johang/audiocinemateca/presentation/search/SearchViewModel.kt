@@ -51,7 +51,6 @@ class SearchViewModel @Inject constructor(
                     if (results.isEmpty()) {
                         emit(SearchState.NoResults(query))
                     } else {
-                        searchHistoryRepository.saveSearchQuery(query) // Save successful search
                         emit(SearchState.HasResults(results, query))
                     }
                 }.onStart { emit(SearchState.Loading) } // Emit Loading state before starting the search
@@ -65,6 +64,14 @@ class SearchViewModel @Inject constructor(
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
+    }
+
+    fun saveQueryToHistory(query: String) {
+        if (query.isNotBlank()) {
+            viewModelScope.launch {
+                searchHistoryRepository.saveSearchQuery(query)
+            }
+        }
     }
 
     fun clearSearchHistory() {

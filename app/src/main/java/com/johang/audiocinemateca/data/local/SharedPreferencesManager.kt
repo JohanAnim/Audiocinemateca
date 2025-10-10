@@ -58,5 +58,6 @@ class SharedPreferencesManager @Inject constructor(
         const val BAN_END_TIME_KEY = "banEndTime"
         const val STORED_USERNAME_KEY = "storedUsername"
         const val STORED_PASSWORD_KEY = "storedPassword"
+        const val HAS_SEEN_DOWNLOADS_WELCOME_KEY = "has_seen_downloads_welcome"
     }
 }

@@ -122,8 +122,8 @@ class AccountFragment : Fragment() {
 
         myAccountButton.setOnClickListener {
             val url = "https://audiocinemateca.com/usuario"
-            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-            startActivity(intent)
+            val action = AccountFragmentDirections.actionAccountFragmentToWebViewFragment(url)
+            findNavController().navigate(action)
         }
 
         aboutButton.setOnClickListener {

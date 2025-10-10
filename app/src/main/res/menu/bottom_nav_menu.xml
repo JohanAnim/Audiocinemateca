@@ -8,6 +8,10 @@
         android:icon="@drawable/ic_lists"
         android:title="Mis Listas" />
     <item
+        android:id="@+id/downloadsFragment"
+        android:icon="@drawable/ic_downloads"
+        android:title="@string/downloads_title" />
+    <item
         android:id="@id/accountFragment"
         android:icon="@drawable/ic_account"
         android:title="Cuenta" />

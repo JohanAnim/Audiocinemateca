@@ -1,22 +1,30 @@
 package com.johang.audiocinemateca.presentation.settings
 
+import android.content.Context
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.os.storage.StorageManager
+import android.provider.MediaStore
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.fragment.app.activityViewModels
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
-import androidx.fragment.app.activityViewModels
 import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.di.SharedPreferencesManagerEntryPoint
 import com.johang.audiocinemateca.presentation.mylists.PlaybackHistoryViewModel
 import com.johang.audiocinemateca.presentation.search.SearchViewModel
 import dagger.hilt.android.EntryPointAccessors
+import java.io.File
+import java.util.UUID
 
 class SettingsFragment : PreferenceFragmentCompat() {
 
@@ -34,6 +42,17 @@ class SettingsFragment : PreferenceFragmentCompat() {
         themePreference?.setOnPreferenceChangeListener { _, newValue ->
             val theme = newValue as String
             ThemeManager.applyTheme(theme)
+            true
+        }
+
+        setupStorageLocationPreference()
+
+        val offlineModePref = findPreference<SwitchPreferenceCompat>("offline_mode")
+        offlineModePref?.setOnPreferenceChangeListener { _, newValue ->
+            sharedPreferencesManager.saveBoolean("offline_mode", newValue as Boolean)
+            if (newValue as Boolean) {
+                Toast.makeText(requireContext(), "En este modo solo podrás reproducir contenido que ya tengas descargado", Toast.LENGTH_LONG).show()
+            }
             true
         }
 
@@ -106,6 +125,53 @@ class SettingsFragment : PreferenceFragmentCompat() {
             .show()
     }
 
+    private fun setupStorageLocationPreference() {
+        val downloadLocationPref = findPreference<ListPreference>("download_location") ?: return
+
+        val entries = mutableListOf<String>()
+        val entryValues = mutableListOf<String>()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Android 10+ logic
+            val volumeNames = MediaStore.getExternalVolumeNames(requireContext())
+            var externalCount = 1
+            volumeNames.forEach { volumeName ->
+                val isPrimary = volumeName == MediaStore.VOLUME_EXTERNAL_PRIMARY
+                val description = if (isPrimary) {
+                    "Memoria interna"
+                } else {
+                    "Almacenamiento externo ${externalCount++}"
+                }
+                entries.add(description)
+                entryValues.add(volumeName)
+            }
+        } else {
+            // Android 9 and below logic
+            val storagePaths = androidx.core.content.ContextCompat.getExternalFilesDirs(requireContext(), null)
+            storagePaths.forEachIndexed { index, file ->
+                file?.let {
+                    val description = if (index == 0) {
+                        "Memoria interna"
+                    } else {
+                        "Almacenamiento externo ${index}"
+                    }
+                    entries.add(description)
+                    entryValues.add(it.absolutePath)
+                }
+            }
+        }
+
+        downloadLocationPref.entries = entries.toTypedArray()
+        downloadLocationPref.entryValues = entryValues.toTypedArray()
+
+        // Set a default value if the current one is invalid or not set
+        val currentValue = downloadLocationPref.value
+        val defaultValue = if (entryValues.isNotEmpty()) entryValues[0] else null
+        if (defaultValue != null && (currentValue == null || currentValue !in entryValues)) {
+            downloadLocationPref.value = defaultValue
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val activity = activity as? AppCompatActivity
@@ -131,19 +197,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // Limpiar la configuración de la ActionBar al salir
         val activity = activity as? AppCompatActivity
         activity?.supportActionBar?.setDisplayHomeAsUpEnabled(false)
         activity?.supportActionBar?.setDisplayShowHomeEnabled(false)
-    }
-}
-
-object ThemeManager {
-    fun applyTheme(theme: String) {
-        when (theme) {
-            "light" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-            "dark" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
-            "system" -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
-        }
     }
 }

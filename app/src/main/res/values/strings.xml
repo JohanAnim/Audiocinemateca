@@ -13,4 +13,5 @@
     <string name="forget_all_history_title">Olvidar todo</string>
     <string name="forget_all_history_message">¡atención!\nEsta acción no se puede revertir y eliminará en su totalidad todo el historial de reproducción junto con los puntos de guardado para cada título.\nProceda con cuidado.\n¿Está seguro de querer eliminar todo el historial?</string>
     <string name="cancel_button_text">Cancelar</string>
+    <string name="downloads_title">Descargas</string>
 </resources>

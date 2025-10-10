@@ -24,6 +24,7 @@ import com.johang.audiocinemateca.data.model.Documentary
 import com.johang.audiocinemateca.data.model.DocumentaryTypeAdapter
 import com.johang.audiocinemateca.data.model.Serie
 import com.johang.audiocinemateca.data.model.SerieTypeAdapter
+import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import javax.inject.Named
 
 @Module
@@ -35,10 +36,21 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideOfflineModeInterceptor(sharedPreferencesManager: SharedPreferencesManager): OfflineModeInterceptor {
+        return OfflineModeInterceptor(sharedPreferencesManager)
+    }
+
+    @Provides
+    @Singleton
     @Named("AudiocinematecaClient")
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(
+        offlineModeInterceptor: OfflineModeInterceptor,
+        authInterceptor: com.johang.audiocinemateca.data.remote.interceptor.AuthInterceptor
+    ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(GzipInterceptor())
+            .addInterceptor(offlineModeInterceptor)
+            .addInterceptor(authInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -48,8 +60,9 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("GithubClient")
-    fun provideGithubOkHttpClient(): OkHttpClient {
+    fun provideGithubOkHttpClient(offlineModeInterceptor: OfflineModeInterceptor): OkHttpClient {
         return OkHttpClient.Builder()
+            .addInterceptor(offlineModeInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -58,9 +71,21 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideAuthInterceptor(sharedPreferencesManager: SharedPreferencesManager): com.johang.audiocinemateca.data.remote.interceptor.AuthInterceptor {
+        return com.johang.audiocinemateca.data.remote.interceptor.AuthInterceptor(sharedPreferencesManager)
+    }
+
+    @Provides
+    @Singleton
     @DownloadClient
-    fun provideDownloadOkHttpClient(progressFlow: MutableStateFlow<Int>): OkHttpClient {
+    fun provideDownloadOkHttpClient(
+        progressFlow: MutableStateFlow<Int>,
+        authInterceptor: com.johang.audiocinemateca.data.remote.interceptor.AuthInterceptor,
+        offlineModeInterceptor: OfflineModeInterceptor
+    ): OkHttpClient {
         return OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
+            .addInterceptor(offlineModeInterceptor)
             .addInterceptor(ProgressInterceptor(progressFlow))
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

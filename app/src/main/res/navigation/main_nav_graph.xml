@@ -15,6 +15,11 @@
     </fragment>
 
     <fragment
+        android:id="@+id/downloadsFragment"
+        android:name="com.johang.audiocinemateca.presentation.downloads.DownloadsFragment"
+        android:label="DownloadsFragment" />
+
+    <fragment
         android:id="@+id/myListsFragment"
         android:name="com.johang.audiocinemateca.presentation.mylists.MyListsFragment"
         android:label="MyListsFragment" />
@@ -26,6 +31,18 @@
         <action
             android:id="@+id/action_accountFragment_to_settingsFragment"
             app:destination="@id/settingsFragment" />
+        <action
+            android:id="@+id/action_accountFragment_to_webViewFragment"
+            app:destination="@id/webViewFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/webViewFragment"
+        android:name="com.johang.audiocinemateca.presentation.webview.WebViewFragment"
+        android:label="WebViewFragment">
+        <argument
+            android:name="url"
+            app:argType="string" />
     </fragment>
 
     <fragment

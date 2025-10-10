@@ -30,6 +30,8 @@ import com.johang.audiocinemateca.data.model.Movie
 import com.johang.audiocinemateca.data.model.Serie
 import com.johang.audiocinemateca.data.model.ShortFilm
 import com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
+import com.johang.audiocinemateca.domain.DownloadManager
+import com.johang.audiocinemateca.domain.DownloadRequest
 import com.johang.audiocinemateca.domain.model.CatalogItem
 import com.johang.audiocinemateca.util.TimeFormatUtils
 import dagger.hilt.android.AndroidEntryPoint
@@ -38,6 +40,7 @@ import kotlinx.coroutines.launch
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
+import androidx.core.content.ContextCompat
 import javax.inject.Inject
 
 
@@ -50,9 +53,15 @@ class ContentDetailFragment : Fragment() {
     @Inject
     lateinit var playbackProgressRepository: PlaybackProgressRepository
 
+    @Inject
+    lateinit var downloadManager: DownloadManager
+
     // Views
     private lateinit var contentTitleHeader: TextView
     private lateinit var listenNowButton: Button
+    private lateinit var downloadContainer: LinearLayout
+    private lateinit var downloadButton: com.google.android.material.button.MaterialButton
+    private lateinit var downloadProgressBar: com.google.android.material.progressindicator.LinearProgressIndicator
     private lateinit var contentYear: TextView
     private lateinit var contentGenre: TextView
     private lateinit var contentCountry: TextView
@@ -98,9 +107,198 @@ class ContentDetailFragment : Fragment() {
         initializeViews(view)
         viewModel.loadContentDetail(args.itemId, args.itemType)
         observeViewModel()
+        observeDownloadStates()
+        observeViewActions()
+
+        downloadButton.setOnClickListener {
+            viewModel.onDownloadAction()
+        }
+    }
+
+    private fun observeViewActions() {
+        lifecycleScope.launch {
+            viewModel.viewActions.collect { event ->
+                event.getContentIfNotHandled()?.let { action ->
+                    when (action) {
+                        is ViewAction.StartDownload -> {
+                            val request = DownloadRequest(
+                                url = action.url,
+                                title = action.title,
+                                contentId = action.contentId,
+                                contentType = action.contentType,
+                                partIndex = action.partIndex,
+                                episodeIndex = action.episodeIndex,
+                                seriesTitle = action.seriesTitle
+                            )
+                            downloadManager.enqueueDownload(request)
+                            Toast.makeText(requireContext(), "Añadido a la cola de descargas.", Toast.LENGTH_SHORT).show()
+                        }
+                        is ViewAction.ShowCancelConfirmation -> {
+                            showCancelConfirmationDialog(action.partIndex, action.episodeIndex)
+                        }
+                        is ViewAction.ShowDeleteConfirmation -> {
+                            showDeleteConfirmationDialog(action.partIndex, action.episodeIndex)
+                        }
+                        is ViewAction.ShowDownloadFailed -> {
+                            showDownloadFailedDialog(action.reason)
+                        }
+                        is ViewAction.ShowError -> {
+                            showErrorDialog(action.message)
+                        }
+                        is ViewAction.StopDownloadService -> {
+                            val intent = android.content.Intent(requireContext(), com.johang.audiocinemateca.presentation.download.DownloadService::class.java)
+                            requireContext().stopService(intent)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun observeDownloadStates() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            // Combine all necessary flows to update the UI in one place.
+            combine(
+                viewModel.contentItem,
+                viewModel.downloadState,
+                viewModel.episodeDownloadStates,
+                viewModel.targetedEpisodeIndices,
+                viewModel.downloadProgress
+            ) { item, singleState, episodeStates, targetIndices, progress ->
+                // Create a data class to hold the combined values for clarity
+                object {
+                    val item = item
+                    val singleState = singleState
+                    val episodeStates = episodeStates
+                    val targetIndices = targetIndices
+                    val progress = progress
+                }
+            }.collect { data ->
+                val item = data.item
+                val singleState = data.singleState
+                val episodeStates = data.episodeStates
+                val targetIndices = data.targetIndices
+                val progress = data.progress
+
+                // Main Download Button UI
+                if (item == null) {
+                    downloadContainer.visibility = View.GONE
+                } else {
+                    downloadContainer.visibility = View.VISIBLE
+                    downloadButton.isEnabled = true
+
+                    if (item is Serie && targetIndices != null) {
+                        // UI Logic for Series Main Button
+                        val (seasonIndex, episodeIndex) = targetIndices
+                        val state = episodeStates["${seasonIndex}_${episodeIndex}"]
+                        val seasonKey = item.capitulos.keys.sorted().getOrNull(seasonIndex)
+                        val episode = item.capitulos[seasonKey]?.getOrNull(episodeIndex)
+                        val episodeNumber = episode?.capitulo ?: (episodeIndex + 1).toString()
+                        val seasonNumber = seasonIndex + 1
+                        val baseText = "T${seasonNumber}:E${episodeNumber}"
+
+                        when (state) {
+                            is DownloadState.Downloading -> {
+                                downloadButton.text = "Descargando $baseText"
+                                downloadButton.icon = null
+                                downloadProgressBar.visibility = View.VISIBLE
+                                downloadProgressBar.progress = progress
+                            }
+                            is DownloadState.Downloaded -> {
+                                downloadButton.text = "Descargado $baseText"
+                                downloadButton.setIconResource(R.drawable.ic_close)
+                                downloadProgressBar.visibility = View.INVISIBLE
+                            }
+                            else -> { // NotDownloaded, Failed, or null
+                                downloadButton.text = "Descargar $baseText"
+                                downloadButton.setIconResource(R.drawable.ic_downloads)
+                                downloadProgressBar.visibility = View.INVISIBLE
+                            }
+                        }
+                    } else if (item !is Serie) {
+                        // UI Logic for non-Series Main Button
+                        when (singleState) {
+                            is DownloadState.Downloading -> {
+                                downloadButton.text = "Descargando..."
+                                downloadButton.icon = null
+                                downloadProgressBar.visibility = View.VISIBLE
+                                downloadProgressBar.progress = progress
+                            }
+                            is DownloadState.Downloaded -> {
+                                downloadButton.text = "Descargado"
+                                downloadButton.setIconResource(R.drawable.ic_close)
+                                downloadProgressBar.visibility = View.INVISIBLE
+                            }
+                            is DownloadState.Failed -> {
+                                downloadButton.text = "Reintentar"
+                                downloadButton.setIconResource(R.drawable.ic_downloads)
+                                downloadProgressBar.visibility = View.INVISIBLE
+                            }
+                            else -> { // NotDownloaded or null
+                                downloadButton.text = "Descargar"
+                                downloadButton.setIconResource(R.drawable.ic_downloads)
+                                downloadProgressBar.visibility = View.INVISIBLE
+                            }
+                        }
+                    } else {
+                        downloadContainer.visibility = View.GONE
+                    }
+                }
+
+                // Episode List UI
+                if (item is Serie) {
+                    if (seasonSpinner.adapter == null || seasonSpinner.selectedItemPosition < 0) return@collect
+                    val seasons = item.capitulos.keys.sorted()
+                    val selectedSeasonIndex = seasonSpinner.selectedItemPosition
+                    val selectedSeasonKey = seasons[selectedSeasonIndex]
+
+                    item.capitulos[selectedSeasonKey]?.forEachIndexed { episodeIndex, episode ->
+                        val episodeView = episodesListContainer.findViewWithTag<View?>("episode_view_${selectedSeasonIndex}_${episodeIndex}")
+                        episodeView?.let {
+                            val titleTextView: TextView = it.findViewById(R.id.episode_title_text)
+                            val downloadButton: com.google.android.material.button.MaterialButton = it.findViewById(R.id.episode_download_button)
+                            val progressBar: com.google.android.material.progressindicator.LinearProgressIndicator = it.findViewById(R.id.episode_download_progress_bar)
+                            val key = "${selectedSeasonIndex}_${episodeIndex}"
+                            val state = episodeStates[key]
+                            
+                            // Reset title text to avoid carrying over old status
+                            titleTextView.text = "Episodio ${episode.capitulo}: ${episode.titulo}"
+
+                            when (state) {
+                                is DownloadState.Downloading -> {
+                                    downloadButton.text = "Cancelar descarga"
+                                    downloadButton.icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_close)
+                                    progressBar.visibility = View.VISIBLE
+                                    progressBar.progress = progress
+                                }
+                                is DownloadState.Downloaded -> {
+                                    downloadButton.text = "Eliminar descarga"
+                                    downloadButton.icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_close)
+                                    progressBar.visibility = View.GONE
+                                }
+                                is DownloadState.Failed -> {
+                                    downloadButton.text = "Descargar episodio"
+                                    downloadButton.icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_downloads)
+                                    progressBar.visibility = View.GONE
+                                }
+                                else -> { // NotDownloaded or null
+                                    downloadButton.text = "Descargar episodio"
+                                    downloadButton.icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_downloads)
+                                    progressBar.visibility = View.GONE
+                                }
+                            }
+                            downloadButton.isEnabled = true
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun initializeViews(view: View) {
+        downloadContainer = view.findViewById(R.id.download_container)
+        downloadButton = view.findViewById(R.id.download_button)
+        downloadProgressBar = view.findViewById(R.id.download_progress_bar)
         contentTitleHeader = view.findViewById(R.id.content_title_header)
         listenNowButton = view.findViewById(R.id.listen_now_button)
         contentYear = view.findViewById(R.id.content_year)
@@ -241,15 +439,32 @@ class ContentDetailFragment : Fragment() {
 
     private fun updateEpisodeList(serie: Serie, seasonKey: String, seasonIndex: Int) {
         episodesListContainer.removeAllViews()
+        val inflater = LayoutInflater.from(requireContext())
         serie.capitulos[seasonKey]?.forEachIndexed { episodeIndex, episode ->
-            val episodeTextView = createClickableTextView(
-                "Episodio ${episode.capitulo}: ${episode.titulo} - Reproducir ahora",
-                "episode_${seasonIndex}_${episodeIndex}"
-            ) {
+            val episodeView = inflater.inflate(R.layout.list_item_episode, episodesListContainer, false)
+            // Asignar un tag único a la vista raíz del item para encontrarla después
+            episodeView.tag = "episode_view_${seasonIndex}_${episodeIndex}"
+
+            val episodeTitleText: TextView = episodeView.findViewById(R.id.episode_title_text)
+            val downloadButton: View = episodeView.findViewById(R.id.episode_download_button)
+            val progressBar: com.google.android.material.progressindicator.LinearProgressIndicator = episodeView.findViewById(R.id.episode_download_progress_bar)
+
+            episodeTitleText.text = "Episodio ${episode.capitulo}: ${episode.titulo}"
+            episodeTitleText.setOnClickListener {
                 val action = ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(serie, seasonIndex, episodeIndex)
                 findNavController().navigate(action)
             }
-            episodesListContainer.addView(episodeTextView)
+
+            downloadButton.setOnClickListener {
+                viewModel.onEpisodeDownloadAction(seasonIndex, episodeIndex)
+            }
+
+            // TODO: Aquí se observaría el estado de la descarga desde el ViewModel para actualizar la UI
+            // Por ahora, lo dejamos simple
+            // progressBar.visibility = View.GONE
+            // downloadButton.setImageResource(R.drawable.ic_downloads)
+
+            episodesListContainer.addView(episodeView)
         }
         updateProgressDisplay() // Refresh progress display for the new list of episodes
     }
@@ -387,18 +602,24 @@ class ContentDetailFragment : Fragment() {
         val selectedSeasonKey = seasons[selectedSeasonIndex]
 
         serie.capitulos[selectedSeasonKey]?.forEachIndexed { episodeIndex, episode ->
-            val episodeView = episodesListContainer.findViewWithTag<TextView?>("episode_${selectedSeasonIndex}_${episodeIndex}")
+            val episodeView = episodesListContainer.findViewWithTag<View?>("episode_view_${selectedSeasonIndex}_${episodeIndex}")
             episodeView?.let {
-                val progress = allProgress.find { it.partIndex == selectedSeasonIndex && it.episodeIndex == episodeIndex }
-                it.text = if (progress != null && progress.currentPositionMs < progress.totalDurationMs) {
+                val episodeTitleText: TextView = it.findViewById(R.id.episode_title_text)
+                val progress = allProgress.find { p -> p.partIndex == selectedSeasonIndex && p.episodeIndex == episodeIndex }
+
+                val titleText = "Episodio ${episode.capitulo}: ${episode.titulo}"
+                val progressText = if (progress != null && progress.currentPositionMs < progress.totalDurationMs) {
                     val remainingMs = progress.totalDurationMs - progress.currentPositionMs
                     val remainingTimeFormatted = TimeFormatUtils.formatDuration(remainingMs)
-                    "Episodio ${episode.capitulo}: ${episode.titulo} (Continuar: ${remainingTimeFormatted} restantes)"
+                    " (Continuar: ${remainingTimeFormatted} restantes)"
                 } else if (progress != null) {
-                    "Episodio ${episode.capitulo}: ${episode.titulo} (Completado)"
+                    " (Completado)"
                 } else {
-                    "Episodio ${episode.capitulo}: ${episode.titulo} - Reproducir ahora"
+                    ""
                 }
+                episodeTitleText.text = "$titleText$progressText"
+
+                // TODO: Aquí también se actualizaría el estado del botón de descarga y la barra de progreso
             }
         }
     }
@@ -445,6 +666,44 @@ class ContentDetailFragment : Fragment() {
         } else {
             Toast.makeText(requireContext(), "No se puede compartir este tipo de contenido", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun showDeleteConfirmationDialog(partIndex: Int, episodeIndex: Int) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Eliminar descarga")
+            .setMessage("¿Estás seguro de que quieres eliminar este contenido de tus descargas? El archivo se borrará de tu dispositivo.")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Eliminar") { _, _ ->
+                viewModel.deleteDownload(partIndex, episodeIndex)
+            }
+            .show()
+    }
+
+    private fun showCancelConfirmationDialog(partIndex: Int, episodeIndex: Int) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Cancelar descarga")
+            .setMessage("¿Estás seguro de que quieres cancelar la descarga en progreso?")
+            .setNegativeButton("No", null)
+            .setPositiveButton("Sí, cancelar") { _, _ ->
+                viewModel.cancelDownload(partIndex, episodeIndex)
+            }
+            .show()
+    }
+
+    private fun showDownloadFailedDialog(reason: String) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Error en la descarga")
+            .setMessage("La descarga ha fallado. Por favor, inténtalo de nuevo.\n\nDetalles: $reason")
+            .setPositiveButton("Aceptar", null)
+            .show()
+    }
+
+    private fun showErrorDialog(message: String) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Error")
+            .setMessage(message)
+            .setPositiveButton("Aceptar", null)
+            .show()
     }
 
     private fun showContentNotFoundDialog() {

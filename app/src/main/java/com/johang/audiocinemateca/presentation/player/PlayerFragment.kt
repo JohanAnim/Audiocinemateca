@@ -15,6 +15,7 @@ import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.view.accessibility.AccessibilityEvent
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
@@ -70,6 +71,9 @@ class PlayerFragment : Fragment() {
 
     @Inject
     lateinit var playbackProgressRepository: PlaybackProgressRepository
+
+    @Inject
+    lateinit var downloadRepository: com.johang.audiocinemateca.data.repository.DownloadRepository
 
     private var mediaController: MediaController? = null
     private lateinit var controllerFuture: ListenableFuture<MediaController>
@@ -493,13 +497,13 @@ class PlayerFragment : Fragment() {
     private fun prepareAndPlay() {
         setPlayerControlsEnabled(false)
         val catalogItem = currentContentItem ?: return
-        val mediaItems = createMediaItems(catalogItem)
-        if (mediaItems.isEmpty()) {
-            showErrorDialog("Error de Reproducción", "No se pudo encontrar el medio para reproducir.")
-            return
-        }
 
         viewLifecycleOwner.lifecycleScope.launch {
+            val mediaItems = createMediaItems(catalogItem)
+            if (mediaItems.isEmpty()) {
+                showErrorDialog("Error de Reproducción", "No se pudo encontrar el medio para reproducir.")
+                return@launch
+            }
             var startIndex = 0
             var startPosition = 0L
 
@@ -535,15 +539,15 @@ class PlayerFragment : Fragment() {
                 when (playbackState) {
                     Player.STATE_BUFFERING -> {
                         setPlayerControlsEnabled(false)
-                        if (isInitialLoading) {
-                            Toast.makeText(requireContext(), "Cargando reproductor...", Toast.LENGTH_SHORT).show()
-                        }
                     }
                     Player.STATE_READY -> {
                         setPlayerControlsEnabled(true)
                         if (isInitialLoading) {
-                            Toast.makeText(requireContext(), "Listo", Toast.LENGTH_SHORT).show()
                             isInitialLoading = false
+                            val playPauseButton = binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_play_pause)
+                            playPauseButton?.post {
+                                playPauseButton.sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_FOCUSED)
+                            }
                         }
                         updateSkipButtonsContentDescription()
                     }
@@ -695,12 +699,18 @@ class PlayerFragment : Fragment() {
         }
     }
 
-    private fun createMediaItems(catalogItem: CatalogItem): List<MediaItem> {
+    private suspend fun createMediaItems(catalogItem: CatalogItem): List<MediaItem> {
         val mediaItems = mutableListOf<MediaItem>()
         when (catalogItem) {
             is Movie -> {
                 catalogItem.enlaces.forEachIndexed { index, urlPath ->
-                    val fullUrl = "${BASE_URL.removeSuffix("/")}/${urlPath.removePrefix("/")}"
+                    val downloadedEntity = downloadRepository.getDownload(catalogItem.id, index, -1)
+                    val mediaUri = if (downloadedEntity?.downloadStatus == "COMPLETE" && downloadedEntity.filePath != null) {
+                        android.net.Uri.parse(downloadedEntity.filePath)
+                    } else {
+                        android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${urlPath.removePrefix("/")}")
+                    }
+
                     val customMetadata = Bundle().apply {
                         putString("itemId", catalogItem.id)
                         putString("itemType", "peliculas")
@@ -713,7 +723,7 @@ class PlayerFragment : Fragment() {
 
                     mediaItems.add(
                         MediaItem.Builder()
-                            .setUri(fullUrl)
+                            .setUri(mediaUri)
                             .setMimeType("audio/mpeg")
                             .setMediaMetadata(
                                 MediaMetadata.Builder()
@@ -732,7 +742,13 @@ class PlayerFragment : Fragment() {
                 val sortedSeasons = catalogItem.capitulos.keys.sorted()
                 sortedSeasons.forEachIndexed { seasonIndex, seasonKey ->
                     catalogItem.capitulos[seasonKey]?.forEachIndexed { episodeIndex, episode ->
-                        val fullUrl = "${BASE_URL.removeSuffix("/")}/${episode.enlace.removePrefix("/")}"
+                        val downloadedEntity = downloadRepository.getDownload(catalogItem.id, seasonIndex, episodeIndex)
+                        val mediaUri = if (downloadedEntity?.downloadStatus == "COMPLETE" && downloadedEntity.filePath != null) {
+                            android.net.Uri.parse(downloadedEntity.filePath)
+                        } else {
+                            android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${episode.enlace.removePrefix("/")}")
+                        }
+
                         val customMetadata = Bundle().apply {
                             putString("itemId", catalogItem.id)
                             putString("itemType", "series")
@@ -743,7 +759,7 @@ class PlayerFragment : Fragment() {
                         val notificationTitle = "$episodeTitleForUi - ${catalogItem.title}"
                         mediaItems.add(
                             MediaItem.Builder()
-                                .setUri(fullUrl)
+                                .setUri(mediaUri)
                                 .setMimeType("audio/mpeg")
                                 .setMediaMetadata(
                                     MediaMetadata.Builder()
@@ -760,8 +776,16 @@ class PlayerFragment : Fragment() {
                 }
             }
             is Documentary -> {
-                catalogItem.enlace?.let { urlPath ->
-                    val fullUrl = "${BASE_URL.removeSuffix("/")}/${urlPath.removePrefix("/")}"
+                val downloadedEntity = downloadRepository.getDownload(catalogItem.id, 0, -1)
+                val mediaUri = if (downloadedEntity?.downloadStatus == "COMPLETE" && downloadedEntity.filePath != null) {
+                    android.net.Uri.parse(downloadedEntity.filePath)
+                } else if (catalogItem.enlace != null) {
+                    android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${catalogItem.enlace.removePrefix("/")}")
+                } else {
+                    null
+                }
+
+                if (mediaUri != null) {
                     val customMetadata = Bundle().apply {
                         putString("itemId", catalogItem.id)
                         putString("itemType", "documentales")
@@ -770,7 +794,7 @@ class PlayerFragment : Fragment() {
                     }
                     mediaItems.add(
                         MediaItem.Builder()
-                            .setUri(fullUrl)
+                            .setUri(mediaUri)
                             .setMimeType("audio/mpeg")
                             .setMediaMetadata(
                                 MediaMetadata.Builder()
@@ -785,8 +809,16 @@ class PlayerFragment : Fragment() {
                 }
             }
             is ShortFilm -> {
-                catalogItem.enlace?.let { urlPath ->
-                    val fullUrl = "${BASE_URL.removeSuffix("/")}/${urlPath.removePrefix("/")}"
+                val downloadedEntity = downloadRepository.getDownload(catalogItem.id, 0, -1)
+                val mediaUri = if (downloadedEntity?.downloadStatus == "COMPLETE" && downloadedEntity.filePath != null) {
+                    android.net.Uri.parse(downloadedEntity.filePath)
+                } else if (catalogItem.enlace != null) {
+                    android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${catalogItem.enlace.removePrefix("/")}")
+                } else {
+                    null
+                }
+
+                if (mediaUri != null) {
                     val customMetadata = Bundle().apply {
                         putString("itemId", catalogItem.id)
                         putString("itemType", "cortometrajes")
@@ -795,7 +827,7 @@ class PlayerFragment : Fragment() {
                     }
                     mediaItems.add(
                         MediaItem.Builder()
-                            .setUri(fullUrl)
+                            .setUri(mediaUri)
                             .setMimeType("audio/mpeg")
                             .setMediaMetadata(
                                 MediaMetadata.Builder()
@@ -808,7 +840,7 @@ class PlayerFragment : Fragment() {
                             .build()
                     )
                 }
-               }
+            }
         }
         return mediaItems
     }

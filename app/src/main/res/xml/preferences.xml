@@ -46,6 +46,22 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="Descargas">
+
+        <ListPreference
+            android:key="download_location"
+            android:title="Ubicación de almacenamiento"
+            android:summary="Elige dónde se guardarán las descargas."
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            android:key="offline_mode"
+            android:title="Modo offline total"
+            android:summary="Activa este modo para usar la app sin conexión a internet."
+            android:defaultValue="false" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="Búsqueda">
 
         <EditTextPreference

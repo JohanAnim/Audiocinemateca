@@ -1,24 +1,24 @@
---- 
+**Audiocinemateca v2.9.5 - ¡El Modo Offline ha Llegado!**
 
-**Audiocinemateca v2.9.1 - Novedades y Mejoras**
+¡La espera ha terminado! Atendiendo a la petición más solicitada por nuestra comunidad, nos enorgullece presentar la funcionalidad de **Descargas** y un completo **Modo Offline**. Hemos trabajado intensamente para traerte una experiencia sin conexión robusta y fluida.
 
-Esta actualización trae importantes mejoras en la experiencia de usuario, la transparencia sobre el estado de la aplicación y nuevas funcionalidades.
+### ✨ Nuevas Funcionalidades
 
-**Nuevas Funcionalidades:**
+*   **Descargas para Todos:** ¡Guarda lo que quieras! Ahora puedes descargar películas, series, documentales y cortos para disfrutarlos sin necesidad de conexión a internet.
+    *   *Nota: Las descargas se gestionan una por una a través de un sistema de cola para asegurar la estabilidad. No se permiten descargas simultáneas para no sobrecargar el servidor.*
+*   **Nueva Pestaña "Descargas":** Gestiona todo tu contenido offline desde un único lugar. Reproduce, filtra y elimina tus descargas fácilmente.
+*   **Reproducción Inteligente Offline:** El reproductor ahora detecta automáticamente si tienes el contenido descargado y lo usa para la reproducción, ahorrando tus datos móviles sin que tengas que hacer nada.
+*   **Modo Offline Total:** En los Ajustes, activa el "Modo offline total" para bloquear toda conexión a internet y asegurar una experiencia 100% libre de consumo de datos.
+*   **Gestión de Almacenamiento:** Elige dónde guardar tus descargas. Ve a Ajustes y selecciona entre la memoria interna o una tarjeta SD.
+*   **Inicio de Sesión Web Automático:** Al pulsar "Mi cuenta", la app te llevará a la web con tu sesión ya iniciada.
 
-*   **Botón "Mi Cuenta" en la pantalla de Cuenta:** Accede directamente a tu perfil en `audiocinemateca.com` desde la sección de cuenta de la aplicación.
-*   **Botón "Lanzamientos" en la pantalla de Cuenta:** Consulta las últimas versiones y novedades de la aplicación directamente en GitHub.
-*   **Comprobación manual de actualizaciones:** Ahora puedes tocar el texto de la versión de la aplicación en la pantalla de Cuenta para buscar actualizaciones manualmente. Ideal para usuarios con la comprobación automática desactivada.
-*   **Aviso de fase Beta en el inicio de sesión:** Se ha añadido un aviso claro en la pantalla de inicio de sesión, informando a los usuarios que la aplicación está en fase beta.
-*   **Consentimiento de Beta Tester:** Para iniciar sesión, los usuarios deben aceptar explícitamente ser beta testers, entendiendo que su retroalimentación es crucial para el desarrollo.
-*   **Botón de Retroalimentación en "Acerca de":** En el diálogo "Acerca de Audiocinemateca", se ha añadido un botón para enviar comentarios directamente al desarrollador por correo electrónico.
+### 🚀 Mejoras
 
-**Mejoras y Correcciones:**
+*   **Interfaz de Descarga Integrada:** Ahora verás botones para descargar directamente en la pantalla de detalle de cada contenido y en cada episodio de las series.
+*   **Historial de Búsqueda Perfeccionado:** El historial ahora solo guarda las búsquedas cuando las ejecutas explícitamente, manteniendo la lista más limpia.
+*   **Mini-reproductor Más Grande:** Hemos aumentado la altura del mini-reproductor para mejorar la visibilidad y facilitar su uso.
+*   **Visualización de Almacenamiento:** El espacio total de las descargas se muestra en Gigabytes (GB) cuando la cifra es elevada.
 
-*   **Aplicación Oficial:** La descripción en la pantalla "Acerca de" ha sido actualizada para reflejar que la aplicación es ahora el cliente oficial para Android de `audiocinemateca.com`.
-*   **Información del Desarrollador:** Se ha incluido una breve biografía del desarrollador principal (Johan G.) en primera persona en la pantalla "Acerca de".
-*   **Gestión unificada de actualizaciones:** Se ha refactorizado el proceso de descarga e instalación de actualizaciones de la aplicación para usar un componente reutilizable, evitando duplicidad de código y mejorando la consistencia.
-*   **Comportamiento de actualización automática:** La comprobación automática de actualizaciones ahora respeta la preferencia del usuario, mostrando un diálogo completo o un simple `Toast` según la configuración.
-*   **Corrección de error de doble diálogo:** Se ha solucionado un problema que causaba que el diálogo de actualización apareciera dos veces al tocar el texto de la versión.
-*   **Eliminación de botón redundante:** Se ha quitado el botón "Toque para actualizar ahora a la última versión de la app" de la pantalla de Cuenta, ya que la funcionalidad ahora se integra en el texto de la versión.
-*   **Corrección de dirección de correo electrónico:** Se ha corregido la dirección de correo electrónico del desarrollador para la retroalimentación.
+### 🛡️ Seguridad
+
+*   **Protección contra Fuerza Bruta:** Se ha mejorado la seguridad del inicio de sesión. El acceso se bloqueará temporalmente tras 3 intentos fallidos.

@@ -48,6 +48,37 @@
                 android:layout_marginTop="32dp"
                 android:layout_gravity="center_horizontal" />
 
+            <!-- Contenedor para el botón de descarga y la barra de progreso -->
+            <LinearLayout
+                android:id="@+id/download_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp"
+                android:gravity="center_vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/download_button"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    tools:text="Descargar" />
+
+                <com.google.android.material.progressindicator.LinearProgressIndicator
+                    android:id="@+id/download_progress_bar"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="16dp"
+                    android:visibility="invisible"
+                    tools:visibility="visible"
+                    tools:progress="50"/>
+
+            </LinearLayout>
+
             <!-- Sinopsis -->
             <TextView
                 android:id="@+id/sinopsis_label"

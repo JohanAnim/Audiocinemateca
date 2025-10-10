@@ -1,37 +1,39 @@
 package com.johang.audiocinemateca.presentation.player
 
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
-import android.os.Bundle
-import androidx.media3.common.AudioAttributes
+import android.content.IntentFilter
 import android.media.audiofx.Equalizer
+import android.os.Bundle
+import android.util.Log
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.johang.audiocinemateca.MainActivity
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.IntentFilter
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import android.util.Base64
-import android.util.Log
-import androidx.lifecycle.lifecycleScope
-import androidx.media3.common.Player
 import com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity
+import com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import okhttp3.OkHttpClient
+import javax.inject.Inject
+import javax.inject.Named
 
 @AndroidEntryPoint
 @UnstableApi
@@ -41,7 +43,11 @@ class PlayerService : MediaSessionService() {
     lateinit var sharedPreferencesManager: SharedPreferencesManager
 
     @Inject
-    lateinit var playbackProgressRepository: com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
+    lateinit var playbackProgressRepository: PlaybackProgressRepository
+
+    @Inject
+    @Named("AudiocinematecaClient")
+    lateinit var okHttpClient: OkHttpClient
 
     private var mediaSession: MediaSession? = null
     private lateinit var player: Player
@@ -149,17 +155,14 @@ class PlayerService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
-        val username = sharedPreferencesManager.getString("storedUsername")
-        val password = sharedPreferencesManager.getString("storedPassword")
+        // Create a factory for HTTP data sources using the shared OkHttpClient
+        val httpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
 
-        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-        if (username != null && password != null) {
-            val authString = "Basic " + Base64.encodeToString("${username}:${password}".toByteArray(), Base64.NO_WRAP)
-            httpDataSourceFactory.setDefaultRequestProperties(mapOf("Authorization" to authString))
-        }
+        // Create a DefaultDataSourceFactory that can handle content URIs, file URIs, and our custom HTTP source
+        val dataSourceFactory = DefaultDataSource.Factory(this, httpDataSourceFactory)
 
         val mediaSourceFactory = DefaultMediaSourceFactory(this)
-            .setDataSourceFactory(httpDataSourceFactory)
+            .setDataSourceFactory(dataSourceFactory)
 
         player = ExoPlayer.Builder(this)
             .setAudioAttributes(AudioAttributes.DEFAULT, true)

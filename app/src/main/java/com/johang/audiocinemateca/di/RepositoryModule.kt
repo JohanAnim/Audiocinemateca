@@ -16,8 +16,10 @@ import javax.inject.Singleton
 import com.johang.audiocinemateca.data.repository.LoginRepository
 import com.johang.audiocinemateca.data.repository.SearchRepository
 import com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
+import com.johang.audiocinemateca.data.local.dao.DownloadDao
 import com.johang.audiocinemateca.data.local.dao.PlaybackProgressDao
 import com.johang.audiocinemateca.data.local.dao.SearchHistoryDao
+import com.johang.audiocinemateca.data.repository.DownloadRepository
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -53,6 +55,14 @@ object RepositoryModule {
         playbackProgressDao: PlaybackProgressDao
     ): PlaybackProgressRepository {
         return PlaybackProgressRepository(playbackProgressDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDownloadRepository(
+        downloadDao: DownloadDao
+    ): DownloadRepository {
+        return DownloadRepository(downloadDao)
     }
 
     @Provides

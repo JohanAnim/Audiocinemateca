@@ -80,7 +80,7 @@ class LoginFragment : Fragment() {
         passwordEditText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                Log.d("LoginFragment", "Password onTextChanged: $s")
+                // Lógica de onTextChanged sin logs ni toasts
             }
             override fun afterTextChanged(s: Editable?) {
                 passwordEditText.setSelection(s?.length ?: 0)

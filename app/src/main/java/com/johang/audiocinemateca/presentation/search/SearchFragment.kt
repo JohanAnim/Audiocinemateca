@@ -70,6 +70,7 @@ class SearchFragment : Fragment() {
             }
             spokenText?.let {
                 searchEditText.setText(it)
+                viewModel.saveQueryToHistory(it)
                 focusFirstResultAfterVoiceSearch = true
             }
         } else if (result.resultCode == Activity.RESULT_CANCELED) {
@@ -149,6 +150,8 @@ class SearchFragment : Fragment() {
 
         searchEditText.setOnEditorActionListener { v, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                val query = searchEditText.text.toString()
+                viewModel.saveQueryToHistory(query)
                 val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
                 imm?.hideSoftInputFromWindow(view?.windowToken, 0)
                 true

@@ -16,7 +16,7 @@ android {
         minSdk = 25
         targetSdk = 35
         versionCode = 2
-        versionName = "2.9.1"
+        versionName = "2.9.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -130,6 +130,7 @@ dependencies {
     implementation(libs.exoplayer.ui)
     implementation(libs.exoplayer.common)
     implementation(libs.exoplayer.session)
+    implementation(libs.exoplayer.okhttp)
 
     // Comentario añadido por Gemini para forzar la resincronización de Gradle
 }

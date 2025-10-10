@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="16dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/series_header_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp">
+
+            <ImageView
+                android:id="@+id/item_icon"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:src="@drawable/ic_lists" />
+
+            <TextView
+                android:id="@+id/item_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:textAppearance="?attr/textAppearanceSubtitle1"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toStartOf="@id/item_more_button"
+                app:layout_constraintStart_toEndOf="@id/item_icon"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:text="Título de la Serie" />
+
+            <TextView
+                android:id="@+id/item_info"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBody2"
+                app:layout_constraintEnd_toEndOf="@id/item_title"
+                app:layout_constraintStart_toStartOf="@id/item_title"
+                app:layout_constraintTop_toBottomOf="@id/item_title"
+                tools:text="5 episodios | 450 MB" />
+
+            <TextView
+                android:id="@+id/item_expansion_state"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceCaption"
+                android:textStyle="italic"
+                app:layout_constraintEnd_toEndOf="@id/item_title"
+                app:layout_constraintStart_toStartOf="@id/item_title"
+                app:layout_constraintTop_toBottomOf="@id/item_info"
+                tools:text="Contraído" />
+
+            <ImageButton
+                android:id="@+id/item_more_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Más opciones"
+                android:src="@drawable/ic_more_vert"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- Container for individual episode items, initially hidden -->
+        <LinearLayout
+            android:id="@+id/episodes_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="8dp"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

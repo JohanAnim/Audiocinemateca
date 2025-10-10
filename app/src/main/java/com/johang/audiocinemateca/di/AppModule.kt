@@ -16,6 +16,7 @@ import javax.inject.Singleton
 import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.johang.audiocinemateca.data.local.dao.DownloadDao
 import com.johang.audiocinemateca.data.local.dao.SearchHistoryDao
 
 @Module
@@ -33,11 +34,29 @@ object AppModule {
             }
         }
 
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("CREATE TABLE IF NOT EXISTS `downloads` (`contentId` TEXT NOT NULL, `partIndex` INTEGER NOT NULL, `episodeIndex` INTEGER NOT NULL, `contentType` TEXT NOT NULL, `title` TEXT NOT NULL, `downloadStatus` TEXT NOT NULL, `filePath` TEXT, `downloadedAt` INTEGER NOT NULL, `totalSizeMb` REAL NOT NULL, PRIMARY KEY(`contentId`, `partIndex`, `episodeIndex`))")
+            }
+        }
+
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `downloads` ADD COLUMN `errorMessage` TEXT")
+            }
+        }
+
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `downloads` ADD COLUMN `durationMs` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             "audiocinemateca.db"
-        ).addMigrations(MIGRATION_5_6).build()
+        ).addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).build()
     }
 
     @Provides
@@ -56,6 +75,12 @@ object AppModule {
     @Singleton
     fun provideSearchHistoryDao(appDatabase: AppDatabase): SearchHistoryDao {
         return appDatabase.searchHistoryDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideDownloadDao(appDatabase: AppDatabase): DownloadDao {
+        return appDatabase.downloadDao()
     }
 
     @Provides
