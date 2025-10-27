@@ -84,4 +84,19 @@
         <item>cortometrajes</item>
     </string-array>
 
+    <!-- Default Filter -->
+    <string-array name="default_filter_entries">
+        <item>Alfabético (A-Z)</item>
+        <item>Alfabético (Z-A)</item>
+        <item>Fecha (Más Nuevo)</item>
+        <item>Fecha (Más Antiguo)</item>
+    </string-array>
+
+    <string-array name="default_filter_values">
+        <item>alpha_asc</item>
+        <item>alpha_desc</item>
+        <item>date_desc</item>
+        <item>date_asc</item>
+    </string-array>
+
 </resources>

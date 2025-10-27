@@ -32,6 +32,14 @@
             android:entryValues="@array/default_content_tab_values"
             android:defaultValue="peliculas" />
 
+        <ListPreference
+            android:key="default_filter_type"
+            android:title="Filtro por defecto del catálogo"
+            android:summary="%s"
+            android:entries="@array/default_filter_entries"
+            android:entryValues="@array/default_filter_values"
+            android:defaultValue="alpha_asc" />
+
         <SwitchPreferenceCompat
             android:key="auto_check_catalog"
             android:title="Comprobación automática del catálogo"
@@ -133,6 +141,10 @@
     </PreferenceCategory>
 
     <PreferenceCategory android:title="Funciones de Inteligencia Artificial">
+
+        <Preference
+            android:summary="¡Atención! Estos ajustes aún no se han implementado, por lo que no tienen ninguna funcionalidad. Se implementarán en futuras actualizaciones."
+            app:selectable="false" />
 
         <EditTextPreference
             android:key="gemini_api_key"

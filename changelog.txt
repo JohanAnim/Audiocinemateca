@@ -1,24 +1,7 @@
-**Audiocinemateca v2.9.5 - ¡El Modo Offline ha Llegado!**
-
-¡La espera ha terminado! Atendiendo a la petición más solicitada por nuestra comunidad, nos enorgullece presentar la funcionalidad de **Descargas** y un completo **Modo Offline**. Hemos trabajado intensamente para traerte una experiencia sin conexión robusta y fluida.
-
-### ✨ Nuevas Funcionalidades
-
-*   **Descargas para Todos:** ¡Guarda lo que quieras! Ahora puedes descargar películas, series, documentales y cortos para disfrutarlos sin necesidad de conexión a internet.
-    *   *Nota: Las descargas se gestionan una por una a través de un sistema de cola para asegurar la estabilidad. No se permiten descargas simultáneas para no sobrecargar el servidor.*
-*   **Nueva Pestaña "Descargas":** Gestiona todo tu contenido offline desde un único lugar. Reproduce, filtra y elimina tus descargas fácilmente.
-*   **Reproducción Inteligente Offline:** El reproductor ahora detecta automáticamente si tienes el contenido descargado y lo usa para la reproducción, ahorrando tus datos móviles sin que tengas que hacer nada.
-*   **Modo Offline Total:** En los Ajustes, activa el "Modo offline total" para bloquear toda conexión a internet y asegurar una experiencia 100% libre de consumo de datos.
-*   **Gestión de Almacenamiento:** Elige dónde guardar tus descargas. Ve a Ajustes y selecciona entre la memoria interna o una tarjeta SD.
-*   **Inicio de Sesión Web Automático:** Al pulsar "Mi cuenta", la app te llevará a la web con tu sesión ya iniciada.
-
-### 🚀 Mejoras
-
-*   **Interfaz de Descarga Integrada:** Ahora verás botones para descargar directamente en la pantalla de detalle de cada contenido y en cada episodio de las series.
-*   **Historial de Búsqueda Perfeccionado:** El historial ahora solo guarda las búsquedas cuando las ejecutas explícitamente, manteniendo la lista más limpia.
-*   **Mini-reproductor Más Grande:** Hemos aumentado la altura del mini-reproductor para mejorar la visibilidad y facilitar su uso.
-*   **Visualización de Almacenamiento:** El espacio total de las descargas se muestra en Gigabytes (GB) cuando la cifra es elevada.
-
-### 🛡️ Seguridad
-
-*   **Protección contra Fuerza Bruta:** Se ha mejorado la seguridad del inicio de sesión. El acceso se bloqueará temporalmente tras 3 intentos fallidos.
+v2.9.6
+- **Funcionalidad:** El botón "Sorpréndeme" ahora es sensible a la categoría, sugiriendo contenido aleatorio de la pestaña actual.
+- **Nueva Característica:** Se ha añadido una preferencia en "Ajustes" para seleccionar el orden de filtrado por defecto del catálogo.
+- **Corrección:** Los filtros de Género y País ahora se mantienen al navegar hacia atrás, en lugar de reiniciarse.
+- **Corrección:** Se ha implementado la lógica de filtrado por país que faltaba.
+- **Mejora de UI:** Se ha reemplazado el selector de Género y País por un diálogo con búsqueda para facilitar la selección en listas largas.
+- **UI:** Se ha añadido un aviso en la sección de "Inteligencia Artificial" en Ajustes para indicar que las funciones aún no están implementadas.

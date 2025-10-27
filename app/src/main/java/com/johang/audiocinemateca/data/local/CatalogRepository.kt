@@ -188,6 +188,65 @@ class CatalogRepository @Inject constructor(
         genres.toList().sorted()
     }
 
+    suspend fun getCountries(categoryName: String? = null): List<String> = withContext(Dispatchers.IO) {
+        val catalog = getCatalog()
+        val countries = mutableSetOf<String>()
+
+        when (categoryName) {
+            "peliculas" -> catalog?.movies?.forEach { movie ->
+                (movie as? Movie)?.pais?.split(",")?.forEach { individualCountry ->
+                    val trimmedCountry = individualCountry.trim()
+                    if (trimmedCountry.isNotBlank()) countries.add(trimmedCountry)
+                }
+            }
+            "series" -> catalog?.series?.forEach { serie ->
+                (serie as? Serie)?.pais?.split(",")?.forEach { individualCountry ->
+                    val trimmedCountry = individualCountry.trim()
+                    if (trimmedCountry.isNotBlank()) countries.add(trimmedCountry)
+                }
+            }
+            "documentales" -> catalog?.documentaries?.forEach { documentary ->
+                (documentary as? Documentary)?.pais?.split(",")?.forEach { individualCountry ->
+                    val trimmedCountry = individualCountry.trim()
+                    if (trimmedCountry.isNotBlank()) countries.add(trimmedCountry)
+                }
+            }
+            "cortometrajes" -> catalog?.shortFilms?.forEach { shortFilm ->
+                (shortFilm as? ShortFilm)?.pais?.split(",")?.forEach { individualCountry ->
+                    val trimmedCountry = individualCountry.trim()
+                    if (trimmedCountry.isNotBlank()) countries.add(trimmedCountry)
+                }
+            }
+            null -> { // Process all categories if categoryName is null
+                catalog?.movies?.forEach { movie ->
+                    (movie as? Movie)?.pais?.split(",")?.forEach { individualCountry ->
+                        val trimmedCountry = individualCountry.trim()
+                        if (trimmedCountry.isNotBlank()) countries.add(trimmedCountry)
+                    }
+                }
+                catalog?.series?.forEach { serie ->
+                    (serie as? Serie)?.pais?.split(",")?.forEach { individualCountry ->
+                        val trimmedCountry = individualCountry.trim()
+                        if (trimmedCountry.isNotBlank()) countries.add(trimmedCountry)
+                    }
+                }
+                catalog?.documentaries?.forEach { documentary ->
+                    (documentary as? Documentary)?.pais?.split(",")?.forEach { individualCountry ->
+                        val trimmedCountry = individualCountry.trim()
+                        if (trimmedCountry.isNotBlank()) countries.add(trimmedCountry)
+                    }
+                }
+                catalog?.shortFilms?.forEach { shortFilm ->
+                    (shortFilm as? ShortFilm)?.pais?.split(",")?.forEach { individualCountry ->
+                        val trimmedCountry = individualCountry.trim()
+                        if (trimmedCountry.isNotBlank()) countries.add(trimmedCountry)
+                    }
+                }
+            }
+        }
+        countries.toList().sorted()
+    }
+
     suspend fun getFilteredAndPaginatedItems(
         categoryName: String,
         filterType: String,
@@ -241,6 +300,18 @@ class CatalogRepository @Inject constructor(
                             "Español Latino" -> itemLanguageCode != "1"
                             else -> false
                         }
+                    }
+                }
+            }
+            "Países" -> {
+                Log.d("CatalogRepository", "Filtering by country: $filterValue")
+                if (filterValue != null && filterValue != "Todos") {
+                    filteredItems = filteredItems.filter { item ->
+                        val country = (item as? Movie)?.pais ?: (item as? Serie)?.pais ?: (item as? Documentary)?.pais ?: (item as? ShortFilm)?.pais ?: ""
+                        val countriesInItem = country.split(",").map { it.trim() }
+                        val result = countriesInItem.any { it.equals(filterValue, ignoreCase = true) }
+                        Log.d("CatalogRepository", "Item: ${item.title}, Country: $country, CountriesInItem: $countriesInItem, Result: $result")
+                        result
                     }
                 }
             }

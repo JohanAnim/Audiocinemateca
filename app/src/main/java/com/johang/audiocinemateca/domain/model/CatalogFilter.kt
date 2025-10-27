@@ -63,6 +63,14 @@ class CatalogFilter @Inject constructor(
                     }
                 }
             }
+            "Países" -> {
+                if (options.filterValue != "Todos") {
+                    currentFilteredItems = currentFilteredItems.filter { item ->
+                        val countriesInItem = item.pais.split(",").map { it.trim() }
+                        countriesInItem.any { it.equals(options.filterValue, ignoreCase = true) }
+                    }
+                }
+            }
         }
         return currentFilteredItems
     }

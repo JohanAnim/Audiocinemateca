@@ -51,15 +51,23 @@ class SearchRepository @Inject constructor(
         return sortedItems
     }
 
-    suspend fun getRandomCatalogItem(): CatalogItem? {
-        val allItems = mutableListOf<CatalogItem>()
-        catalogRepository.getCatalog()?.let {
-            it.movies?.let { movies -> allItems.addAll(movies) }
-            it.series?.let { series -> allItems.addAll(series) }
-            it.documentaries?.let { docs -> allItems.addAll(docs) }
-            it.shortFilms?.let { shorts -> allItems.addAll(shorts) }
+    suspend fun getRandomCatalogItem(categoryName: String? = null): CatalogItem? {
+        val catalog = catalogRepository.getCatalog() ?: return null
+        val items = when (categoryName) {
+            "peliculas" -> catalog.movies
+            "series" -> catalog.series
+            "documentales" -> catalog.documentaries
+            "cortometrajes" -> catalog.shortFilms
+            else -> {
+                val allItems = mutableListOf<CatalogItem>()
+                catalog.movies?.let { allItems.addAll(it) }
+                catalog.series?.let { allItems.addAll(it) }
+                catalog.documentaries?.let { allItems.addAll(it) }
+                catalog.shortFilms?.let { allItems.addAll(it) }
+                allItems
+            }
         }
-        return allItems.randomOrNull()
+        return items?.randomOrNull()
     }
 
     suspend fun getCatalogItemByIdAndType(itemId: String, itemType: String): CatalogItem? {

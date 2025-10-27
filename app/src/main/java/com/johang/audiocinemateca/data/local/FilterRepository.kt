@@ -1,5 +1,6 @@
 package com.johang.audiocinemateca.data.local
 
+import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.domain.model.FilterOptions
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,14 +11,25 @@ import javax.inject.Singleton
 import android.util.Log
 
 @Singleton
-class FilterRepository @Inject constructor() {
+class FilterRepository @Inject constructor(private val sharedPreferencesManager: SharedPreferencesManager) {
+
+    private fun getDefaultFilterOptions(): FilterOptions {
+        val defaultFilterPref = sharedPreferencesManager.getString("default_filter_type", "alpha_asc")
+        return when (defaultFilterPref) {
+            "alpha_asc" -> FilterOptions("Alfabéticamente", "A-Z")
+            "alpha_desc" -> FilterOptions("Alfabéticamente", "Z-A")
+            "date_desc" -> FilterOptions("Fecha", "Más nuevo")
+            "date_asc" -> FilterOptions("Fecha", "Más antiguo")
+            else -> FilterOptions()
+        }
+    }
 
     private val _categoryFilters = MutableStateFlow(
         mapOf(
-            "peliculas" to FilterOptions(),
-            "cortometrajes" to FilterOptions(),
-            "documentales" to FilterOptions(),
-            "series" to FilterOptions()
+            "peliculas" to getDefaultFilterOptions(),
+            "cortometrajes" to getDefaultFilterOptions(),
+            "documentales" to getDefaultFilterOptions(),
+            "series" to getDefaultFilterOptions()
         )
     )
 

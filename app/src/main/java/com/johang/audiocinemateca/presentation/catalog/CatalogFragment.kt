@@ -13,7 +13,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import androidx.appcompat.app.AlertDialog
+import android.widget.Button
 import android.widget.Spinner
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
@@ -47,6 +50,7 @@ class CatalogFragment : Fragment() {
     private lateinit var pagerAdapter: CatalogPagerAdapter
     private lateinit var filterTypeSpinner: Spinner
     private lateinit var filterValueSpinner: Spinner
+    private lateinit var filterValueButton: Button
     private lateinit var viewPager: ViewPager2
     private var ignoreSpinnerSelection = false
 
@@ -67,7 +71,8 @@ class CatalogFragment : Fragment() {
 
         this.viewPager = view.findViewById<ViewPager2>(R.id.view_pager)
         filterTypeSpinner = view.findViewById<Spinner>(R.id.filter_type_spinner)
-        filterValueSpinner = view.findViewById<Spinner>(R.id.filter_value_spinner)
+        filterValueButton = view.findViewById(R.id.filter_value_button)
+        filterValueSpinner = view.findViewById(R.id.filter_value_spinner)
 
         // Setup ViewPager and Adapter
         pagerAdapter = CatalogPagerAdapter(requireActivity())
@@ -104,14 +109,14 @@ class CatalogFragment : Fragment() {
                     }
 
                     // Update filterValueSpinner based on the selected filterType and current filter options
-                    updateFilterValueSpinner(filterOptions.filterType, null)
+                    updateFilterValueSpinner(filterOptions.filterType, filterOptions.filterValue)
                 }
             }
         })
 
         // Setup Spinners
         setupFilterTypeSpinner()
-        setupFilterValueSpinner()
+        
         // Initial setup for filterValueSpinner based on the current category
         viewLifecycleOwner.lifecycleScope.launch {
             val currentCategoryName = getCurrentCategoryName()
@@ -138,19 +143,13 @@ class CatalogFragment : Fragment() {
             }
             R.id.action_surprise_me -> {
                 lifecycleScope.launch {
-                    val randomItem = searchRepository.getRandomCatalogItem()
+                    val currentCategory = getCurrentCategoryName()
+                    val randomItem = searchRepository.getRandomCatalogItem(currentCategory)
                     randomItem?.let { item ->
-                        val itemType = when (item) {
-                            is com.johang.audiocinemateca.data.model.Movie -> "peliculas"
-                            is com.johang.audiocinemateca.data.model.Serie -> "series"
-                            is com.johang.audiocinemateca.data.model.Documentary -> "documentales"
-                            is com.johang.audiocinemateca.data.model.ShortFilm -> "cortometrajes"
-                            else -> ""
-                        }
-                        val action = MainNavGraphDirections.actionGlobalContentDetailFragment(item.id, itemType)
+                        val action = MainNavGraphDirections.actionGlobalContentDetailFragment(item.id, currentCategory)
                         findNavController().navigate(action)
                     } ?: run {
-                        Toast.makeText(requireContext(), "No se pudo encontrar un elemento aleatorio.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "No se pudo encontrar un elemento aleatorio en esta categoría.", Toast.LENGTH_SHORT).show()
                     }
                 }
                 true
@@ -170,7 +169,7 @@ class CatalogFragment : Fragment() {
     }
 
     private fun setupFilterTypeSpinner() {
-        val filterTypes = arrayOf("Alfabéticamente", "Fecha", "Género", "Idiomas")
+        val filterTypes = arrayOf("Alfabéticamente", "Fecha", "Género", "Idiomas", "Países")
         val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, filterTypes)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         filterTypeSpinner.adapter = adapter
@@ -178,53 +177,63 @@ class CatalogFragment : Fragment() {
         filterTypeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val selectedFilterType = filterTypes[position]
-                // When filter type changes, reset the filter value to its default for the new type
-                updateFilterValueSpinner(selectedFilterType, null) // Pass null to force default selection
+                filterTypeSpinner.contentDescription = "Filtro actual: $selectedFilterType"
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val currentCategoryName = getCurrentCategoryName()
+                    val currentFilterOptions = viewModel.filterRepository.getFilterOptionsFlow(currentCategoryName).first()
+
+                    if (currentFilterOptions.filterType != selectedFilterType) {
+                        val defaultValue = when (selectedFilterType) {
+                            "Alfabéticamente" -> "A-Z"
+                            "Fecha" -> "Más nuevo"
+                            "Género" -> "Todos"
+                            "Idiomas" -> "Español Latino"
+                            "Países" -> "Todos"
+                            else -> ""
+                        }
+                        viewModel.updateFilter(getCurrentCategoryName(), selectedFilterType, defaultValue)
+                        updateFilterValueSpinner(selectedFilterType, defaultValue)
+                    }
+                }
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
     }
 
-    private fun updateFilterValueSpinner(filterType: String, currentFilterValue: String?) {
-        val adapter: ArrayAdapter<String>
-        val defaultFilterValue: String
+    private fun showFilterOptionsDialog(title: String, options: Array<String>, currentOption: String?, onSelected: (String) -> Unit) {
+        val builder = AlertDialog.Builder(requireContext())
+        var checkedItem = options.indexOf(currentOption)
+        if (checkedItem == -1) {
+            checkedItem = 0
+        }
+        builder.setTitle(title)
+        builder.setSingleChoiceItems(options, checkedItem) { dialog, which ->
+            onSelected(options[which])
+            dialog.dismiss()
+        }
+        builder.create().show()
+    }
 
-        when (filterType) {
-            "Alfabéticamente" -> {
-                val alphaOptions = arrayOf("A-Z", "Z-A")
-                adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, alphaOptions)
-                defaultFilterValue = "A-Z"
-            }
-            "Fecha" -> {
-                val dateOptions = arrayOf("Más nuevo", "Más antiguo", "Con fecha más reciente", "Con fecha más antigua")
-                adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, dateOptions)
-                defaultFilterValue = "Más nuevo"
-            }
-            "Género" -> {
-                adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, mutableListOf("Todos"))
-                defaultFilterValue = "Todos"
+    private fun updateFilterValueSpinner(filterType: String, currentFilterValue: String?) {
+        if (filterType == "Género" || filterType == "Países") {
+            val title = if (filterType == "Género") "Seleccionar género" else "Selecciona un país"
+            filterValueButton.text = "Seleccionado: ${currentFilterValue ?: ""}"
+            filterValueButton.setOnClickListener {
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        val genres = viewModel.getGenresForCategory(getCurrentCategoryName()) // Get genres for current category
-                        adapter.clear()
-                        adapter.addAll(listOf("Todos") + genres)
-                        adapter.notifyDataSetChanged()
-
-                        // Set selection after genres are loaded and adapter is updated
-                        val finalSelectionIndex = (filterValueSpinner.adapter as? ArrayAdapter<String>)?.getPosition(currentFilterValue) ?: -1
-                        if (finalSelectionIndex != -1) {
-                            filterValueSpinner.setSelection(finalSelectionIndex, false)
+                        val items = if (filterType == "Género") {
+                            viewModel.getGenresForCategory(getCurrentCategoryName())
                         } else {
-                            val defaultSelectionIndex = (filterValueSpinner.adapter as? ArrayAdapter<String>)?.getPosition(defaultFilterValue) ?: -1
-                            if (defaultSelectionIndex != -1) {
-                                filterValueSpinner.setSelection(defaultSelectionIndex, false)
-                            }
+                            viewModel.getCountriesForCategory(getCurrentCategoryName())
                         }
-                        val finalSelectedValue = filterValueSpinner.selectedItem?.toString() ?: ""
-                        viewModel.updateFilter(getCurrentCategoryName(), filterType, finalSelectedValue)
+                        val dialog = SearchableSpinnerDialogFragment(title, items.toTypedArray(), filterValueButton.text.toString().substringAfter("Seleccionado: ")) { selectedValue ->
+                            viewModel.updateFilter(getCurrentCategoryName(), filterType, selectedValue)
+                            filterValueButton.post { filterValueButton.text = "Seleccionado: $selectedValue" }
+                        }
+                        dialog.show(parentFragmentManager, "SearchableSpinnerDialogFragment")
                     } catch (e: Exception) {
-                        val errorMessage = "Error al cargar géneros: ${e.message}"
+                        val errorMessage = "Error al cargar datos: ${e.message}"
                         val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("Error", errorMessage)
                         clipboard.setPrimaryClip(clip)
@@ -232,53 +241,37 @@ class CatalogFragment : Fragment() {
                     }
                 }
             }
-            "Idiomas" -> {
-                val languageOptions = arrayOf("Todos", "Español Latino", "Español de España")
-                adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, languageOptions)
-                defaultFilterValue = "Todos"
-            }
-            else -> {
-                adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, emptyArray<String>())
-                defaultFilterValue = ""
-            }
-        }
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        filterValueSpinner.adapter = adapter
-
-        val selectionIndex = (filterValueSpinner.adapter as? ArrayAdapter<String>)?.getPosition(currentFilterValue) ?: -1
-        if (selectionIndex != -1) {
-            filterValueSpinner.setSelection(selectionIndex, false) // Use false to not trigger the listener
         } else {
-            // If the currentFilterValue is not found, set to defaultFilterValue
-            val defaultSelectionIndex = (filterValueSpinner.adapter as? ArrayAdapter<String>)?.getPosition(defaultFilterValue) ?: -1
-            if (defaultSelectionIndex != -1) {
-                filterValueSpinner.setSelection(defaultSelectionIndex, false)
-            }
-        }
-
-        // Call updateFilter here for synchronous cases (Alfabéticamente, Fecha, Idiomas)
-        if (filterType != "Género") {
-            val finalSelectedValue = filterValueSpinner.selectedItem?.toString() ?: ""
-            viewModel.updateFilter(getCurrentCategoryName(), filterType, finalSelectedValue)
-        }
-    }
-
-    private fun setupFilterValueSpinner() {
-        filterValueSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (ignoreSpinnerSelection) {
-                    ignoreSpinnerSelection = false
-                    return
+            val options: Array<String>
+            val defaultFilterValue: String
+            when (filterType) {
+                "Alfabéticamente" -> {
+                    options = arrayOf("A-Z", "Z-A")
+                    defaultFilterValue = "A-Z"
                 }
-
-                val selectedFilterType = filterTypeSpinner.selectedItem.toString()
-                val selectedFilterValue = parent?.getItemAtPosition(position)?.toString() ?: ""
-                val currentCategory = getCurrentCategoryName()
-                Log.d("CatalogFragment", "onItemSelected: Updating filter for category: '$currentCategory', type: '$selectedFilterType', value: '$selectedFilterValue'")
-                viewModel.updateFilter(currentCategory, selectedFilterType, selectedFilterValue)
+                "Fecha" -> {
+                    options = arrayOf("Más nuevo", "Más antiguo", "Con fecha más reciente", "Con fecha más antigua")
+                    defaultFilterValue = "Más nuevo"
+                }
+                "Idiomas" -> {
+                    options = arrayOf("Español Latino", "Español de España")
+                    defaultFilterValue = "Español Latino"
+                }
+                else -> {
+                    options = emptyArray<String>()
+                    defaultFilterValue = ""
+                }
             }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+            filterValueButton.text = "Seleccionado: ${currentFilterValue ?: defaultFilterValue}"
+            viewModel.updateFilter(getCurrentCategoryName(), filterType, currentFilterValue ?: defaultFilterValue)
+            filterValueButton.setOnClickListener {
+                showFilterOptionsDialog("Selecciona un valor", options, filterValueButton.text.toString().substringAfter("Seleccionado: ")) { selectedValue ->
+                    filterValueButton.text = "Seleccionado: $selectedValue"
+                    viewModel.updateFilter(getCurrentCategoryName(), filterType, selectedValue)
+                }
+            }
         }
     }
+
+    
 }

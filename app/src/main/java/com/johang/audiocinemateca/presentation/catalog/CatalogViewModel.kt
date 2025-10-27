@@ -48,6 +48,10 @@ class CatalogViewModel @Inject constructor(
         return catalogRepository.getGenres(categoryName)
     }
 
+    suspend fun getCountriesForCategory(categoryName: String?): List<String> {
+        return catalogRepository.getCountries(categoryName)
+    }
+
     fun loadFilterOptions(categoryName: String) {
         viewModelScope.launch {
             _currentFilterOptions.value = filterRepository.getFilterOptionsFlow(categoryName).first()
