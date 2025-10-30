@@ -11,7 +11,11 @@ class PlaybackProgressRepository @Inject constructor(
 ) {
 
     suspend fun savePlaybackProgress(progress: PlaybackProgressEntity) {
-        playbackProgressDao.insertPlaybackProgress(progress)
+        if (progress.contentType == "series") {
+            playbackProgressDao.updateSeriesProgress(progress)
+        } else {
+            playbackProgressDao.insertPlaybackProgress(progress)
+        }
     }
 
     suspend fun getPlaybackProgress(contentId: String, partIndex: Int, episodeIndex: Int): PlaybackProgressEntity? {

@@ -33,8 +33,13 @@ import com.johang.audiocinemateca.data.AuthCatalogRepository
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+import com.johang.audiocinemateca.presentation.WhatsNewDialogFragment
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
 @AndroidEntryPoint
 @androidx.media3.common.util.UnstableApi
@@ -295,6 +300,48 @@ class MainActivity : AppCompatActivity() {
                 Log.e("MainActivity", "Error checking for app update", e)
             }
         }
+        // Check for What's New dialog
+        checkAndShowWhatsNewDialog()
+    }
+
+    private fun checkAndShowWhatsNewDialog() {
+        lifecycleScope.launch {
+            try {
+                val packageInfo = packageManager.getPackageInfo(packageName, 0)
+                @Suppress("DEPRECATION")
+                val currentVersionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    packageInfo.longVersionCode
+                } else {
+                    packageInfo.versionCode.toLong()
+                }
+                val lastSeenVersionCode = sharedPreferencesManager.getLong(LAST_SEEN_VERSION_CODE_KEY, 0L)
+
+                if (currentVersionCode > lastSeenVersionCode) {
+                    // App has been updated. Wait for the update check to complete and get the changelog.
+                    val result = accountViewModel.updateState.first { it !is UpdateCheckResult.Loading }
+
+                    val updateInfo = when (result) {
+                        is UpdateCheckResult.UpdateAvailable -> result.updateInfo
+                        is UpdateCheckResult.NoUpdateAvailable -> result.updateInfo
+                        else -> null // Should not happen due to the 'first' predicate
+                    }
+
+                    if (updateInfo != null && updateInfo.changelog.isNotBlank()) {
+                        WhatsNewDialogFragment.newInstance(updateInfo.changelog)
+                            .show(supportFragmentManager, WhatsNewDialogFragment.TAG)
+
+                        // Save the new version code *after* showing the dialog
+                        sharedPreferencesManager.saveLong(LAST_SEEN_VERSION_CODE_KEY, currentVersionCode)
+                    } else {
+                        // If for some reason we couldn't get a changelog, at least save the version
+                        // to prevent showing the dialog on every launch.
+                        sharedPreferencesManager.saveLong(LAST_SEEN_VERSION_CODE_KEY, currentVersionCode)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error in checkAndShowWhatsNewDialog", e)
+            }
+        }
     }
 
     override fun onStart() {
@@ -450,5 +497,6 @@ class MainActivity : AppCompatActivity() {
         const val LAST_CATALOG_UPDATE_TIMESTAMP_KEY = "last_catalog_update_timestamp"
         const val CATALOG_UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000L // 24 hours in milliseconds
         const val SHARED_PREFS_NAME = "app_preferences"
+        const val LAST_SEEN_VERSION_CODE_KEY = "last_seen_version_code"
     }
 }

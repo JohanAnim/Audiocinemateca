@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/changelog_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="¡Novedades de esta versión!"
+        android:textAppearance="?attr/textAppearanceHeadline6"
+        android:layout_marginBottom="16dp"/>
+
+    <TextView
+        android:id="@+id/changelog_text_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="10"
+        android:scrollbars="vertical"
+        android:layout_marginBottom="24dp"/>
+
+    <TextView
+        android:id="@+id/donation_text_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Si disfrutas de la aplicación, considera apoyar su desarrollo con una donación. Puedes hacerlo más tarde desde la pantalla de Cuenta."
+        android:textAppearance="?attr/textAppearanceBody2"
+        android:layout_marginBottom="24dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/donate_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Quiero donar"
+            android:layout_marginEnd="8dp"/>
+
+        <Button
+            android:id="@+id/later_button"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="En otro momento"/>
+    </LinearLayout>
+
+</LinearLayout>

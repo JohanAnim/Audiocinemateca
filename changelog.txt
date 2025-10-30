@@ -1,4 +1,7 @@
 v2.9.6
+- **Nueva Característica:** Se ha añadido un diálogo de "Novedades" que aparece automáticamente una sola vez después de actualizar la aplicación.
+- **Nueva Característica:** Este nuevo diálogo muestra los cambios más recientes de la versión y ofrece una opción para donar y apoyar el desarrollo.
+- **Corrección:** Se ha solucionado un error importante en el historial de reproducción que provocaba que aparecieran múltiples episodios de la misma serie. Ahora, el historial solo mostrará el último episodio visto de cada serie.
 - **Funcionalidad:** El botón "Sorpréndeme" ahora es sensible a la categoría, sugiriendo contenido aleatorio de la pestaña actual.
 - **Nueva Característica:** Se ha añadido una preferencia en "Ajustes" para seleccionar el orden de filtrado por defecto del catálogo.
 - **Corrección:** Los filtros de Género y País ahora se mantienen al navegar hacia atrás, en lugar de reiniciarse.
