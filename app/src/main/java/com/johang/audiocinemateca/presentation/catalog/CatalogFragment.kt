@@ -70,6 +70,7 @@ class CatalogFragment : Fragment() {
         
 
         this.viewPager = view.findViewById<ViewPager2>(R.id.view_pager)
+        viewPager.isUserInputEnabled = false
         filterTypeSpinner = view.findViewById<Spinner>(R.id.filter_type_spinner)
         filterValueButton = view.findViewById(R.id.filter_value_button)
         filterValueSpinner = view.findViewById(R.id.filter_value_spinner)
@@ -220,6 +221,13 @@ class CatalogFragment : Fragment() {
             val title = if (filterType == "Género") "Seleccionar género" else "Selecciona un país"
             filterValueButton.text = "Seleccionado: ${currentFilterValue ?: ""}"
             filterValueButton.setOnClickListener {
+                filterValueButton.isEnabled = false
+                if (filterType == "Género") {
+                    filterValueButton.announceForAccessibility("Mostrando los géneros, por favor espere un poco")
+                } else if (filterType == "Países") {
+                    filterValueButton.announceForAccessibility("Mostrando los países, por favor espere un poco")
+                }
+
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
                         val items = if (filterType == "Género") {
@@ -238,6 +246,8 @@ class CatalogFragment : Fragment() {
                         val clip = ClipData.newPlainText("Error", errorMessage)
                         clipboard.setPrimaryClip(clip)
                         Toast.makeText(requireContext(), "Error copiado al portapapeles: ${e.message}", Toast.LENGTH_LONG).show()
+                    } finally {
+                        filterValueButton.isEnabled = true
                     }
                 }
             }

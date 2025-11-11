@@ -22,6 +22,7 @@ import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -35,6 +36,8 @@ class DownloadsFragment : Fragment(), DownloadsActionsBottomSheet.DownloadsActio
     private lateinit var deleteAllButton: MaterialButton
     private lateinit var totalSizeTextView: TextView
     private lateinit var totalDurationTextView: TextView
+    private lateinit var loadingContainer: View
+    private lateinit var recyclerView: androidx.recyclerview.widget.RecyclerView
 
     @Inject
     lateinit var sharedPreferencesManager: SharedPreferencesManager
@@ -130,6 +133,9 @@ class DownloadsFragment : Fragment(), DownloadsActionsBottomSheet.DownloadsActio
     }
 
     private fun setupRecyclerView(view: View) {
+        loadingContainer = view.findViewById(R.id.loading_container)
+        recyclerView = view.findViewById(R.id.downloads_recycler_view)
+
         downloadsAdapter = DownloadsAdapter(
             onSeriesGroupClick = { contentId ->
                 viewModel.onSeriesGroupToggled(contentId)
@@ -164,19 +170,30 @@ class DownloadsFragment : Fragment(), DownloadsActionsBottomSheet.DownloadsActio
                 ).show(childFragmentManager, DownloadsActionsBottomSheet.TAG)
             }
         )
-        val recyclerView: androidx.recyclerview.widget.RecyclerView = view.findViewById(R.id.downloads_recycler_view)
         recyclerView.adapter = downloadsAdapter
         emptyDownloadsText = view.findViewById(R.id.empty_downloads_text)
     }
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.downloadedItems.collect { items ->
-                downloadsAdapter.updateItems(items)
-                if (items.isEmpty()) {
-                    emptyDownloadsText.visibility = View.VISIBLE
-                } else {
-                    emptyDownloadsText.visibility = View.GONE
+            viewModel.uiState.collect { state ->
+                when (state) {
+                    is DownloadsUiState.Loading -> {
+                        loadingContainer.visibility = View.VISIBLE
+                        recyclerView.visibility = View.GONE
+                        emptyDownloadsText.visibility = View.GONE
+                    }
+                    is DownloadsUiState.Success -> {
+                        loadingContainer.visibility = View.GONE
+                        downloadsAdapter.updateItems(state.downloads)
+                        if (state.downloads.isEmpty()) {
+                            recyclerView.visibility = View.GONE
+                            emptyDownloadsText.visibility = View.VISIBLE
+                        } else {
+                            recyclerView.visibility = View.VISIBLE
+                            emptyDownloadsText.visibility = View.GONE
+                        }
+                    }
                 }
             }
         }

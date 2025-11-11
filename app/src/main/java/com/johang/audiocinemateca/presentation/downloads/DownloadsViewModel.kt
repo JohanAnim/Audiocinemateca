@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -40,6 +41,11 @@ sealed class DownloadFilter(val displayName: String) {
     object Completed : DownloadFilter("Descargados")
 }
 
+sealed class DownloadsUiState {
+    object Loading : DownloadsUiState()
+    data class Success(val downloads: List<GroupedDownload>) : DownloadsUiState()
+}
+
 @HiltViewModel
 class DownloadsViewModel @Inject constructor(
     private val downloadRepository: DownloadRepository,
@@ -47,11 +53,11 @@ class DownloadsViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
-    private val _allDownloads = MutableStateFlow<List<DownloadEntity>>(emptyList())
+    private val _allDownloads = downloadRepository.getAllDownloads()
     private val _currentFilter = MutableStateFlow<DownloadFilter>(DownloadFilter.All)
     private val _expandedSeriesIds = MutableStateFlow<Set<String>>(emptySet())
 
-    val downloadedItems: StateFlow<List<GroupedDownload>> = combine(
+    val uiState: StateFlow<DownloadsUiState> = combine(
         _allDownloads,
         _currentFilter,
         _expandedSeriesIds
@@ -65,7 +71,7 @@ class DownloadsViewModel @Inject constructor(
         }
 
         val catalog = catalogRepository.getCatalog()
-        filteredDownloads
+        val grouped = filteredDownloads
             .groupBy { it.contentId }
             .mapNotNull { (contentId, groupedEntities) ->
                 val firstEntity = groupedEntities.first()
@@ -90,7 +96,9 @@ class DownloadsViewModel @Inject constructor(
                 }
             }
             .sortedByDescending { it.downloadedAt }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        DownloadsUiState.Success(grouped)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DownloadsUiState.Loading)
+
 
     val totalSizeMb: StateFlow<Double> = _allDownloads.map { allDownloads ->
         allDownloads
@@ -118,14 +126,6 @@ class DownloadsViewModel @Inject constructor(
 
     private val _viewActions = kotlinx.coroutines.flow.MutableSharedFlow<Event<ViewAction>>()
     val viewActions: kotlinx.coroutines.flow.SharedFlow<Event<ViewAction>> = _viewActions.asSharedFlow()
-
-    init {
-        viewModelScope.launch {
-            downloadRepository.getAllDownloads().collect { entities ->
-                _allDownloads.value = entities
-            }
-        }
-    }
 
     fun setFilter(filter: DownloadFilter) {
         _currentFilter.value = filter
@@ -193,7 +193,7 @@ class DownloadsViewModel @Inject constructor(
 
     fun deleteAllDownloads() {
         viewModelScope.launch {
-            val allDownloads = _allDownloads.value
+            val allDownloads = _allDownloads.first()
             // First, delete all the files
             allDownloads.forEach { entity ->
                 entity.filePath?.let {
@@ -210,7 +210,7 @@ class DownloadsViewModel @Inject constructor(
     fun confirmDeleteItem(contentId: String, partIndex: Int, episodeIndex: Int, isGroup: Boolean) {
         viewModelScope.launch {
             if (isGroup) {
-                val group = downloadedItems.value.find { it.contentId == contentId }
+                val group = (uiState.value as? DownloadsUiState.Success)?.downloads?.find { it.contentId == contentId }
                 group?.episodes?.forEach { episode ->
                     deleteEpisode(episode)
                 }

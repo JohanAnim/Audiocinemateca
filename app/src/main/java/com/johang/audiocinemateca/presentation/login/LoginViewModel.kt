@@ -19,6 +19,14 @@ import com.johang.audiocinemateca.media.SoundEffectsPlayer
 import com.johang.audiocinemateca.media.VoicePlayer
 import kotlinx.coroutines.delay
 
+sealed class LoginErrorEvent {
+    object InvalidCredentials : LoginErrorEvent()
+    object ServerError : LoginErrorEvent()
+    object MissingUsername : LoginErrorEvent()
+    object MissingPassword : LoginErrorEvent()
+    data class Unknown(val message: String) : LoginErrorEvent()
+}
+
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
@@ -48,8 +56,8 @@ class LoginViewModel @Inject constructor(
     private val _isUserLoggedIn = MutableStateFlow<Boolean>(false)
     val isUserLoggedIn: StateFlow<Boolean> = _isUserLoggedIn
 
-    private val _showErrorAlert = MutableSharedFlow<String>()
-    val showErrorAlert: SharedFlow<String> = _showErrorAlert
+    private val _showErrorAlert = MutableSharedFlow<LoginErrorEvent>()
+    val showErrorAlert: SharedFlow<LoginErrorEvent> = _showErrorAlert
 
     init {
         checkBanStatus()
@@ -89,24 +97,24 @@ class LoginViewModel @Inject constructor(
     }
 
     fun onLoginClick() {
-        _errorMessage.value = null
-        checkBanStatus()
-
-        if (loginUseCase.isBanned()) {
-            return
-        }
-
-        if (_username.value.trim().isEmpty()) {
-            _errorMessage.value = "Ingrese su nombre de usuario."
-            return
-        }
-
-        if (_password.value.trim().isEmpty()) {
-            _errorMessage.value = "Ingrese su contraseña."
-            return
-        }
-
         viewModelScope.launch {
+            _errorMessage.value = null
+            checkBanStatus()
+
+            if (loginUseCase.isBanned()) {
+                return@launch
+            }
+
+            if (_username.value.trim().isEmpty()) {
+                _showErrorAlert.emit(LoginErrorEvent.MissingUsername)
+                return@launch
+            }
+
+            if (_password.value.trim().isEmpty()) {
+                _showErrorAlert.emit(LoginErrorEvent.MissingPassword)
+                return@launch
+            }
+
             when (val result = loginUseCase.execute(_username.value, _password.value)) {
                 is LoginResult.Success -> {
                     _loginSuccess.value = true
@@ -114,14 +122,12 @@ class LoginViewModel @Inject constructor(
                     _banMessage.value = null
                 }
                 is LoginResult.Error -> {
-                    _errorMessage.value = result.message
                     checkBanStatus()
-                    val errorMessage = buildString {
-                        append(result.message)
-                        result.statusCode?.let { append("\nCódigo de estado: $it") }
-                        result.rawResponse?.let { append("\nRespuesta cruda: $it") }
+                    when (result.statusCode) {
+                        401, 403 -> _showErrorAlert.emit(LoginErrorEvent.InvalidCredentials)
+                        in 500..599 -> _showErrorAlert.emit(LoginErrorEvent.ServerError)
+                        else -> _showErrorAlert.emit(LoginErrorEvent.Unknown(result.message))
                     }
-                    _showErrorAlert.emit(errorMessage)
                 }
                 is LoginResult.Banned -> {
                     _errorMessage.value = "Demasiados intentos fallidos. Intente de nuevo más tarde."

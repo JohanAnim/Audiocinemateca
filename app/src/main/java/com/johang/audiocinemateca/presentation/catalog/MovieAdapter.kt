@@ -29,6 +29,7 @@ class MovieAdapter(private var movies: List<Movie>, private val onItemClick: (St
         val movie = movies[position]
         holder.titleTextView.text = movie.title
         holder.yearTextView.text = movie.anio
+        holder.itemView.contentDescription = "${movie.title}, ${movie.anio}"
         holder.itemView.setOnClickListener {
             holder.onItemClick(movie.id, "peliculas")
         }

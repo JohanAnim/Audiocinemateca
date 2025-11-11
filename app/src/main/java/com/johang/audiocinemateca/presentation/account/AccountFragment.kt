@@ -74,6 +74,7 @@ class AccountFragment : Fragment() {
         val checkUpdatesButton: Button = view.findViewById(R.id.check_updates_button)
         val novedadesButton: Button = view.findViewById(R.id.novedades_button)
         val releasesButton: Button = view.findViewById(R.id.releases_button)
+        val telegramGroupButton: Button = view.findViewById(R.id.telegram_group_button)
 
         // User name display
         lifecycleScope.launch {
@@ -131,14 +132,11 @@ class AccountFragment : Fragment() {
             val feedbackButton: Button = dialogView.findViewById(R.id.feedback_button)
             feedbackButton.setOnClickListener {
                 try {
-                    val intent = Intent(Intent.ACTION_SENDTO).apply {
-                        data = Uri.parse("mailto:") // only email apps should handle this
-                        putExtra(Intent.EXTRA_EMAIL, arrayOf("gutierrezjohanantonio@gmail.com"))
-                        putExtra(Intent.EXTRA_SUBJECT, "Retroalimentación de Audiocinemateca Beta")
-                    }
+                    val telegramUrl = "https://t.me/+cIfV-yMXhnFlMzkx"
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(telegramUrl))
                     startActivity(intent)
-                } catch (e: android.content.ActivityNotFoundException) {
-                    Toast.makeText(requireContext(), "No se encontró ninguna aplicación de correo electrónico.", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), "No se pudo abrir Telegram. Asegúrate de tener la aplicación instalada.", Toast.LENGTH_SHORT).show()
                 }
             }
 
@@ -181,6 +179,16 @@ class AccountFragment : Fragment() {
             val url = "https://github.com/JohanAnim/Audiocinemateca/releases"
             val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
             startActivity(intent)
+        }
+
+        telegramGroupButton.setOnClickListener {
+            try {
+                val telegramUrl = "https://t.me/+cIfV-yMXhnFlMzkx"
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(telegramUrl))
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "No se pudo abrir Telegram. Asegúrate de tener la aplicación instalada.", Toast.LENGTH_SHORT).show()
+            }
         }
 
         logoutButton.setOnClickListener {
@@ -247,7 +255,7 @@ class AccountFragment : Fragment() {
                         hideCheckingDialog()
                         when (result) {
                             is UpdateCheckResult.UpdateAvailable -> {
-                                showUpdateDialog(result.updateInfo)
+                                showSimpleUpdatePrompt(result.updateInfo)
                             }
                             is UpdateCheckResult.NoUpdateAvailable -> {
                                 MaterialAlertDialogBuilder(requireContext())
@@ -304,6 +312,19 @@ class AccountFragment : Fragment() {
             Intent(MainActivity.ACTION_HIDE_UPDATE_INDICATOR)
         }
         LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(intent)
+    }
+
+    private fun showSimpleUpdatePrompt(updateInfo: UpdateInfo) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Actualización Disponible")
+            .setMessage("Hay una nueva versión de la aplicación disponible. ¿Deseas descargarla ahora mismo?")
+            .setPositiveButton("Sí") { dialog, _ ->
+                viewModel.downloadUpdate(updateInfo)
+                UpdateProgressDialogFragment().show(parentFragmentManager, "UpdateProgressDialog")
+                dialog.dismiss()
+            }
+            .setNegativeButton("No", null)
+            .show()
     }
 
     private fun showUpdateDialog(updateInfo: UpdateInfo) {

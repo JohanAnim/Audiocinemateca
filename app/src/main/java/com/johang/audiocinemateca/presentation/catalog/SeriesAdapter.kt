@@ -38,6 +38,7 @@ class SeriesAdapter(private var series: List<Serie>, private val onItemClick: (S
         val serie = series[position]
         holder.titleTextView.text = serie.title
         holder.yearTextView.text = serie.anio
+        holder.itemView.contentDescription = "${serie.title}, ${serie.anio}"
         holder.itemView.setOnClickListener {
             holder.onItemClick(serie.id, "series")
         }

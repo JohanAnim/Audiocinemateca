@@ -27,6 +27,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import android.widget.ScrollView
 import com.johang.audiocinemateca.utils.AppUtil
+import com.johang.audiocinemateca.utils.AppUtil.showKeyboard
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -245,8 +246,40 @@ class LoginFragment : Fragment() {
                 }
                 
                 launch { 
-                    viewModel.showErrorAlert.collect {
-                        AppUtil.showAlertDialog(requireContext(), "Error", it)
+                    viewModel.showErrorAlert.collect { errorEvent ->
+                        when (errorEvent) {
+                            is LoginErrorEvent.InvalidCredentials -> {
+                                MaterialAlertDialogBuilder(requireContext())
+                                    .setTitle("Fallo en el inicio de sesión")
+                                    .setMessage("Por favor, revise su usuario o contraseña e inténtelo de nuevo.")
+                                    .setPositiveButton("Aceptar", null)
+                                    .show()
+                            }
+                            is LoginErrorEvent.ServerError -> {
+                                MaterialAlertDialogBuilder(requireContext())
+                                    .setTitle("Error del Servidor")
+                                    .setMessage("Ocurrió un error en el servidor. Por favor, inténtelo más tarde.")
+                                    .setPositiveButton("Aceptar", null)
+                                    .show()
+                            }
+                            is LoginErrorEvent.MissingUsername -> {
+                                Toast.makeText(requireContext(), "Por favor, ingrese su nombre de usuario.", Toast.LENGTH_SHORT).show()
+                                usernameEditText.requestFocus()
+                                usernameEditText.showKeyboard()
+                            }
+                            is LoginErrorEvent.MissingPassword -> {
+                                Toast.makeText(requireContext(), "Por favor, ingrese su contraseña.", Toast.LENGTH_SHORT).show()
+                                passwordEditText.requestFocus()
+                                passwordEditText.showKeyboard()
+                            }
+                            is LoginErrorEvent.Unknown -> {
+                                MaterialAlertDialogBuilder(requireContext())
+                                    .setTitle("Error Desconocido")
+                                    .setMessage(errorEvent.message)
+                                    .setPositiveButton("Aceptar", null)
+                                    .show()
+                            }
+                        }
                     }
                 }
                 launch {

@@ -42,7 +42,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 
 @AndroidEntryPoint
-@androidx.media3.common.util.UnstableApi
+@OptIn(androidx.media3.common.util.UnstableApi::class)
 class MainActivity : AppCompatActivity() {
 
     @Inject
@@ -271,13 +271,12 @@ class MainActivity : AppCompatActivity() {
                                 is UpdateCheckResult.UpdateAvailable -> {
                                     Log.d("MainActivity", "Update available: ${result.updateInfo.version}")
                                     val intent = Intent(ACTION_SHOW_UPDATE_INDICATOR)
-                                    LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
-                                    if (sharedPreferencesManager.getBoolean("auto_check_app", true)) {
-                                        showUpdateDialog(result.updateInfo)
-                                    } else {
-                                        Toast.makeText(this@MainActivity, "Hola. Hay una nueva versión de la app disponible! Para ver más detalles, dirígete a la pestaña de cuenta", Toast.LENGTH_LONG).show()
-                                    }
-                                }
+                                                                    LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
+                                                                    if (sharedPreferencesManager.getBoolean("auto_check_app", true)) {
+                                                                        showSimpleUpdatePrompt(result.updateInfo)
+                                                                    } else {
+                                                                        Toast.makeText(this@MainActivity, "Hola. Hay una nueva versión de la app disponible! Para ver más detalles, dirígete a la pestaña de cuenta", Toast.LENGTH_LONG).show()
+                                                                    }                                }
                                 is UpdateCheckResult.NoUpdateAvailable -> {
                                     Log.d("MainActivity", "No update available.")
                                     val intent = Intent(ACTION_HIDE_UPDATE_INDICATOR)
@@ -443,30 +442,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showUpdateDialog(updateInfo: com.johang.audiocinemateca.domain.model.UpdateInfo) {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_changelog, null)
-        val changelogTextView: TextView = dialogView.findViewById(R.id.changelog_text_view)
-
-        val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.getDefault())
-        val outputFormat = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
-        val date = inputFormat.parse(updateInfo.updatedAt)
-        val formattedDate = date?.let { outputFormat.format(it) } ?: "N/A"
-
-        val fullChangelogMarkdown = "Fecha de lanzamiento: $formattedDate\n\n${updateInfo.changelog}"
-
-        val markwon = io.noties.markwon.Markwon.create(this)
-        markwon.setMarkdown(changelogTextView, fullChangelogMarkdown)
-
+    private fun showErrorDialog(message: String) {
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle("Novedades de esta versión")
-            .setView(dialogView)
-            .setPositiveButton("Toque para actualizar ahora a la última versión de la app") {
-                dialog, _ ->
+            .setTitle("Error")
+            .setMessage(message)
+            .setPositiveButton("Aceptar", null)
+            .show()
+    }
+
+    private fun showSimpleUpdatePrompt(updateInfo: com.johang.audiocinemateca.domain.model.UpdateInfo) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Actualización Disponible")
+            .setMessage("Hay una nueva versión de la aplicación disponible. ¿Deseas descargarla ahora mismo?")
+            .setPositiveButton("Sí") { dialog, _ ->
                 accountViewModel.downloadUpdate(updateInfo)
                 com.johang.audiocinemateca.presentation.account.UpdateProgressDialogFragment().show(supportFragmentManager, "UpdateProgressDialog")
                 dialog.dismiss()
             }
-            .setNegativeButton("Más tarde", null)
+            .setNegativeButton("No", null)
             .show()
     }
 

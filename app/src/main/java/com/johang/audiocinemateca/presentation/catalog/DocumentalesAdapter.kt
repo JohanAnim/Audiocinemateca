@@ -38,6 +38,7 @@ class DocumentalesAdapter(private var documentales: List<Documentary>, private v
         val documental = documentales[position]
         holder.titleTextView.text = documental.title
         holder.yearTextView.text = documental.anio
+        holder.itemView.contentDescription = "${documental.title}, ${documental.anio}"
         holder.itemView.setOnClickListener {
             holder.onItemClick(documental.id, "documentales")
         }

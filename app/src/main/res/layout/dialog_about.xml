@@ -78,7 +78,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Actualmente, la aplicación se encuentra en una fase beta. Agradezco a todos los que la instalan, ya que se convierten en beta testers. Su retroalimentación es muy valiosa para mejorar la app. ¡Gracias por tu apoyo!" />
+            android:text="Actualmente, la aplicación se encuentra en una fase beta. Te invitamos a unirte a nuestro grupo de beta testers en Telegram para recibir las últimas actualizaciones, dar tu retroalimentación y ser parte de la comunidad. ¡Tu opinión es muy valiosa para mejorar la app!" />
 
         <Button
             android:id="@+id/feedback_button"
@@ -87,7 +87,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="8dp"
-            android:text="Dar una retroalimentación al desarrollador" />
+            android:text="Únete al grupo de Beta Testers en Telegram" />
 
         <TextView
             android:layout_width="wrap_content"

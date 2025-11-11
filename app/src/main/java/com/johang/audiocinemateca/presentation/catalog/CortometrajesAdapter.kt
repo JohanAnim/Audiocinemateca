@@ -38,6 +38,7 @@ class CortometrajesAdapter(private var cortometrajes: List<ShortFilm>, private v
         val cortometraje = cortometrajes[position]
         holder.titleTextView.text = cortometraje.title
         holder.yearTextView.text = cortometraje.anio
+        holder.itemView.contentDescription = "${cortometraje.title}, ${cortometraje.anio}"
         holder.itemView.setOnClickListener {
             holder.onItemClick(cortometraje.id, "cortometrajes")
         }
