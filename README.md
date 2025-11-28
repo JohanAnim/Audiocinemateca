@@ -77,10 +77,10 @@ La aplicación está construida siguiendo las mejores prácticas de desarrollo d
 ## Desarrolladores
 
 *   **[Johan G.](https://github.com/JohanAnim)**
-*   **[Cesar Verástegui (metalalchemist)](https://github.com/metalalchemist)**
+*   **[César Verástegui (metalalchemist)](https://github.com/metalalchemist)**
 
 ## Agradecimientos y Derechos
 
 Extendemos un agradecimiento especial a **José Manuel Delicado**, creador de la página oficial [audiocinemateca.com](https://audiocinemateca.com).
 
-Todos los derechos sobre el contenido reproducido en esta aplicación pertenecen exclusivamente a él y a audiocinemateca.com. Esta aplicación es una extensión no oficial que busca acercar su valioso contenido a la comunidad de usuarios de Android.
+Todos los derechos sobre el contenido reproducido en esta aplicación pertenecen exclusivamente a él y a audiocinemateca.com. Esta aplicación es una extensión que busca acercar su valioso contenido a la comunidad de usuarios de Android.
