@@ -16,6 +16,9 @@ jobs:
           java-version: '17' # Java 17 es estándar para builds modernos de Android
           cache: 'gradle'
 
+      - name: "Grant execute permission for gradlew"
+        run: chmod +x gradlew
+
       - name: "Build Release APK"
         # Esto generará app/build/outputs/apk/release/audiocinemateca_release.apk
         run: ./gradlew assembleRelease --stacktrace
