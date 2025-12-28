@@ -1,66 +1,70 @@
-name: "Build Release APK"
+name: "Build & Publish Release"
 
 on:
-  workflow_dispatch: # Permite ejecución manual desde la pestaña Actions
+  push:
+    tags:
+      - 'v*'   # Se activa con etiquetas como v2.9.8
+      - '2.*'  # Se activa con etiquetas que empiecen por 2 (ej: 2.9.8)
+  workflow_dispatch: # Mantenemos la opción manual por si acaso
+
+permissions:
+  contents: write # Permiso necesario para crear la Release
 
 jobs:
-  build-release:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        # No especificamos 'ref' para que funcione en la rama actual (main/master)
 
       - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17' # Java 17 es estándar para builds modernos de Android
+          java-version: '17'
           cache: 'gradle'
 
       - name: "Grant execute permission for gradlew"
         run: chmod +x gradlew
 
       - name: "Build Release APK"
-        # Esto generará app/build/outputs/apk/release/audiocinemateca_release.apk
         run: ./gradlew assembleRelease --stacktrace
 
-      # --- PASO OPCIONAL DE FIRMA (Descomentar si configuras Secrets) ---
-      # - name: Sign Release APK
-      #   uses: r0adkll/sign-android-release@v1
-      #   id: sign_app
-      #   with:
-      #     releaseDirectory: app/build/outputs/apk/release
-      #     signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-      #     alias: ${{ secrets.KEY_ALIAS }}
-      #     keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-      #     keyPassword: ${{ secrets.KEY_PASSWORD }}
-      #   env:
-      #     BUILD_TOOLS_VERSION: "34.0.0"
+      - name: "Sign Release APK"
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
 
       - name: "Rename APK with Version"
         id: rename_apk
         run: |
-          # Extraer el nombre de la versión del archivo metadata generado por Gradle
-          VERSION_NAME="$(jq -r ".elements[0].versionName" "app/build/outputs/apk/release/output-metadata.json")"
+          # Obtenemos la versión del tag que disparó el evento (ej: v2.9.8)
+          TAG_NAME="${{ github.ref_name }}"
+          echo "Tag detectado: $TAG_NAME"
           
-          echo "Version encontrada: $VERSION_NAME" >> "$GITHUB_STEP_SUMMARY"
+          SIGNED_APK_PATH="${{ steps.sign_app.outputs.signedReleaseFile }}"
+          NEW_FILENAME="app/build/outputs/apk/release/Audiocinemateca_$TAG_NAME.apk"
           
-          # Definir nombres
-          OLD_FILENAME="app/build/outputs/apk/release/audiocinemateca_release.apk"
-          NEW_FILENAME="app/build/outputs/apk/release/Audiocinemateca_v$VERSION_NAME.apk"
-          
-          # Renombrar si existe
-          if [ -f "$OLD_FILENAME" ]; then
-            mv "$OLD_FILENAME" "$NEW_FILENAME"
+          if [ -f "$SIGNED_APK_PATH" ]; then
+            mv "$SIGNED_APK_PATH" "$NEW_FILENAME"
+            echo "apk_path=$NEW_FILENAME" >> $GITHUB_OUTPUT
             echo "APK renombrado a: $NEW_FILENAME"
           else
-            # Si se usó el paso de firma (sign_app), el nombre puede haber cambiado.
-            # Ajustar lógica aquí si se activa la firma.
-            echo "El archivo $OLD_FILENAME no se encontró. Verificando otros archivos..."
-            ls -R app/build/outputs/apk/release/
+            echo "Error: No se encontró el APK firmado."
+            exit 1
           fi
 
-      - name: "Upload APK Artifact"
-        uses: actions/upload-artifact@v4
+      - name: "Create GitHub Release"
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/') # Solo si es un Tag
         with:
-          name: Audiocinemateca-Release-APK
-          path: app/build/outputs/apk/release/*.apk
+          name: "Nueva actualización disponible de la App: ${{ github.ref_name }}"
+          body_path: changelog.txt
+          files: ${{ steps.rename_apk.outputs.apk_path }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

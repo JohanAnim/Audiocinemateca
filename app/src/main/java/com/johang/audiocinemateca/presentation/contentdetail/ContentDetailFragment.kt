@@ -56,6 +56,8 @@ class ContentDetailFragment : Fragment() {
     @Inject
     lateinit var downloadManager: DownloadManager
 
+    private var favoriteMenuItem: MenuItem? = null
+
     // Views
     private lateinit var contentTitleHeader: TextView
     private lateinit var listenNowButton: Button
@@ -145,9 +147,16 @@ class ContentDetailFragment : Fragment() {
                         is ViewAction.ShowError -> {
                             showErrorDialog(action.message)
                         }
+                        is ViewAction.ShowMessage -> {
+                            // Anunciar directamente al lector de pantalla sin mostrar Toast visual
+                            requireView().announceForAccessibility(action.message)
+                        }
                         is ViewAction.StopDownloadService -> {
                             val intent = android.content.Intent(requireContext(), com.johang.audiocinemateca.presentation.download.DownloadService::class.java)
                             requireContext().stopService(intent)
+                        }
+                        is ViewAction.UpdateFavoriteIcon -> {
+                            updateFavoriteIcon(action.isFavorite)
                         }
                     }
                 }
@@ -626,6 +635,8 @@ class ContentDetailFragment : Fragment() {
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.content_detail_menu, menu)
+        favoriteMenuItem = menu.findItem(R.id.action_favorite)
+        updateFavoriteIcon(viewModel.isFavorite.value)
         super.onCreateOptionsMenu(menu, inflater)
     }
 
@@ -639,8 +650,18 @@ class ContentDetailFragment : Fragment() {
                 shareContent()
                 true
             }
+            R.id.action_favorite -> {
+                viewModel.toggleFavorite()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun updateFavoriteIcon(isFavorite: Boolean) {
+        val iconRes = if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
+        favoriteMenuItem?.setIcon(ContextCompat.getDrawable(requireContext(), iconRes))
+        favoriteMenuItem?.title = if (isFavorite) "Eliminar de favoritos" else "Añadir a favoritos"
     }
 
     private fun shareContent() {

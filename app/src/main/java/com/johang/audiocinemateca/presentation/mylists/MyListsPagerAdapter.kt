@@ -17,7 +17,7 @@ class MyListsPagerAdapter(fragmentActivity: FragmentActivity) : FragmentStateAda
     override fun createFragment(position: Int): Fragment {
         return when (position) {
             0 -> PlaybackHistoryFragment() // Nuestro nuevo fragmento de historial
-            1 -> PlaceholderFragment.newInstance("Favoritos") // Fragmento para Favoritos
+            1 -> FavoritosFragment() // Fragmento real de Favoritos
             2 -> PlaceholderFragment.newInstance("Recomendaciones") // Fragmento para Recomendaciones
             else -> throw IllegalArgumentException("Invalid position")
         }

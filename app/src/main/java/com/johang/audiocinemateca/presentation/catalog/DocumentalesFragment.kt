@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import androidx.navigation.fragment.findNavController
 import com.johang.audiocinemateca.presentation.catalog.CatalogFragmentDirections
 
+import com.johang.audiocinemateca.util.ShareUtils
+
 @AndroidEntryPoint
 class DocumentalesFragment : Fragment() {
 
@@ -49,10 +51,18 @@ class DocumentalesFragment : Fragment() {
         loadingIndicatorContainer = view.findViewById(R.id.loading_indicator_container)
         recyclerView.layoutManager = LinearLayoutManager(context)
 
-        documentalesAdapter = DocumentalesAdapter(emptyList()) { itemId, itemType ->
-            val action = CatalogFragmentDirections.actionGlobalContentDetailFragment(itemId, itemType)
-            findNavController().navigate(action)
-        }
+        documentalesAdapter = DocumentalesAdapter(
+            onItemClick = { itemId, itemType ->
+                val action = CatalogFragmentDirections.actionGlobalContentDetailFragment(itemId, itemType)
+                findNavController().navigate(action)
+            },
+            onFavoriteToggle = { documental, isFavorite ->
+                viewModel.toggleFavorite(documental, isFavorite)
+            },
+            onShareClick = { documental ->
+                ShareUtils.shareContent(requireContext(), documental)
+            }
+        )
         recyclerView.adapter = documentalesAdapter
 
         setupScrollListener()
@@ -82,8 +92,14 @@ class DocumentalesFragment : Fragment() {
     private fun observeViewModel() {
         lifecycleScope.launch {
             viewModel.documentales.collectLatest { documentales ->
-                documentalesAdapter.updateDocumentales(documentales)
+                documentalesAdapter.submitList(documentales)
                 updateVisibility(documentales.isEmpty(), viewModel.isLoading.value)
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.favoriteIds.collectLatest { favoriteIds ->
+                documentalesAdapter.setFavoriteIds(favoriteIds)
             }
         }
 

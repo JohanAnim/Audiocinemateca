@@ -82,7 +82,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/buttons_container"
-        tools:listitem="@layout/item_download" />
+        tools:listitem="@layout/item_download_single" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/loading_container"

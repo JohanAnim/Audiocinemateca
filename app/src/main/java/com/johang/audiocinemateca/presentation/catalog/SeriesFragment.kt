@@ -18,6 +18,8 @@ import kotlinx.coroutines.launch
 import androidx.navigation.fragment.findNavController
 import com.johang.audiocinemateca.presentation.catalog.CatalogFragmentDirections
 
+import com.johang.audiocinemateca.util.ShareUtils
+
 @AndroidEntryPoint
 class SeriesFragment : Fragment() {
 
@@ -48,10 +50,18 @@ class SeriesFragment : Fragment() {
         loadingIndicatorContainer = view.findViewById(R.id.loading_indicator_container)
         recyclerView.layoutManager = LinearLayoutManager(context)
 
-        seriesAdapter = SeriesAdapter(emptyList()) { itemId, itemType ->
-            val action = CatalogFragmentDirections.actionGlobalContentDetailFragment(itemId, itemType)
-            findNavController().navigate(action)
-        }
+        seriesAdapter = SeriesAdapter(
+            onItemClick = { itemId, itemType ->
+                val action = CatalogFragmentDirections.actionGlobalContentDetailFragment(itemId, itemType)
+                findNavController().navigate(action)
+            },
+            onFavoriteToggle = { serie, isFavorite ->
+                viewModel.toggleFavorite(serie, isFavorite)
+            },
+            onShareClick = { serie ->
+                ShareUtils.shareContent(requireContext(), serie)
+            }
+        )
         recyclerView.adapter = seriesAdapter
 
         setupScrollListener()
@@ -79,8 +89,14 @@ class SeriesFragment : Fragment() {
     private fun observeViewModel() {
         lifecycleScope.launch {
             viewModel.series.collect {
-                seriesAdapter.updateSeries(it)
+                seriesAdapter.submitList(it)
                 updateVisibility(it.isEmpty(), viewModel.isLoading.value)
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.favoriteIds.collect { favoriteIds ->
+                seriesAdapter.setFavoriteIds(favoriteIds)
             }
         }
 

@@ -52,11 +52,17 @@ object AppModule {
             }
         }
 
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("CREATE TABLE IF NOT EXISTS `favorites` (`contentId` TEXT NOT NULL, `title` TEXT NOT NULL, `contentType` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, PRIMARY KEY(`contentId`))")
+            }
+        }
+
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             "audiocinemateca.db"
-        ).addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9).build()
+        ).addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10).build()
     }
 
     @Provides
@@ -81,6 +87,12 @@ object AppModule {
     @Singleton
     fun provideDownloadDao(appDatabase: AppDatabase): DownloadDao {
         return appDatabase.downloadDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFavoritesDao(appDatabase: AppDatabase): com.johang.audiocinemateca.data.local.dao.FavoritesDao {
+        return appDatabase.favoritesDao()
     }
 
     @Provides

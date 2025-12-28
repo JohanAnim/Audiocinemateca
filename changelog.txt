@@ -1,19 +1,8 @@
-v2.9.7
-- **Nueva Característica:** Se ha añadido un diálogo de "Novedades" que aparece automáticamente una sola vez después de actualizar la aplicación.
-- **Nueva Característica:** Este nuevo diálogo muestra los cambios más recientes de la versión y ofrece una opción para donar y apoyar el desarrollo.
-- **Nueva Característica:** Se ha añadido una preferencia en "Ajustes" para seleccionar el orden de filtrado por defecto del catálogo.
-- **Funcionalidad:** El botón "Sorpréndeme" ahora es sensible a la categoría, sugiriendo contenido aleatorio de la pestaña actual.
-- **Funcionalidad:** Añadido un botón en la pantalla de Cuenta para unirse al grupo de Telegram.
-- **Corrección:** Se ha solucionado un error importante en el historial de reproducción que provocaba que aparecieran múltiples episodios de la misma serie. Ahora, el historial solo mostrará el último episodio visto de cada serie.
-- **Corrección:** Los filtros de Género y País ahora se mantienen al navegar hacia atrás, en lugar de reiniciarse.
-- **Corrección:** Se ha implementado la lógica de filtrado por país que faltaba.
-- **Mejora de UI/UX:** Deshabilitado el gesto de deslizamiento entre pestañas del catálogo para evitar conflictos con el scroll vertical.
-- **Mejora de UI/UX:** Se ha reemplazado el selector de Género y País por un diálogo con búsqueda para facilitar la selección en listas largas.
-- **Mejora de UI/UX:** Añadido un indicador de carga en la pantalla de descargas.
-- **Mejora de UI/UX:** Simplificado el diálogo de actualización de la aplicación a una pregunta directa, tanto en la comprobación manual como al inicio de la app.
-- **Mejora de UI/UX:** Actualizado el diálogo "Acerca de" para invitar al grupo de Telegram.
-- **Mejora de UI/UX:** Mejorado el manejo de errores en la pantalla de inicio de sesión con mensajes claros y específicos para el usuario según el tipo de error (ej. credenciales incorrectas, error del servidor).
-- **Mejora de UI/UX:** Para campos de inicio de sesión requeridos, ahora se muestra un mensaje Toast y se enfoca el campo correspondiente en lugar de un diálogo de error.
-- **Accesibilidad:** Mejorada la descripción de contenido en las listas del catálogo para lectores de pantalla, anunciando título y año.
-- **Accesibilidad:** Implementado un indicador de carga y un anuncio para lectores de pantalla al abrir los filtros de "Género" y "Países".
-- **UI:** Se ha añadido un aviso en la sección de "Inteligencia Artificial" en Ajustes para indicar que las funciones aún no están implementadas.
+Novedades en Audiocinemateca v2.9.8
+
+- ¡Llegaron los Favoritos!: Ahora puedes guardar tus películas, series, documentales y cortometrajes preferidos en una sección dedicada para acceder a ellos rápidamente.
+- Mejoras de Accesibilidad: Hemos optimizado la experiencia con lectores de pantalla (TalkBack y Jieshuo). Ahora puedes realizar acciones rápidas como reproducir o ver información directamente desde las listas usando acciones personalizadas.
+- Gestión de Descargas Mejorada: Nueva interfaz y acciones más sencillas para gestionar tu contenido sin conexión.
+- Compartir es más fácil: Hemos simplificado la forma en que compartes contenido con tus amigos.
+- Optimizaciones internas: Limpieza de archivos innecesarios para que la aplicación sea más ligera y fluida.
+- Sistema de actualizaciones: Hemos mejorado la forma en que publicamos nuevas versiones para que siempre tengas lo último de Audiocinemateca de forma más rápida.

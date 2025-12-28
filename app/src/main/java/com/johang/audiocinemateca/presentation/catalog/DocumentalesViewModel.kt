@@ -12,16 +12,33 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.johang.audiocinemateca.domain.usecase.AddFavoriteUseCase
+import com.johang.audiocinemateca.domain.usecase.GetFavoritesUseCase
+import com.johang.audiocinemateca.domain.usecase.RemoveFavoriteUseCase
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel
 class DocumentalesViewModel @Inject constructor(
     private val catalogRepository: CatalogRepository,
     val filterRepository: FilterRepository,
-    private val catalogFilter: CatalogFilter
+    private val catalogFilter: CatalogFilter,
+    private val getFavoritesUseCase: GetFavoritesUseCase,
+    private val addFavoriteUseCase: AddFavoriteUseCase,
+    private val removeFavoriteUseCase: RemoveFavoriteUseCase
 ) : ViewModel() {
 
     private val _documentales = MutableStateFlow<List<com.johang.audiocinemateca.data.model.Documentary>>(emptyList())
     val documentales: StateFlow<List<com.johang.audiocinemateca.data.model.Documentary>> = _documentales.asStateFlow()
+
+    val favoriteIds: StateFlow<Set<String>> = getFavoritesUseCase()
+        .map { favorites -> favorites.map { it.contentId }.toSet() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptySet()
+        )
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -58,9 +75,7 @@ class DocumentalesViewModel @Inject constructor(
                 val fullCatalog = catalogRepository.getCatalog()
                 if (fullCatalog != null) {
                     val rawItems = fullCatalog.documentaries.orEmpty()
-
                     val catalogItems: List<com.johang.audiocinemateca.domain.model.CatalogItem> = rawItems
-
                     val finalFilteredItems = catalogFilter.applyFilter(catalogItems, filterOptions).filterIsInstance<com.johang.audiocinemateca.data.model.Documentary>()
 
                     val newDocumentales = finalFilteredItems.drop(currentPage * pageSize).take(pageSize)
@@ -76,6 +91,16 @@ class DocumentalesViewModel @Inject constructor(
                 _errorMessage.value = e.message
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun toggleFavorite(documental: com.johang.audiocinemateca.data.model.Documentary, isFavorite: Boolean) {
+        viewModelScope.launch {
+            if (isFavorite) {
+                addFavoriteUseCase(documental.id, documental.title, "documentary")
+            } else {
+                removeFavoriteUseCase(documental.id)
             }
         }
     }

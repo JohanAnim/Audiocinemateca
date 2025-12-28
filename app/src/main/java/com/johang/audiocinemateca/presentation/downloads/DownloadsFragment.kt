@@ -168,6 +168,12 @@ class DownloadsFragment : Fragment(), DownloadsActionsBottomSheet.DownloadsActio
                     isGroup = false,
                     contentType = downloadEntity.contentType
                 ).show(childFragmentManager, DownloadsActionsBottomSheet.TAG)
+            },
+            onViewDetails = { itemId, itemType ->
+                onViewDetailsClicked(itemId, itemType)
+            },
+            onDelete = { contentId, partIndex, episodeIndex, title, isGroup ->
+                onDeleteClicked(contentId, partIndex, episodeIndex, title, isGroup)
             }
         )
         recyclerView.adapter = downloadsAdapter

@@ -21,6 +21,8 @@ import com.johang.audiocinemateca.presentation.catalog.CatalogFragmentDirections
 
 import android.util.Log
 
+import com.johang.audiocinemateca.util.ShareUtils
+
 @AndroidEntryPoint
 class PeliculasFragment : Fragment() {
 
@@ -51,10 +53,18 @@ class PeliculasFragment : Fragment() {
         loadingIndicatorContainer = view.findViewById(R.id.loading_indicator_container)
         recyclerView.layoutManager = LinearLayoutManager(context)
 
-        movieAdapter = MovieAdapter(emptyList()) { itemId, itemType ->
-            val action = CatalogFragmentDirections.actionGlobalContentDetailFragment(itemId, itemType)
-            findNavController().navigate(action)
-        }
+        movieAdapter = MovieAdapter(
+            onItemClick = { itemId, itemType ->
+                val action = CatalogFragmentDirections.actionGlobalContentDetailFragment(itemId, itemType)
+                findNavController().navigate(action)
+            },
+            onFavoriteToggle = { movie, isFavorite ->
+                viewModel.toggleFavorite(movie, isFavorite)
+            },
+            onShareClick = { movie ->
+                ShareUtils.shareContent(requireContext(), movie)
+            }
+        )
         recyclerView.adapter = movieAdapter
 
         setupScrollListener()
@@ -84,10 +94,15 @@ class PeliculasFragment : Fragment() {
     private fun observeViewModel() {
         lifecycleScope.launch {
             viewModel.movies.collectLatest { movies ->
-                Log.d("PeliculasFragment", "Received new movie list. Size: ${movies.size}. First movie title: ${movies.firstOrNull()?.title ?: "N/A"}")
-                movieAdapter.updateMovies(movies)
-                // Update visibility based on loading state and movie list size
+                Log.d("PeliculasFragment", "Received new movie list. Size: ${movies.size}")
+                movieAdapter.submitList(movies)
                 updateVisibility(movies.isEmpty(), viewModel.isLoading.value)
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.favoriteIds.collectLatest { favoriteIds ->
+                movieAdapter.setFavoriteIds(favoriteIds)
             }
         }
 

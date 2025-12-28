@@ -22,7 +22,11 @@
     <fragment
         android:id="@+id/myListsFragment"
         android:name="com.johang.audiocinemateca.presentation.mylists.MyListsFragment"
-        android:label="MyListsFragment" />
+        android:label="MyListsFragment">
+        <action
+            android:id="@+id/action_myListsFragment_to_contentDetailFragment"
+            app:destination="@id/contentDetailFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/accountFragment"

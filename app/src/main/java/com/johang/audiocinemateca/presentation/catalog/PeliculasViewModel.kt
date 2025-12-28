@@ -12,18 +12,34 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-import android.util.Log // Keep this import for debugging
+import android.util.Log
+import com.johang.audiocinemateca.domain.usecase.AddFavoriteUseCase
+import com.johang.audiocinemateca.domain.usecase.GetFavoritesUseCase
+import com.johang.audiocinemateca.domain.usecase.RemoveFavoriteUseCase
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.map
 
 @HiltViewModel
 class PeliculasViewModel @Inject constructor(
     private val catalogRepository: CatalogRepository,
     val filterRepository: FilterRepository,
-    private val catalogFilter: CatalogFilter
+    private val catalogFilter: CatalogFilter,
+    private val getFavoritesUseCase: GetFavoritesUseCase,
+    private val addFavoriteUseCase: AddFavoriteUseCase,
+    private val removeFavoriteUseCase: RemoveFavoriteUseCase
 ) : ViewModel() {
 
     private val _movies = MutableStateFlow<List<com.johang.audiocinemateca.data.model.Movie>>(emptyList())
     val movies: StateFlow<List<com.johang.audiocinemateca.data.model.Movie>> = _movies.asStateFlow()
+
+    val favoriteIds: StateFlow<Set<String>> = getFavoritesUseCase()
+        .map { favorites -> favorites.map { it.contentId }.toSet() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptySet()
+        )
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -32,7 +48,7 @@ class PeliculasViewModel @Inject constructor(
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     private var currentPage = 0
-    val pageSize = 20 // Make pageSize public
+    val pageSize = 20
     var isLastPage = false
 
     init {
@@ -42,60 +58,50 @@ class PeliculasViewModel @Inject constructor(
     private fun observeFilterChanges() {
         viewModelScope.launch {
             filterRepository.getFilterOptionsFlow("peliculas").collect {
-                Log.d("PeliculasViewModel", "observeFilterChanges: Filter options for 'peliculas' changed to: $it")
-                // Reset pagination when filters change
                 currentPage = 0
                 isLastPage = false
-                _movies.value = emptyList() // Clear the current list
-                Log.d("PeliculasViewModel", "observeFilterChanges: Calling loadMovies() after filter change.")
+                _movies.value = emptyList()
                 loadMovies()
             }
         }
     }
 
     fun loadMovies() {
-        if (_isLoading.value || isLastPage) {
-            Log.d("PeliculasViewModel", "loadMovies: Already loading or last page. isLoading: ${_isLoading.value}, isLastPage: $isLastPage")
-            return
-        }
+        if (_isLoading.value || isLastPage) return
 
         _isLoading.value = true
         viewModelScope.launch {
             try {
                 val filterOptions = filterRepository.getFilterOptionsFlow("peliculas").first()
-                Log.d("PeliculasViewModel", "loadMovies: Current filter options: $filterOptions")
-
                 val fullCatalog = catalogRepository.getCatalog()
                 if (fullCatalog != null) {
                     val rawItems = fullCatalog.movies.orEmpty()
-
                     val catalogItems: List<com.johang.audiocinemateca.domain.model.CatalogItem> = rawItems
-
                     val finalFilteredItems = catalogFilter.applyFilter(catalogItems, filterOptions).filterIsInstance<com.johang.audiocinemateca.data.model.Movie>()
-                    Log.d("PeliculasViewModel", "loadMovies: Filtered items size after applyFilter: ${finalFilteredItems.size}")
 
                     val newMovies = finalFilteredItems.drop(currentPage * pageSize).take(pageSize)
-                    Log.d("PeliculasViewModel", "loadMovies: New movies for current page size: ${newMovies.size}")
 
-                    if (newMovies.isEmpty() && currentPage == 0) {
-                        _movies.value = emptyList() // Ensure empty list is emitted if no results on first page
+                    if (newMovies.isEmpty()) {
                         isLastPage = true
-                        Log.d("PeliculasViewModel", "loadMovies: No movies found for current filters on first page.")
-                    } else if (newMovies.isEmpty()) {
-                        isLastPage = true
-                        Log.d("PeliculasViewModel", "loadMovies: No more movies, setting isLastPage to true.")
                     } else {
                         _movies.value = (_movies.value) + newMovies
                         currentPage++
-                        Log.d("PeliculasViewModel", "loadMovies: Appended ${newMovies.size} movies. Current total: ${_movies.value.size}")
                     }
                 }
             } catch (e: Exception) {
                 _errorMessage.value = e.message
-                Log.e("PeliculasViewModel", "Error loading movies: ${e.message}", e)
             } finally {
                 _isLoading.value = false
-                Log.d("PeliculasViewModel", "loadMovies: Loading finished. isLoading: ${_isLoading.value}")
+            }
+        }
+    }
+
+    fun toggleFavorite(movie: com.johang.audiocinemateca.data.model.Movie, isFavorite: Boolean) {
+        viewModelScope.launch {
+            if (isFavorite) {
+                addFavoriteUseCase(movie.id, movie.title, "movie")
+            } else {
+                removeFavoriteUseCase(movie.id)
             }
         }
     }

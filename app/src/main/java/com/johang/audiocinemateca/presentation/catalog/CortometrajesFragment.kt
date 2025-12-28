@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import androidx.navigation.fragment.findNavController
 import com.johang.audiocinemateca.presentation.catalog.CatalogFragmentDirections
 
+import com.johang.audiocinemateca.util.ShareUtils
+
 @AndroidEntryPoint
 class CortometrajesFragment : Fragment() {
 
@@ -49,10 +51,18 @@ class CortometrajesFragment : Fragment() {
         loadingIndicatorContainer = view.findViewById(R.id.loading_indicator_container)
         recyclerView.layoutManager = LinearLayoutManager(context)
 
-        cortometrajesAdapter = CortometrajesAdapter(emptyList()) { itemId, itemType ->
-            val action = CatalogFragmentDirections.actionGlobalContentDetailFragment(itemId, itemType)
-            findNavController().navigate(action)
-        }
+        cortometrajesAdapter = CortometrajesAdapter(
+            onItemClick = { itemId, itemType ->
+                val action = CatalogFragmentDirections.actionGlobalContentDetailFragment(itemId, itemType)
+                findNavController().navigate(action)
+            },
+            onFavoriteToggle = { corto, isFavorite ->
+                viewModel.toggleFavorite(corto, isFavorite)
+            },
+            onShareClick = { corto ->
+                ShareUtils.shareContent(requireContext(), corto)
+            }
+        )
         recyclerView.adapter = cortometrajesAdapter
 
         setupScrollListener()
@@ -82,8 +92,14 @@ class CortometrajesFragment : Fragment() {
     private fun observeViewModel() {
         lifecycleScope.launch {
             viewModel.cortometrajes.collectLatest { cortometrajes ->
-                cortometrajesAdapter.updateCortometrajes(cortometrajes)
+                cortometrajesAdapter.submitList(cortometrajes)
                 updateVisibility(cortometrajes.isEmpty(), viewModel.isLoading.value)
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.favoriteIds.collectLatest { favoriteIds ->
+                cortometrajesAdapter.setFavoriteIds(favoriteIds)
             }
         }
 

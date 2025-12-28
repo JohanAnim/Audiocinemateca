@@ -16,12 +16,16 @@ import com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity
 import com.johang.audiocinemateca.data.repository.DownloadRepository
 import com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
 import com.johang.audiocinemateca.domain.model.CatalogItem
+import com.johang.audiocinemateca.domain.usecase.AddFavoriteUseCase
+import com.johang.audiocinemateca.domain.usecase.CheckFavoriteStatusUseCase
+import com.johang.audiocinemateca.domain.usecase.RemoveFavoriteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,6 +38,8 @@ sealed class ViewAction {
     data class ShowCancelConfirmation(val partIndex: Int, val episodeIndex: Int) : ViewAction()
     data class ShowDownloadFailed(val reason: String) : ViewAction()
     data class ShowError(val message: String) : ViewAction()
+    data class ShowMessage(val message: String) : ViewAction()
+    data class UpdateFavoriteIcon(val isFavorite: Boolean) : ViewAction()
     object StopDownloadService : ViewAction()
 }
 
@@ -50,14 +56,21 @@ class ContentDetailViewModel @Inject constructor(
     private val playbackProgressRepository: PlaybackProgressRepository,
     private val downloadRepository: DownloadRepository,
     private val progressFlow: MutableStateFlow<Int>,
+    private val addFavoriteUseCase: AddFavoriteUseCase,
+    private val removeFavoriteUseCase: RemoveFavoriteUseCase,
+    private val checkFavoriteStatusUseCase: CheckFavoriteStatusUseCase,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _contentItem = MutableStateFlow<CatalogItem?>(null)
     val contentItem: StateFlow<CatalogItem?> = _contentItem.asStateFlow()
 
+    private val _isFavorite = MutableStateFlow(false)
+    val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
@@ -132,6 +145,7 @@ class ContentDetailViewModel @Inject constructor(
                 Log.d("ContentDetailViewModel", "Item found in ViewModel: ${item != null}")
                 _contentItem.value = item
                 if (item != null) {
+                    checkFavoriteStatus(item.id)
                     initializeDownloadStates(item)
                     if (item is Serie) {
                         updateTargetedEpisode(item)
@@ -142,6 +156,36 @@ class ContentDetailViewModel @Inject constructor(
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    private fun checkFavoriteStatus(contentId: String) {
+        viewModelScope.launch {
+            checkFavoriteStatusUseCase(contentId).collectLatest { isFav ->
+                _isFavorite.value = isFav
+                _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.UpdateFavoriteIcon(isFav)))
+            }
+        }
+    }
+
+    fun toggleFavorite() {
+        val item = _contentItem.value ?: return
+        viewModelScope.launch {
+            if (_isFavorite.value) {
+                removeFavoriteUseCase(item.id)
+                _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowMessage("Se ha eliminado este título de tus favoritos")))
+            } else {
+                val type = when (item) {
+                    is Movie -> "movie"
+                    is Serie -> "serie"
+                    is Documentary -> "documentary"
+                    is ShortFilm -> "shortfilm"
+                    else -> "unknown"
+                }
+                addFavoriteUseCase(item.id, item.title, type)
+                _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowMessage("Se ha agregado este título a tus favoritos")))
+            }
+            // The flow in checkFavoriteStatus will update the UI automatically
         }
     }
 

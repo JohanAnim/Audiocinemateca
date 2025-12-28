@@ -14,10 +14,14 @@ import com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity
 import com.johang.audiocinemateca.data.local.entities.SearchHistoryEntity
 import com.johang.audiocinemateca.data.local.migrations.Migration4To5
 
-@Database(entities = [CatalogVersionEntity::class, CatalogDataEntity::class, PlaybackProgressEntity::class, SearchHistoryEntity::class, DownloadEntity::class], version = 9, exportSchema = true, autoMigrations = [AutoMigration(from = 4, to = 5, spec = Migration4To5::class)])
+import com.johang.audiocinemateca.data.local.dao.FavoritesDao
+import com.johang.audiocinemateca.data.local.entities.FavoriteEntity
+
+@Database(entities = [CatalogVersionEntity::class, CatalogDataEntity::class, PlaybackProgressEntity::class, SearchHistoryEntity::class, DownloadEntity::class, FavoriteEntity::class], version = 10, exportSchema = true, autoMigrations = [AutoMigration(from = 4, to = 5, spec = Migration4To5::class)])
 abstract class AppDatabase : RoomDatabase() {
     abstract fun catalogDao(): CatalogDao
     abstract fun playbackProgressDao(): PlaybackProgressDao
     abstract fun searchHistoryDao(): SearchHistoryDao
     abstract fun downloadDao(): DownloadDao
+    abstract fun favoritesDao(): FavoritesDao
 }

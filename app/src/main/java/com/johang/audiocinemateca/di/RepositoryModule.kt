@@ -82,4 +82,12 @@ object RepositoryModule {
     ): com.johang.audiocinemateca.data.repository.ContentRepository {
         return com.johang.audiocinemateca.data.repository.ContentRepository(catalogRepository, gson)
     }
+
+    @Provides
+    @Singleton
+    fun provideFavoritesRepository(
+        favoritesDao: com.johang.audiocinemateca.data.local.dao.FavoritesDao
+    ): com.johang.audiocinemateca.domain.repository.FavoritesRepository {
+        return com.johang.audiocinemateca.data.repository.FavoritesRepositoryImpl(favoritesDao)
+    }
 }
