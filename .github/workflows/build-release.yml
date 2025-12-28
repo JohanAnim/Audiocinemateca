@@ -31,13 +31,14 @@ jobs:
       - name: "Sign Release APK"
         uses: r0adkll/sign-android-release@v1
         id: sign_app
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
         with:
           releaseDirectory: app/build/outputs/apk/release
           signingKeyBase64: ${{ secrets.SIGNING_KEY }}
           alias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
-          buildToolsVersion: "34.0.0"
 
       - name: "Rename APK with Version"
         id: rename_apk
