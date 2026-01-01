@@ -16,4 +16,7 @@
 .cxx
 local.properties
 logs.txt
-/app/release/
+/app/release/*
+!/app/release/*.apk
+
+google-services.json

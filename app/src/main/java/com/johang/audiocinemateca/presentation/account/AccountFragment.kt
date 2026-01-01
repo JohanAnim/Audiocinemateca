@@ -33,6 +33,10 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import javax.inject.Inject
 
+import androidx.appcompat.app.AppCompatActivity
+
+import com.google.firebase.auth.FirebaseAuth
+
 @AndroidEntryPoint
 class AccountFragment : Fragment() {
 
@@ -41,6 +45,8 @@ class AccountFragment : Fragment() {
 
     @Inject
     lateinit var voicePlayer: VoicePlayer
+
+    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
 
     private val viewModel: AccountViewModel by activityViewModels()
 
@@ -59,16 +65,29 @@ class AccountFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_account, container, false)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Ocultar la ActionBar global para usar nuestro encabezado personalizado
+        (activity as? AppCompatActivity)?.supportActionBar?.hide()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Mostrar la ActionBar global al salir de este fragmento
+        (activity as? AppCompatActivity)?.supportActionBar?.show()
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val welcomeText: TextView = view.findViewById(R.id.welcome_text)
+        val headerUsername: TextView = view.findViewById(R.id.header_username)
+        val shareAppButton: View = view.findViewById(R.id.share_app_button)
+        val improvementNotice: TextView = view.findViewById(R.id.account_improvement_notice)
+        val settingsIconButton: View = view.findViewById(R.id.settings_icon_button)
         val downloadCountText: TextView = view.findViewById(R.id.download_count_text)
-        val settingsButton: Button = view.findViewById(R.id.settings_button)
         val myAccountButton: Button = view.findViewById(R.id.my_account_button)
         val aboutButton: Button = view.findViewById(R.id.about_button)
         val donateButton: Button = view.findViewById(R.id.donate_button)
-        val logoutButton: Button = view.findViewById(R.id.logout_button)
         val catalogVersionText: TextView = view.findViewById(R.id.catalog_version_text)
         val appVersionText: TextView = view.findViewById(R.id.app_version_text)
         val checkUpdatesButton: Button = view.findViewById(R.id.check_updates_button)
@@ -76,10 +95,42 @@ class AccountFragment : Fragment() {
         val releasesButton: Button = view.findViewById(R.id.releases_button)
         val telegramGroupButton: Button = view.findViewById(R.id.telegram_group_button)
 
-        // User name display
+        shareAppButton.setOnClickListener {
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                val message = """
+                    ¡Mira esta App increíble para disfrutar del cine accesible! 🎬🍿
+                    
+                    Audiocinemateca te permite escuchar películas, series y documentales con audiodescripción de alta calidad.
+                    
+                    Descarga la última versión aquí:
+                    https://github.com/JohanAnim/Audiocinemateca/releases/latest
+                """.trimIndent()
+                putExtra(Intent.EXTRA_TEXT, message)
+            }
+            startActivity(Intent.createChooser(shareIntent, "Compartir Audiocinemateca vía"))
+        }
+
+        // Verificamos el estado de login en Firebase
+        if (firebaseAuth.currentUser == null) {
+            improvementNotice.text = "¡La mejora de tu cuenta ya está disponible! Toca tu nombre para ver más información."
+            improvementNotice.visibility = View.VISIBLE
+        } else {
+            improvementNotice.text = "Cuenta conectada con la nube"
+            improvementNotice.visibility = View.VISIBLE
+        }
+
+        headerUsername.setOnClickListener {
+            // Navegar siempre al perfil al tocar el nombre
+            findNavController().navigate(R.id.action_accountFragment_to_profileFragment)
+        }
+
+        // User name display in custom header
         lifecycleScope.launch {
             val username = authCatalogRepository.getStoredUsername()
-            welcomeText.text = "¡Bienvenido, ${username ?: "Usuario"}!"
+            val displayUsername = username ?: "Invitado"
+            headerUsername.text = displayUsername
+            headerUsername.contentDescription = "Conectado actualmente: $displayUsername, toca para ver tu perfil"
 
             if (username == "Johan-a-g") {
                 viewModel.updateState.collect {
@@ -107,17 +158,17 @@ class AccountFragment : Fragment() {
 
         try {
             requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName?.let {
-                appVersionText.text = "Versión de la Aplicación: $it (toca para buscar actualizaciones)"
+                appVersionText.text = "App Versión: $it"
             } ?: run {
-                appVersionText.text = "Versión de la Aplicación: N/A"
+                appVersionText.text = "App Versión: N/A"
             }
         } catch (e: Exception) {
-            appVersionText.text = "Versión de la Aplicación: N/A"
+            appVersionText.text = "App Versión: N/A"
         }
 
         observeUpdateState()
 
-        settingsButton.setOnClickListener {
+        settingsIconButton.setOnClickListener {
             findNavController().navigate(R.id.action_accountFragment_to_settingsFragment)
         }
 
@@ -132,7 +183,7 @@ class AccountFragment : Fragment() {
             val feedbackButton: Button = dialogView.findViewById(R.id.feedback_button)
             feedbackButton.setOnClickListener {
                 try {
-                    val telegramUrl = "https://t.me/+cIfV-yMXhnFlMzkx"
+                    val telegramUrl = "https://t.me/+faXgIluvZsExYWQx"
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(telegramUrl))
                     startActivity(intent)
                 } catch (e: Exception) {
@@ -183,29 +234,12 @@ class AccountFragment : Fragment() {
 
         telegramGroupButton.setOnClickListener {
             try {
-                val telegramUrl = "https://t.me/+cIfV-yMXhnFlMzkx"
+                val telegramUrl = "https://t.me/+faXgIluvZsExYWQx"
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(telegramUrl))
                 startActivity(intent)
             } catch (e: Exception) {
                 Toast.makeText(requireContext(), "No se pudo abrir Telegram. Asegúrate de tener la aplicación instalada.", Toast.LENGTH_SHORT).show()
             }
-        }
-
-        logoutButton.setOnClickListener {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Cerrar Sesión")
-                .setMessage("¿Estás seguro de que quieres cerrar la sesión actual?")
-                .setNegativeButton("No", null)
-                .setPositiveButton("Sí") { dialog, _ ->
-                    lifecycleScope.launch {
-                        authCatalogRepository.logout()
-                        val intent = Intent(requireContext(), LoginActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        startActivity(intent)
-                    }
-                    dialog.dismiss()
-                }
-                .show()
         }
 
         checkUpdatesButton.setOnClickListener {

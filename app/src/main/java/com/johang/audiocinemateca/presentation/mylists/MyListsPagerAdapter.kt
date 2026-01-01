@@ -18,7 +18,7 @@ class MyListsPagerAdapter(fragmentActivity: FragmentActivity) : FragmentStateAda
         return when (position) {
             0 -> PlaybackHistoryFragment() // Nuestro nuevo fragmento de historial
             1 -> FavoritosFragment() // Fragmento real de Favoritos
-            2 -> PlaceholderFragment.newInstance("Recomendaciones") // Fragmento para Recomendaciones
+            2 -> RecomendacionesFragment() // El nuevo chat con IA de Gemini
             else -> throw IllegalArgumentException("Invalid position")
         }
     }

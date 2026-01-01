@@ -1,70 +1,147 @@
-2025-10-08 12:06:13.483 27863-28143 NullBinder              com.google.android.gms.persistent    I  NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
-2025-10-08 12:06:15.261  1876-7385  PersistenceController   system_server                        E  SettingNotFoundException: sv_custom_ai_icon_enabled
-2025-10-08 12:06:15.275 17820-18880 CustomAppIcons          com.motorola.launcher3               D  setWrapperBackgroundColor color: ff070e18, mWrapperBackgroundColor: ff070e18, stack: java.lang.Exception (Ask Gemini)
-                                                                                                    	at com.android.launcher3.icons.BaseIconFactory.setWrapperBackgroundColor(BaseIconFactory.java:479)
-                                                                                                    	at com.android.quickstep.TaskIconCache.getBitmapInfo(TaskIconCache.java:273)
-                                                                                                    	at com.android.quickstep.TaskIconCache.getCacheEntry(TaskIconCache.java:190)
-                                                                                                    	at com.android.quickstep.TaskIconCache.lambda$updateIconInBackground$0(TaskIconCache.java:124)
-                                                                                                    	at com.android.quickstep.TaskIconCache.$r8$lambda$O2ShbPu3eyrpUNTQFQ51NIXKEQA(Unknown Source:0)
-                                                                                                    	at com.android.quickstep.TaskIconCache$$ExternalSyntheticLambda1.get(D8$$SyntheticClass:0)
-                                                                                                    	at com.android.launcher3.util.CancellableTask.run(CancellableTask.kt:46)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at com.android.launcher3.util.Executors$SimpleThreadFactory.lambda$newThread$0(Executors.java:132)
-                                                                                                    	at com.android.launcher3.util.Executors$SimpleThreadFactory.$r8$lambda$kdEbHeq7Fea6rEAvEStv80toUEk(Unknown Source:0)
-                                                                                                    	at com.android.launcher3.util.Executors$SimpleThreadFactory$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2025-10-08 12:06:15.367  1876-9768  PersistenceController   system_server                        E  SettingNotFoundException: sv_custom_ai_icon_enabled
-2025-10-08 12:06:15.371 17820-18880 CustomAppIcons          com.motorola.launcher3               D  setWrapperBackgroundColor color: ffd0bcff, mWrapperBackgroundColor: ffd0bcff, stack: java.lang.Exception (Ask Gemini)
-                                                                                                    	at com.android.launcher3.icons.BaseIconFactory.setWrapperBackgroundColor(BaseIconFactory.java:479)
-                                                                                                    	at com.android.quickstep.TaskIconCache.getBitmapInfo(TaskIconCache.java:273)
-                                                                                                    	at com.android.quickstep.TaskIconCache.getCacheEntry(TaskIconCache.java:190)
-                                                                                                    	at com.android.quickstep.TaskIconCache.lambda$updateIconInBackground$0(TaskIconCache.java:124)
-                                                                                                    	at com.android.quickstep.TaskIconCache.$r8$lambda$O2ShbPu3eyrpUNTQFQ51NIXKEQA(Unknown Source:0)
-                                                                                                    	at com.android.quickstep.TaskIconCache$$ExternalSyntheticLambda1.get(D8$$SyntheticClass:0)
-                                                                                                    	at com.android.launcher3.util.CancellableTask.run(CancellableTask.kt:46)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1156)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:651)
-                                                                                                    	at com.android.launcher3.util.Executors$SimpleThreadFactory.lambda$newThread$0(Executors.java:132)
-                                                                                                    	at com.android.launcher3.util.Executors$SimpleThreadFactory.$r8$lambda$kdEbHeq7Fea6rEAvEStv80toUEk(Unknown Source:0)
-                                                                                                    	at com.android.launcher3.util.Executors$SimpleThreadFactory$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
-                                                                                                    	at java.lang.Thread.run(Thread.java:1119)
-2025-10-08 12:06:15.775  1876-10147 PersistenceController   system_server                        E  SettingNotFoundException: sv_custom_ai_icon_enabled
----------------------------- PROCESS STARTED (22396) for package com.johang.audiocinemateca ----------------------------
-2025-10-08 12:06:41.006 22396-22396 AndroidRuntime          com.johang.audiocinemateca           E  FATAL EXCEPTION: main (Ask Gemini)
-                                                                                                    Process: com.johang.audiocinemateca, PID: 22396
-                                                                                                    java.lang.IllegalArgumentException: Expected URL scheme 'http' or 'https' but no scheme was found for system...
-                                                                                                    	at okhttp3.HttpUrl$Builder.parse$okhttp(HttpUrl.kt:1360)
-                                                                                                    	at okhttp3.HttpUrl$Companion.get(HttpUrl.kt:1734)
-                                                                                                    	at okhttp3.Request$Builder.url(Request.kt:233)
-                                                                                                    	at com.johang.audiocinemateca.presentation.download.DownloadService$handleStartDownload$1.invokeSuspend(DownloadService.kt:102)
-                                                                                                    	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
-                                                                                                    	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:100)
-                                                                                                    	at kotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:124)
-                                                                                                    	at kotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:89)
-                                                                                                    	at kotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:586)
-                                                                                                    	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:820)
-                                                                                                    	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:717)
-                                                                                                    	at kotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:704)
-                                                                                                    	Suppressed: kotlinx.coroutines.internal.DiagnosticCoroutineContextException: [StandaloneCoroutine{Cancelling}@3a37433, Dispatchers.IO]
----------------------------- PROCESS ENDED (22396) for package com.johang.audiocinemateca ----------------------------
-2025-10-08 12:06:41.410  1876-7381  WindowManager           system_server                        W  Exception thrown during dispatchAppVisibility Window{9a39be5 u0 com.johang.audiocinemateca/com.johang.audiocinemateca.MainActivity EXITING} (Ask Gemini)
-                                                                                                    android.os.DeadObjectException
-                                                                                                    	at android.os.BinderProxy.transactNative(Native Method)
-                                                                                                    	at android.os.BinderProxy.transact(BinderProxy.java:588)
-                                                                                                    	at android.view.IWindow$Stub$Proxy.dispatchAppVisibility(IWindow.java:553)
-                                                                                                    	at com.android.server.wm.WindowState.sendAppVisibilityToClients(WindowState.java:3481)
-                                                                                                    	at com.android.server.wm.WindowContainer.sendAppVisibilityToClients(WindowContainer.java:1323)
-                                                                                                    	at com.android.server.wm.WindowToken.setClientVisible(WindowToken.java:446)
-                                                                                                    	at com.android.server.wm.ActivityRecord.setClientVisible(ActivityRecord.java:7600)
-                                                                                                    	at com.android.server.wm.ActivityRecord.postApplyAnimation(ActivityRecord.java:6191)
-                                                                                                    	at com.android.server.wm.ActivityRecord.commitVisibility(ActivityRecord.java:6133)
-                                                                                                    	at com.android.server.wm.Transition.finishTransition(Transition.java:1318)
-                                                                                                    	at com.android.server.wm.TransitionController.finishTransition(TransitionController.java:955)
-                                                                                                    	at com.android.server.wm.WindowOrganizerController.finishTransition(WindowOrganizerController.java:513)
-                                                                                                    	at android.window.IWindowOrganizerController$Stub.onTransact(IWindowOrganizerController.java:289)
-                                                                                                    	at com.android.server.wm.WindowOrganizerController.onTransact(WindowOrganizerController.java:223)
-                                                                                                    	at android.os.Binder.execTransactInternal(Binder.java:1520)
-                                                                                                    	at android.os.Binder.execTransact(Binder.java:1453)
-2025-10-08 12:06:43.735 27863-28879 NullBinder              com.google.android.gms.persistent    I  NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
-2025-10-08 12:06:46.752 27863-27881 NullBinder              com.google.android.gms.persistent    I  NullBinder for android.net.action.RECOMMEND_NETWORKS triggering remote TransactionTooLargeException due to Service without Chimera impl, calling uid: 1000, calling pid: 0
+2025-12-31 19:00:18.739  7187-7232  CatalogRepository       com.johang.audiocinemateca           D  Attempting to get catalog
+2025-12-31 19:00:18.742  7187-7391  DynamiteModule          com.johang.audiocinemateca           W  Local module descriptor class for com.google.android.gms.providerinstaller.dynamite not found.
+2025-12-31 19:00:18.748  7187-7294  CatalogRepository       com.johang.audiocinemateca           D  Catalog file path from DB: /data/user/0/com.johang.audiocinemateca/files/audiocinemateca_catalog.json
+2025-12-31 19:00:18.749  7187-7391  DynamiteModule          com.johang.audiocinemateca           I  Considering local module com.google.android.gms.providerinstaller.dynamite:0 and remote module com.google.android.gms.providerinstaller.dynamite:0
+2025-12-31 19:00:18.750  7187-7391  ProviderInstaller       com.johang.audiocinemateca           W  Failed to load providerinstaller module: No acceptable module com.google.android.gms.providerinstaller.dynamite found. Local version is 0 and remote version is 0.
+2025-12-31 19:00:18.751  7187-7391  ApplicationLoaders      com.johang.audiocinemateca           D  Returning zygote-cached class loader: /system/framework/org.apache.http.legacy.jar
+2025-12-31 19:00:18.754  7187-7391  nativeloader            com.johang.audiocinemateca           D  Configuring clns-9 for other apk /system/framework/com.android.media.remotedisplay.jar. target_sdk_version=36, uses_libraries=ALL, library_path=/data/app/~~vP9le3P6uShF6o47Uy6VsQ==/com.google.android.gms-a4-5KuzWNNeMl_TljW-TIw==/lib/arm64:/data/app/~~vP9le3P6uShF6o47Uy6VsQ==/com.google.android.gms-a4-5KuzWNNeMl_TljW-TIw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+2025-12-31 19:00:18.754  7187-7391  nativeloader            com.johang.audiocinemateca           D  Extending system_exposed_libraries: libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libjni_helper.motocameradesktop.so:libimgTuner_jni.motoimagetuner.so:libupdateprof.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+2025-12-31 19:00:18.756  7187-7391  audiocinemateca         com.johang.audiocinemateca           W  Loading /data/misc/apexdata/com.android.art/dalvik-cache/arm64/system@framework@com.android.location.provider.jar@classes.odex non-executable as it requires an image which we failed to load
+2025-12-31 19:00:18.757  7187-7391  nativeloader            com.johang.audiocinemateca           D  Configuring clns-10 for other apk /system/framework/com.android.location.provider.jar. target_sdk_version=36, uses_libraries=ALL, library_path=/data/app/~~vP9le3P6uShF6o47Uy6VsQ==/com.google.android.gms-a4-5KuzWNNeMl_TljW-TIw==/lib/arm64:/data/app/~~vP9le3P6uShF6o47Uy6VsQ==/com.google.android.gms-a4-5KuzWNNeMl_TljW-TIw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+2025-12-31 19:00:18.757  7187-7391  nativeloader            com.johang.audiocinemateca           D  Extending system_exposed_libraries: libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libjni_helper.motocameradesktop.so:libimgTuner_jni.motoimagetuner.so:libupdateprof.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+2025-12-31 19:00:18.759  7187-7391  ApplicationLoaders      com.johang.audiocinemateca           D  Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+2025-12-31 19:00:18.759  7187-7391  ApplicationLoaders      com.johang.audiocinemateca           D  Returning zygote-cached class loader: /system_ext/framework/androidx.window.sidecar.jar
+2025-12-31 19:00:18.764  7187-7391  audiocinemateca         com.johang.audiocinemateca           W  Loading /data/app/~~vP9le3P6uShF6o47Uy6VsQ==/com.google.android.gms-a4-5KuzWNNeMl_TljW-TIw==/oat/arm64/base.odex non-executable as it requires an image which we failed to load
+2025-12-31 19:00:18.774  7187-7391  nativeloader            com.johang.audiocinemateca           D  Configuring clns-11 for other apk /data/app/~~vP9le3P6uShF6o47Uy6VsQ==/com.google.android.gms-a4-5KuzWNNeMl_TljW-TIw==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~vP9le3P6uShF6o47Uy6VsQ==/com.google.android.gms-a4-5KuzWNNeMl_TljW-TIw==/lib/arm64:/data/app/~~vP9le3P6uShF6o47Uy6VsQ==/com.google.android.gms-a4-5KuzWNNeMl_TljW-TIw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+2025-12-31 19:00:18.829  7187-7395  GoogleApiManager        com.johang.audiocinemateca           E  Failed to get service from broker.  (Ask Gemini)
+                                                                                                    java.lang.SecurityException: Unknown calling package name 'com.google.android.gms'.
+                                                                                                    	at android.os.Parcel.createExceptionOrNull(Parcel.java:3241)
+                                                                                                    	at android.os.Parcel.createException(Parcel.java:3225)
+                                                                                                    	at android.os.Parcel.readException(Parcel.java:3208)
+                                                                                                    	at android.os.Parcel.readException(Parcel.java:3150)
+                                                                                                    	at bckw.a(:com.google.android.gms@254730035@25.47.30 (260400-833691957):36)
+                                                                                                    	at bcix.z(:com.google.android.gms@254730035@25.47.30 (260400-833691957):143)
+                                                                                                    	at bbpa.run(:com.google.android.gms@254730035@25.47.30 (260400-833691957):42)
+                                                                                                    	at android.os.Handler.handleCallback(Handler.java:1001)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:105)
+                                                                                                    	at cpny.ms(:com.google.android.gms@254730035@25.47.30 (260400-833691957):1)
+                                                                                                    	at cpny.dispatchMessage(:com.google.android.gms@254730035@25.47.30 (260400-833691957):5)
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:268)
+                                                                                                    	at android.os.Looper.loop(Looper.java:384)
+                                                                                                    	at android.os.HandlerThread.run(HandlerThread.java:103)
+2025-12-31 19:00:18.830  7187-7395  GoogleApiManager        com.johang.audiocinemateca           W  Not showing notification since connectionResult is not user-facing: ConnectionResult{statusCode=DEVELOPER_ERROR, resolution=null, message=null, clientMethodKey=null}
+2025-12-31 19:00:18.845  7187-7394  FlagRegistrar           com.johang.audiocinemateca           W  Failed to register com.google.android.gms.providerinstaller#com.johang.audiocinemateca (Ask Gemini)
+                                                                                                    furu: 17: 17: API: Phenotype.API is not available on this device. Connection failed with: ConnectionResult{statusCode=DEVELOPER_ERROR, resolution=null, message=null, clientMethodKey=null}
+                                                                                                    	at furw.a(:com.google.android.gms@254730035@25.47.30 (260400-833691957):13)
+                                                                                                    	at gscu.d(:com.google.android.gms@254730035@25.47.30 (260400-833691957):3)
+                                                                                                    	at gscw.run(:com.google.android.gms@254730035@25.47.30 (260400-833691957):130)
+                                                                                                    	at gsfd.execute(:com.google.android.gms@254730035@25.47.30 (260400-833691957):1)
+                                                                                                    	at gsde.f(:com.google.android.gms@254730035@25.47.30 (260400-833691957):1)
+                                                                                                    	at gsde.m(:com.google.android.gms@254730035@25.47.30 (260400-833691957):99)
+                                                                                                    	at gsde.r(:com.google.android.gms@254730035@25.47.30 (260400-833691957):17)
+                                                                                                    	at fnjx.hz(:com.google.android.gms@254730035@25.47.30 (260400-833691957):35)
+                                                                                                    	at fayj.run(:com.google.android.gms@254730035@25.47.30 (260400-833691957):12)
+                                                                                                    	at gsfd.execute(:com.google.android.gms@254730035@25.47.30 (260400-833691957):1)
+                                                                                                    	at fayk.b(:com.google.android.gms@254730035@25.47.30 (260400-833691957):18)
+                                                                                                    	at fayz.b(:com.google.android.gms@254730035@25.47.30 (260400-833691957):36)
+                                                                                                    	at fazb.d(:com.google.android.gms@254730035@25.47.30 (260400-833691957):25)
+                                                                                                    	at bbmj.c(:com.google.android.gms@254730035@25.47.30 (260400-833691957):9)
+                                                                                                    	at bboy.q(:com.google.android.gms@254730035@25.47.30 (260400-833691957):48)
+                                                                                                    	at bboy.d(:com.google.android.gms@254730035@25.47.30 (260400-833691957):10)
+                                                                                                    	at bboy.g(:com.google.android.gms@254730035@25.47.30 (260400-833691957):185)
+                                                                                                    	at bboy.onConnectionFailed(:com.google.android.gms@254730035@25.47.30 (260400-833691957):2)
+                                                                                                    	at bbpa.run(:com.google.android.gms@254730035@25.47.30 (260400-833691957):70)
+                                                                                                    	at android.os.Handler.handleCallback(Handler.java:1001)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:105)
+                                                                                                    	at cpny.ms(:com.google.android.gms@254730035@25.47.30 (260400-833691957):1)
+                                                                                                    	at cpny.dispatchMessage(:com.google.android.gms@254730035@25.47.30 (260400-833691957):5)
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:268)
+                                                                                                    	at android.os.Looper.loop(Looper.java:384)
+                                                                                                    	at android.os.HandlerThread.run(HandlerThread.java:103)
+                                                                                                    Caused by: bbkq: 17: API: Phenotype.API is not available on this device. Connection failed with: ConnectionResult{statusCode=DEVELOPER_ERROR, resolution=null, message=null, clientMethodKey=null}
+                                                                                                    	at bcij.a(:com.google.android.gms@254730035@25.47.30 (260400-833691957):15)
+                                                                                                    	at bbmm.a(:com.google.android.gms@254730035@25.47.30 (260400-833691957):1)
+                                                                                                    	at bbmj.c(:com.google.android.gms@254730035@25.47.30 (260400-833691957):5)
+                                                                                                    	at bboy.q(:com.google.android.gms@254730035@25.47.30 (260400-833691957):48) 
+                                                                                                    	at bboy.d(:com.google.android.gms@254730035@25.47.30 (260400-833691957):10) 
+                                                                                                    	at bboy.g(:com.google.android.gms@254730035@25.47.30 (260400-833691957):185) 
+                                                                                                    	at bboy.onConnectionFailed(:com.google.android.gms@254730035@25.47.30 (260400-833691957):2) 
+                                                                                                    	at bbpa.run(:com.google.android.gms@254730035@25.47.30 (260400-833691957):70) 
+                                                                                                    	at android.os.Handler.handleCallback(Handler.java:1001) 
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:105) 
+                                                                                                    	at cpny.ms(:com.google.android.gms@254730035@25.47.30 (260400-833691957):1) 
+                                                                                                    	at cpny.dispatchMessage(:com.google.android.gms@254730035@25.47.30 (260400-833691957):5) 
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:268) 
+                                                                                                    	at android.os.Looper.loop(Looper.java:384) 
+                                                                                                    	at android.os.HandlerThread.run(HandlerThread.java:103) 
+2025-12-31 19:00:18.864  7187-7391  nativeloader            com.johang.audiocinemateca           D  Load /data/app/~~vP9le3P6uShF6o47Uy6VsQ==/com.google.android.gms-a4-5KuzWNNeMl_TljW-TIw==/base.apk!/lib/arm64-v8a/libconscrypt_gmscore_jni.so using class loader ns clns-11 (caller=/data/app/~~vP9le3P6uShF6o47Uy6VsQ==/com.google.android.gms-a4-5KuzWNNeMl_TljW-TIw==/base.apk): ok
+2025-12-31 19:00:18.864  7187-7391  NativeCrypto            com.johang.audiocinemateca           V  Registering com/google/android/gms/org/conscrypt/NativeCrypto's 329 native methods...
+2025-12-31 19:00:18.870  7187-7391  audiocinemateca         com.johang.audiocinemateca           I  hiddenapi: Accessing hidden method Ljava/security/spec/ECParameterSpec;->getCurveName()Ljava/lang/String; (runtime_flags=0, domain=core-platform, api=unsupported) from Lcom/google/android/gms/org/conscrypt/Platform; (domain=app, TargetSdkVersion=35) using reflection: allowed
+2025-12-31 19:00:18.883  7187-7391  ProviderInstaller       com.johang.audiocinemateca           I  Installed default security provider GmsCore_OpenSSL
+2025-12-31 19:00:19.055  7187-7294  CatalogRepository       com.johang.audiocinemateca           D  Read catalog JSON: {"documentales":[{"id":"21","Titulo":"Guadalquivir","anio":"2013","genero":"Documental | Naturaleza. Animales","pais":"España","director":"Joaquín Gutiérrez Acha","guion":"Fernando López-Mirones","mus...
+2025-12-31 19:00:19.807  7187-7195  audiocinemateca         com.johang.audiocinemateca           I  Background concurrent copying GC freed 49MB AllocSpace bytes, 2(55MB) LOS objects, 46% free, 108MB/204MB, paused 63us,30us total 131.859ms
+2025-12-31 19:00:19.892  7187-7294  CatalogRepository       com.johang.audiocinemateca           D  Deserialized catalog: true
+2025-12-31 19:00:20.036  7187-7414  audiocinemateca         com.johang.audiocinemateca           I  hiddenapi: Accessing hidden field Ljava/net/Socket;->impl:Ljava/net/SocketImpl; (runtime_flags=0, domain=core-platform, api=unsupported) from Lcom/google/android/gms/org/conscrypt/Platform; (domain=app, TargetSdkVersion=35) using reflection: allowed
+2025-12-31 19:00:20.120  7187-7414  audiocinemateca         com.johang.audiocinemateca           I  hiddenapi: Accessing hidden method Ljava/security/spec/ECParameterSpec;->setCurveName(Ljava/lang/String;)V (runtime_flags=0, domain=core-platform, api=unsupported) from Lcom/google/android/gms/org/conscrypt/Platform; (domain=app, TargetSdkVersion=35) using reflection: allowed
+2025-12-31 19:00:20.374  7187-7390  Firestore               com.johang.audiocinemateca           W  (26.0.2) [Firestore]: Listen for Query(target=Query(content_ratings/913 order by __name__);limitType=LIMIT_TO_FIRST) failed: Status{code=PERMISSION_DENIED, description=Missing or insufficient permissions., cause=null}
+2025-12-31 19:00:20.378  7187-7390  Firestore               com.johang.audiocinemateca           W  (26.0.2) [Firestore]: Listen for Query(target=Query(content_stats/913 order by __name__);limitType=LIMIT_TO_FIRST) failed: Status{code=PERMISSION_DENIED, description=Missing or insufficient permissions., cause=null}
+2025-12-31 19:00:20.408  7187-7187  AndroidRuntime          com.johang.audiocinemateca           E  FATAL EXCEPTION: main (Ask Gemini)
+                                                                                                    Process: com.johang.audiocinemateca, PID: 7187
+                                                                                                    com.google.firebase.firestore.FirebaseFirestoreException: PERMISSION_DENIED: Missing or insufficient permissions.
+                                                                                                    	at com.google.firebase.firestore.util.Util.exceptionFromStatus(Util.java:151)
+                                                                                                    	at com.google.firebase.firestore.core.EventManager.onError(EventManager.java:247)
+                                                                                                    	at com.google.firebase.firestore.core.SyncEngine.removeAndCleanupTarget(SyncEngine.java:642)
+                                                                                                    	at com.google.firebase.firestore.core.SyncEngine.handleRejectedListen(SyncEngine.java:478)
+                                                                                                    	at com.google.firebase.firestore.core.MemoryComponentProvider$RemoteStoreCallback.handleRejectedListen(MemoryComponentProvider.java:125)
+                                                                                                    	at com.google.firebase.firestore.remote.RemoteStore.processTargetError(RemoteStore.java:596)
+                                                                                                    	at com.google.firebase.firestore.remote.RemoteStore.handleWatchChange(RemoteStore.java:479)
+                                                                                                    	at com.google.firebase.firestore.remote.RemoteStore.access$100(RemoteStore.java:60)
+                                                                                                    	at com.google.firebase.firestore.remote.RemoteStore$1.onWatchChange(RemoteStore.java:188)
+                                                                                                    	at com.google.firebase.firestore.remote.WatchStream.onNext(WatchStream.java:114)
+                                                                                                    	at com.google.firebase.firestore.remote.WatchStream.onNext(WatchStream.java:38)
+                                                                                                    	at com.google.firebase.firestore.remote.AbstractStream$StreamObserver.lambda$onNext$1$com-google-firebase-firestore-remote-AbstractStream$StreamObserver(AbstractStream.java:126)
+                                                                                                    	at com.google.firebase.firestore.remote.AbstractStream$StreamObserver$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
+                                                                                                    	at com.google.firebase.firestore.remote.AbstractStream$CloseGuardedRunner.run(AbstractStream.java:67)
+                                                                                                    	at com.google.firebase.firestore.remote.AbstractStream$StreamObserver.onNext(AbstractStream.java:113)
+                                                                                                    	at com.google.firebase.firestore.remote.FirestoreChannel$1.onMessage(FirestoreChannel.java:162)
+                                                                                                    	at io.grpc.internal.DelayedClientCall$DelayedListener.onMessage(DelayedClientCall.java:473)
+                                                                                                    	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1MessagesAvailable.runInternal(ClientCallImpl.java:667)
+                                                                                                    	at io.grpc.internal.ClientCallImpl$ClientStreamListenerImpl$1MessagesAvailable.runInContext(ClientCallImpl.java:654)
+                                                                                                    	at io.grpc.internal.ContextRunnable.run(ContextRunnable.java:37)
+                                                                                                    	at io.grpc.internal.SerializingExecutor.run(SerializingExecutor.java:133)
+                                                                                                    	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:520)
+                                                                                                    	at java.util.concurrent.FutureTask.run(FutureTask.java:317)
+                                                                                                    	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:348)
+                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1154)
+                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:652)
+                                                                                                    	at com.google.firebase.firestore.util.AsyncQueue$SynchronizedShutdownAwareExecutor$DelayedStartFactory.run(AsyncQueue.java:235)
+                                                                                                    	at java.lang.Thread.run(Thread.java:1563)
+                                                                                                    	Suppressed: kotlinx.coroutines.internal.DiagnosticCoroutineContextException: [StandaloneCoroutine{Cancelling}@b62538c, Dispatchers.Main.immediate]
+                                                                                                    Caused by: io.grpc.StatusException: PERMISSION_DENIED: Missing or insufficient permissions.
+                                                                                                    	at io.grpc.Status.asException(Status.java:541)
+                                                                                                    	at com.google.firebase.firestore.util.Util.exceptionFromStatus(Util.java:149)
+                                                                                                    	... 27 more
+2025-12-31 19:00:25.941  7187-7415  NativeCrypto            com.johang.audiocinemateca           V  Read error: ssl=0xb400006ef3c20108: I/O error during system call, Software caused connection abort
+2025-12-31 19:00:25.946  7187-7414  NativeCrypto            com.johang.audiocinemateca           V  Write error: ssl=0xb400006ef3c20108: I/O error during system call, Broken pipe
+2025-12-31 19:00:25.951  7187-7402  ManagedChannelImpl      com.johang.audiocinemateca           W  [{0}] Failed to resolve name. status={1}
+2025-12-31 19:00:25.952  7187-7390  Firestore               com.johang.audiocinemateca           W  (26.0.2) [WatchStream]: (6c2616d) Stream closed with status: Status{code=UNAVAILABLE, description=End of stream or IOException, cause=null}.
+2025-12-31 19:00:25.959  7187-7414  NativeCrypto            com.johang.audiocinemateca           V  SSL shutdown failed: ssl=0xb400006ef3c20108: I/O error during system call, Success
+2025-12-31 19:00:26.916  7187-7402  ManagedChannelImpl      com.johang.audiocinemateca           W  [{0}] Failed to resolve name. status={1}
+2025-12-31 19:00:28.711  7187-7402  ManagedChannelImpl      com.johang.audiocinemateca           W  [{0}] Failed to resolve name. status={1}
+2025-12-31 19:00:28.854  7187-7395  GoogleApiManager        com.johang.audiocinemateca           E  Failed to get service from broker.  (Ask Gemini)
+                                                                                                    java.lang.SecurityException: Unknown calling package name 'com.google.android.gms'.
+                                                                                                    	at android.os.Parcel.createExceptionOrNull(Parcel.java:3241)
+                                                                                                    	at android.os.Parcel.createException(Parcel.java:3225)
+                                                                                                    	at android.os.Parcel.readException(Parcel.java:3208)
+                                                                                                    	at android.os.Parcel.readException(Parcel.java:3150)
+                                                                                                    	at bckw.a(:com.google.android.gms@254730035@25.47.30 (260400-833691957):36)
+                                                                                                    	at bcix.z(:com.google.android.gms@254730035@25.47.30 (260400-833691957):143)
+                                                                                                    	at bbpa.run(:com.google.android.gms@254730035@25.47.30 (260400-833691957):42)
+                                                                                                    	at android.os.Handler.handleCallback(Handler.java:1001)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:105)
+                                                                                                    	at cpny.ms(:com.google.android.gms@254730035@25.47.30 (260400-833691957):1)
+                                                                                                    	at cpny.dispatchMessage(:com.google.android.gms@254730035@25.47.30 (260400-833691957):5)
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:268)
+                                                                                                    	at android.os.Looper.loop(Looper.java:384)
+                                                                                                    	at android.os.HandlerThread.run(HandlerThread.java:103)
+2025-12-31 19:00:28.858  7187-7395  GoogleApiManager        com.johang.audiocinemateca           W  Not showing notification since connectionResult is not user-facing: ConnectionResult{statusCode=DEVELOPER_ERROR, resolution=null, message=null, clientMethodKey=null}

@@ -1,71 +1,38 @@
-name: "Build & Publish Release"
+name: "Publish Release from Local Build"
 
 on:
   push:
     tags:
-      - 'v*'   # Se activa con etiquetas como v2.9.8
-      - '2.*'  # Se activa con etiquetas que empiecen por 2 (ej: 2.9.8)
-  workflow_dispatch: # Mantenemos la opción manual por si acaso
+      - 'v*'
+      - '2.*'
 
 permissions:
-  contents: write # Permiso necesario para crear la Release
+  contents: write
 
 jobs:
-  build-and-publish:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
-
-      - name: "Grant execute permission for gradlew"
-        run: chmod +x gradlew
-
-      - name: "Build Release APK"
-        run: ./gradlew assembleRelease --stacktrace
-
-      - name: "Sign Release APK"
-        uses: r0adkll/sign-android-release@v1
-        id: sign_app
-        env:
-          BUILD_TOOLS_VERSION: "34.0.0"
-        with:
-          releaseDirectory: app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-
-      - name: "Rename APK with Version"
-        id: rename_apk
+      - name: "Buscar APK local"
+        id: find_apk
         run: |
-          # Obtenemos la versión del tag que disparó el evento (ej: v2.9.8)
-          TAG_NAME="${{ github.ref_name }}"
-          echo "Tag detectado: $TAG_NAME"
-          
-          SIGNED_APK_PATH="${{ steps.sign_app.outputs.signedReleaseFile }}"
-          NEW_FILENAME="app/build/outputs/apk/release/Audiocinemateca_$TAG_NAME.apk"
-          
-          if [ -f "$SIGNED_APK_PATH" ]; then
-            mv "$SIGNED_APK_PATH" "$NEW_FILENAME"
-            echo "apk_path=$NEW_FILENAME" >> $GITHUB_OUTPUT
-            echo "APK renombrado a: $NEW_FILENAME"
-          else
-            echo "Error: No se encontró el APK firmado."
+          # Buscamos cualquier archivo .apk en app/release/
+          APK_FILE=$(find app/release/ -name "*.apk" | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            echo "Error: No se encontró ningún archivo APK en app/release/"
             exit 1
           fi
+          echo "apk_path=$APK_FILE" >> $GITHUB_OUTPUT
+          echo "Se encontró el APK: $APK_FILE"
 
-      - name: "Create GitHub Release"
+      - name: "Crear GitHub Release"
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/') # Solo si es un Tag
         with:
           name: "Nueva actualización disponible de la App: ${{ github.ref_name }}"
           body_path: changelog.txt
-          files: ${{ steps.rename_apk.outputs.apk_path }}
+          files: ${{ steps.find_apk.outputs.apk_path }}
           draft: false
           prerelease: false
         env:

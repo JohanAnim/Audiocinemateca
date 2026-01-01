@@ -23,23 +23,16 @@ class ContentRepository @Inject constructor(
     // Nuevo método para obtener el catálogo completo una sola vez
     suspend fun getCatalogResponse() = catalogRepository.getCatalog()
 
-    // Modificado para aceptar el catálogo ya cargado
-    suspend fun getContentItem(contentId: String, contentType: String, loadedCatalog: CatalogResponse? = null): CatalogItem? {
-        Log.d("ContentRepository", "getContentItem called with contentId: $contentId, contentType: $contentType")
-        val catalogToUse = loadedCatalog ?: catalogRepository.getCatalog() // Usar el cargado o cargar si no se proporciona
-        Log.d("ContentRepository", "CatalogToUse is null: ${catalogToUse == null}")
+    // --- MÉTODOS DE CONSULTA ---
 
-        val foundItem: CatalogItem? = when (contentType) {
+    suspend fun getContentItem(contentId: String, contentType: String, loadedCatalog: CatalogResponse? = null): CatalogItem? {
+        val catalogToUse = loadedCatalog ?: getCatalogResponse()
+        return when (contentType) {
             "peliculas" -> catalogToUse?.movies?.firstOrNull { it.id == contentId }
             "series" -> catalogToUse?.series?.firstOrNull { it.id == contentId }
             "cortometrajes" -> catalogToUse?.shortFilms?.firstOrNull { it.id == contentId }
             "documentales" -> catalogToUse?.documentaries?.firstOrNull { it.id == contentId }
             else -> null
         }
-        Log.d("ContentRepository", "Found item for $contentId ($contentType): ${foundItem != null}")
-        if (foundItem == null) {
-            Log.w("ContentRepository", "No item found for contentId: $contentId, contentType: $contentType")
-        }
-        return foundItem
     }
 }

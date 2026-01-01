@@ -78,6 +78,15 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- Servicio de Notificaciones Firebase -->
+        <service
+            android:name=".util.FCMService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

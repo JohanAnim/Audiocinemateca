@@ -52,9 +52,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun providePlaybackProgressRepository(
-        playbackProgressDao: PlaybackProgressDao
+        playbackProgressDao: PlaybackProgressDao,
+        cloudRepository: com.johang.audiocinemateca.data.repository.CloudRepository
     ): PlaybackProgressRepository {
-        return PlaybackProgressRepository(playbackProgressDao)
+        return PlaybackProgressRepository(playbackProgressDao, cloudRepository)
     }
 
     @Provides
@@ -86,8 +87,15 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideFavoritesRepository(
-        favoritesDao: com.johang.audiocinemateca.data.local.dao.FavoritesDao
+        favoritesDao: com.johang.audiocinemateca.data.local.dao.FavoritesDao,
+        cloudRepository: com.johang.audiocinemateca.data.repository.CloudRepository
     ): com.johang.audiocinemateca.domain.repository.FavoritesRepository {
-        return com.johang.audiocinemateca.data.repository.FavoritesRepositoryImpl(favoritesDao)
+        return com.johang.audiocinemateca.data.repository.FavoritesRepositoryImpl(favoritesDao, cloudRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCloudRepository(): com.johang.audiocinemateca.data.repository.CloudRepository {
+        return com.johang.audiocinemateca.data.repository.CloudRepository()
     }
 }

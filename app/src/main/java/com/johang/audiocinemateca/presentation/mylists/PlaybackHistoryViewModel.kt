@@ -30,11 +30,16 @@ class PlaybackHistoryViewModel @Inject constructor(
             val fullCatalog = contentRepository.getCatalogResponse()
 
             playbackProgressRepository.getAllPlaybackProgress().collect { progressList ->
-                val displayList = progressList.map { progress ->
+                // FILTRADO INTELIGENTE: Agrupamos por contentId y nos quedamos solo con el último visto
+                val filteredList = progressList
+                    .groupBy { it.contentId }
+                    .map { entry -> entry.value.maxBy { it.lastPlayedTimestamp } }
+                    .sortedByDescending { it.lastPlayedTimestamp }
+
+                val displayList = filteredList.map { progress ->
                     val catalogItem = contentRepository.getContentItem(progress.contentId, progress.contentType, fullCatalog)
-                    // Crear HistoryItemDisplay aquí para la lógica de agrupación
                     HistoryItemDisplay(progress, catalogItem)
-                }.sortedByDescending { it.playbackProgress.lastPlayedTimestamp } // Ordenar por fecha más reciente
+                }
 
                 _historyItems.value = groupHistoryItemsByDate(displayList)
             }

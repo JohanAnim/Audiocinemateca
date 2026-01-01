@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.johang.audiocinemateca" />
+                  <option name="mobileSdkAppId" value="1:776083836528:android:89d474072077db0c3e6eb5" />
+                  <option name="projectId" value="audiocinemateca-cdebf" />
+                  <option name="projectNumber" value="776083836528" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

@@ -61,12 +61,11 @@ class FavoritosViewModel @Inject constructor(
                 }
 
                 if (item != null) {
-                    // Buscar el progreso más reciente
-                    val allProgress = playbackProgressRepository.getPlaybackProgressForContent(item.id)
-                    val latestProgress = allProgress.maxByOrNull { it.lastPlayedTimestamp }
+                    // Buscar el único progreso guardado para este contenido
+                    val progress = playbackProgressRepository.getPlaybackProgress(item.id, -1, -1)
 
-                    if (latestProgress != null) {
-                        _navigateToPlayer.emit(Triple(item, latestProgress.partIndex, latestProgress.episodeIndex))
+                    if (progress != null) {
+                        _navigateToPlayer.emit(Triple(item, progress.partIndex, progress.episodeIndex))
                     } else {
                         // Si no hay progreso, empezar desde el principio
                         val episodeIndex = if (item is Serie) 0 else -1

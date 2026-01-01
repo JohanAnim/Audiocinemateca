@@ -13,6 +13,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
@@ -108,7 +109,12 @@ class PlayerService : MediaSessionService() {
                         if (itemId != null && itemType != null) {
                             savePlaybackProgress(itemId, itemType, partIndex, episodeIndex, currentPosition)
                         }
-                        activePlayer.seekToPreviousMediaItem()
+                        // FORZAR SALTO REAL AL ANTERIOR
+                        if (activePlayer.hasPreviousMediaItem()) {
+                            activePlayer.seekToPreviousMediaItem()
+                        } else {
+                            activePlayer.seekTo(0) // Si no hay anterior, reinicia el actual
+                        }
                     }
                 }
                 MainActivity.ACTION_SEEK_TO_NEXT -> {
@@ -152,6 +158,18 @@ class PlayerService : MediaSessionService() {
         return super.onStartCommand(intent, flags, startId)
     }
 
+    private fun createForcedPreviousPlayer(basePlayer: Player): Player {
+        return object : ForwardingPlayer(basePlayer) {
+            override fun seekToPrevious() {
+                if (hasPreviousMediaItem()) {
+                    seekToPreviousMediaItem()
+                } else {
+                    seekTo(0)
+                }
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
 
@@ -164,12 +182,14 @@ class PlayerService : MediaSessionService() {
         val mediaSourceFactory = DefaultMediaSourceFactory(this)
             .setDataSourceFactory(dataSourceFactory)
 
-        player = ExoPlayer.Builder(this)
+        val basePlayer = ExoPlayer.Builder(this)
             .setAudioAttributes(AudioAttributes.DEFAULT, true)
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .setMediaSourceFactory(mediaSourceFactory)
             .build()
+            
+        player = createForcedPreviousPlayer(basePlayer)
 
         playerListener = object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -185,6 +205,26 @@ class PlayerService : MediaSessionService() {
                 super.onMediaItemTransition(mediaItem, reason)
                 updateSessionActivity()
                 broadcastMiniPlayerState(MainActivity.ACTION_UPDATE_MINI_PLAYER_METADATA)
+                
+                // CARGA AUTOMÁTICA DE PROGRESO AL CAMBIAR DE CAPÍTULO/PISTA
+                mediaItem?.mediaMetadata?.extras?.let { extras ->
+                    val itemId = extras.getString("itemId")
+                    val partIndex = extras.getInt("partIndex", -1)
+                    val episodeIndex = extras.getInt("episodeIndex", -1)
+                    
+                    if (itemId != null) {
+                        serviceScope.launch {
+                            val progress = playbackProgressRepository.getPlaybackProgress(itemId, partIndex, episodeIndex)
+                            progress?.let {
+                                // Solo saltamos si el progreso es relevante (> 2 segundos y no ha terminado)
+                                if (it.currentPositionMs > 2000 && it.currentPositionMs < it.totalDurationMs - 5000) {
+                                    Log.d("PlayerService", "Restaurando posición automática: ${it.currentPositionMs}ms")
+                                    player.seekTo(it.currentPositionMs)
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {

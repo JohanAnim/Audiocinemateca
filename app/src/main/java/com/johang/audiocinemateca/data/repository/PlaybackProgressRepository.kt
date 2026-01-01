@@ -7,14 +7,19 @@ import javax.inject.Singleton
 
 @Singleton
 class PlaybackProgressRepository @Inject constructor(
-    private val playbackProgressDao: PlaybackProgressDao
+    private val playbackProgressDao: PlaybackProgressDao,
+    private val cloudRepository: CloudRepository
 ) {
 
     suspend fun savePlaybackProgress(progress: PlaybackProgressEntity) {
-        if (progress.contentType == "series") {
-            playbackProgressDao.updateSeriesProgress(progress)
-        } else {
-            playbackProgressDao.insertPlaybackProgress(progress)
+        // Guardamos el capítulo específico
+        playbackProgressDao.insertPlaybackProgress(progress)
+
+        try {
+            // Sincronizamos este capítulo con la nube
+            cloudRepository.uploadHistory(progress)
+        } catch (e: Exception) {
+            android.util.Log.e("SyncHistory", "Error al subir progreso: ${e.message}")
         }
     }
 
@@ -28,14 +33,20 @@ class PlaybackProgressRepository @Inject constructor(
 
     suspend fun deletePlaybackProgress(contentId: String, partIndex: Int, episodeIndex: Int) {
         playbackProgressDao.deletePlaybackProgress(contentId, partIndex, episodeIndex)
-    }
-
-    suspend fun deleteAllPlaybackProgressForContent(contentId: String) {
-        playbackProgressDao.deleteAllPlaybackProgressForContent(contentId)
+        try {
+            cloudRepository.deleteHistoryItem(contentId, partIndex, episodeIndex)
+        } catch (e: Exception) {
+            android.util.Log.e("SyncHistory", "Error al borrar en nube")
+        }
     }
 
     suspend fun deleteAllPlaybackProgress() {
         playbackProgressDao.deleteAllPlaybackProgress()
+        try {
+            cloudRepository.deleteAllCloudHistory()
+        } catch (e: Exception) {
+            android.util.Log.e("SyncHistory", "Error al borrar todo en nube")
+        }
     }
 
     fun getAllPlaybackProgress(): kotlinx.coroutines.flow.Flow<List<PlaybackProgressEntity>> {

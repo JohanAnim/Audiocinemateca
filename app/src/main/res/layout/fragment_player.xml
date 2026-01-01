@@ -7,7 +7,14 @@
     android:background="@android:color/black"
     tools:context=".presentation.player.PlayerFragment">
 
-    <!-- El Toolbar se mantiene igual -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/exoplayer_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:controller_layout_id="@layout/exoplayer_custom_controls"
+        app:show_buffering="always"
+        app:surface_type="surface_view" />
+
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="0dp"
@@ -20,21 +27,5 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
-
-    <!--
-        El FrameLayout se elimina para simplificar y se coloca el PlayerView directamente.
-        La magia ocurre aquí con `app:controller_layout_id`.
-        Esto le dice a ExoPlayer que use tu layout personalizado para los controles.
-    -->
-    <androidx.media3.ui.PlayerView
-        android:id="@+id/exoplayer_view"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:controller_layout_id="@layout/exoplayer_custom_controls"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:use_controller="true" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

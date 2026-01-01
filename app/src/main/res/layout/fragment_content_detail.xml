@@ -39,45 +39,84 @@
                 android:textAlignment="center"
                 android:layout_marginTop="32dp" />
 
-            <!-- Botón Escuchar ahora -->
-            <Button
-                android:id="@+id/listen_now_button"
+            <!-- Calificación (Estrellas y Texto) -->
+            <TextView
+                android:id="@+id/content_rating_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Comenzar a oír"
-                android:layout_marginTop="32dp"
-                android:layout_gravity="center_horizontal" />
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="8dp"
+                android:textSize="14sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                tools:text="4.5/5 estrellas (Toca para calificar)" />
 
-            <!-- Contenedor para el botón de descarga y la barra de progreso -->
+            <!-- Contenedor Horizontal para Botones Principales -->
             <LinearLayout
-                android:id="@+id/download_container"
+                android:id="@+id/main_actions_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginTop="16dp"
-                android:gravity="center_vertical"
-                android:visibility="gone"
-                tools:visibility="visible">
+                android:gravity="center_horizontal"
+                android:layout_marginTop="32dp">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/download_button"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
+                <!-- Botón Escuchar ahora -->
+                <Button
+                    android:id="@+id/listen_now_button"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    tools:text="Descargar" />
+                    android:text="Comenzar a oír"
+                    android:paddingStart="24dp"
+                    android:paddingEnd="24dp" />
 
-                <com.google.android.material.progressindicator.LinearProgressIndicator
-                    android:id="@+id/download_progress_bar"
-                    android:layout_width="0dp"
+                <!-- Contenedor del Botón de Descarga (para manejar visibilidad y progreso) -->
+                <LinearLayout
+                    android:id="@+id/download_container"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:visibility="gone"
                     android:layout_marginStart="16dp"
-                    android:visibility="invisible"
-                    tools:visibility="visible"
-                    tools:progress="50"/>
+                    tools:visibility="visible">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/download_button"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:icon="@drawable/ic_downloads"
+                        app:iconGravity="textStart"
+                        tools:text="Descargar" />
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/download_progress_bar"
+                        android:layout_width="24dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:visibility="invisible"
+                        tools:visibility="visible"
+                        tools:progress="50"/>
+
+                </LinearLayout>
 
             </LinearLayout>
+
+            <!-- Contador de Vistas (Debajo de los botones) -->
+            <TextView
+                android:id="@+id/content_view_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="-8dp"
+                android:includeFontPadding="false"
+                android:textSize="14sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:drawablePadding="6dp"
+                app:drawableStartCompat="@drawable/ic_history"
+                tools:text="1.5k reproducciones" />
 
             <!-- Sinopsis -->
             <TextView

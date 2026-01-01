@@ -19,11 +19,24 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.johang.audiocinemateca.data.local.dao.DownloadDao
 import com.johang.audiocinemateca.data.local.dao.SearchHistoryDao
 
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.auth.FirebaseAuth
+
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    
+    @Provides
+    @Singleton
+    fun provideFirebaseAuth(): FirebaseAuth {
+        return FirebaseAuth.getInstance()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirestore(): FirebaseFirestore {
+        return FirebaseFirestore.getInstance()
+    }
 
     @Provides
     @Singleton
@@ -58,11 +71,54 @@ object AppModule {
             }
         }
 
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // 1. Crear tabla nueva con la PK simplificada (solo contentId)
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `playback_progress_new` (
+                        `contentId` TEXT NOT NULL, 
+                        `contentType` TEXT NOT NULL, 
+                        `currentPositionMs` INTEGER NOT NULL, 
+                        `totalDurationMs` INTEGER NOT NULL, 
+                        `partIndex` INTEGER NOT NULL, 
+                        `episodeIndex` INTEGER NOT NULL, 
+                        `lastPlayedTimestamp` INTEGER NOT NULL, 
+                        `isFinished` INTEGER NOT NULL DEFAULT 0, 
+                        PRIMARY KEY(`contentId`)
+                    )
+                """.trimIndent())
+
+                // 2. Copiar los datos. Usamos un truco de SQL para quedarnos solo con el registro más reciente de cada serie/peli
+                database.execSQL("""
+                    INSERT OR REPLACE INTO `playback_progress_new` 
+                    SELECT * FROM `playback_progress` 
+                    GROUP BY `contentId` 
+                    HAVING MAX(`lastPlayedTimestamp`)
+                """.trimIndent())
+
+                // 3. Eliminar tabla vieja y renombrar la nueva
+                database.execSQL("DROP TABLE `playback_progress`")
+                database.execSQL("ALTER TABLE `playback_progress_new` RENAME TO `playback_progress`")
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Restauramos la PK compuesta
+                database.execSQL("CREATE TABLE IF NOT EXISTS `playback_progress_temp` (`contentId` TEXT NOT NULL, `contentType` TEXT NOT NULL, `currentPositionMs` INTEGER NOT NULL, `totalDurationMs` INTEGER NOT NULL, `partIndex` INTEGER NOT NULL, `episodeIndex` INTEGER NOT NULL, `lastPlayedTimestamp` INTEGER NOT NULL, `isFinished` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`contentId`, `partIndex`, `episodeIndex`))")
+                database.execSQL("INSERT OR REPLACE INTO `playback_progress_temp` SELECT * FROM `playback_progress`")
+                database.execSQL("DROP TABLE `playback_progress`")
+                database.execSQL("ALTER TABLE `playback_progress_temp` RENAME TO `playback_progress`")
+            }
+        }
+
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             "audiocinemateca.db"
-        ).addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10).build()
+        ).addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+        .fallbackToDestructiveMigration()
+        .build()
     }
 
     @Provides

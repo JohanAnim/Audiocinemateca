@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.navigation.safe.args)
     alias(libs.plugins.ksp)
     id("kotlin-parcelize")
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -16,7 +17,7 @@ android {
         minSdk = 25
         targetSdk = 35
         versionCode = 2
-        versionName = "2.9.8"
+        versionName = "2.9.9    "
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -132,5 +133,20 @@ dependencies {
     implementation(libs.exoplayer.session)
     implementation(libs.exoplayer.okhttp)
 
-    // Comentario añadido por Gemini para forzar la resincronización de Gradle
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.messaging)
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
+    
+    // Google Auth & Credentials (Sintaxis corregida con puntos)
+    implementation(libs.play.services.auth)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
 }

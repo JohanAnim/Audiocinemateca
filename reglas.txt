@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- FUNCIONES DE AYUDA ---
+    
+    // Verifica si es el dueño del correo principal
+    function isHardcodedAdmin() {
+      return request.auth != null && request.auth.token.email == "gutierrezjohanantonio@gmail.com";
+    }
+
+    // Obtiene los datos del usuario desde la colección /users
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Es Admin si es el correo principal o si tiene el rol en su documento
+    function isAdmin() {
+      return request.auth != null && (isHardcodedAdmin() || getUserData().role == "admin");
+    }
+
+    // Es Editor si es Admin o si tiene el rol de editor
+    function isEditor() {
+      return request.auth != null && (isAdmin() || getUserData().role == "editor");
+    }
+
+    // --- REGLAS DE COLECCIONES ---
+
+    // Perfiles de usuario
+    match /users/{userId} {
+      // Cualquiera puede leer su propio perfil. Solo Admin puede ver todos.
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      // Solo el sistema o el usuario puede crear su perfil inicial.
+      // Solo Admin puede cambiar el campo 'role'.
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && (request.auth.uid == userId && request.resource.data.role == resource.data.role) || isAdmin();
+    }
+
+    // Comentarios
+    match /content_comments/{contentId}/comments/{commentId} {
+      allow read: if true; 
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // Autor o Admin pueden borrar
+      allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || isAdmin());
+      allow update: if request.auth != null;
+    }
+
+    // Reportes: Solo Admin puede verlos
+    match /comment_reports/{reportId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Contenido (Peliculas, Series, etc.) 
+    // Cuando pases el catálogo a Firestore, estas reglas servirán:
+    match /catalog/{itemId} {
+      allow read: if true;
+      // Solo Editores o Admins pueden subir/editar contenido
+      allow write: if isEditor();
+    }
+
+    // Votos y Estadísticas (Lectura pública, escritura usuarios logueados)
+    match /content_stats/{contentId} { allow read: if true; allow write: if request.auth != null; }
+    match /content_ratings/{contentId} { allow read: if true; allow write: if request.auth != null; }
+    match /content_votes/{docId} { 
+      allow read: if true; allow write: if request.auth != null;
+      match /user_votes/{userId} {
+        allow read: if true;
+        allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      }
+    }
+    
+    // Bloqueo total para lo demás
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

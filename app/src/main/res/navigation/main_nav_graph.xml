@@ -38,7 +38,35 @@
         <action
             android:id="@+id/action_accountFragment_to_webViewFragment"
             app:destination="@id/webViewFragment" />
+        <action
+            android:id="@+id/action_accountFragment_to_profileFragment"
+            app:destination="@id/profileFragment" />
     </fragment>
+
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.johang.audiocinemateca.presentation.account.ProfileFragment"
+        android:label="Mi Perfil"
+        tools:layout="@layout/fragment_profile">
+        <action
+            android:id="@+id/action_profileFragment_to_loginCloudFragment"
+            app:destination="@id/loginCloudFragment" />
+        <action
+            android:id="@+id/action_profileFragment_to_registerCloudFragment"
+            app:destination="@id/registerCloudFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/loginCloudFragment"
+        android:name="com.johang.audiocinemateca.presentation.account.LoginCloudFragment"
+        android:label="Login Nube"
+        tools:layout="@layout/fragment_login_cloud" />
+
+    <fragment
+        android:id="@+id/registerCloudFragment"
+        android:name="com.johang.audiocinemateca.presentation.account.RegisterCloudFragment"
+        android:label="Registro Nube"
+        tools:layout="@layout/fragment_register_cloud" />
 
     <fragment
         android:id="@+id/webViewFragment"
