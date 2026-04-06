@@ -38,4 +38,14 @@
         android:summary="Mostrar un diálogo al iniciar la app si hay una nueva versión disponible."
         android:defaultValue="true" />
 
+    <PreferenceCategory
+        app:title="Diagnóstico"
+        app:key="cat_diag">
+        <SwitchPreferenceCompat
+            android:key="create_crash_log"
+            android:title="Generar archivo de registro de errores (.log)"
+            android:summary="Si la app falla, se guardará un reporte en tu carpeta de descargas para compartirlo con el desarrollador."
+            android:defaultValue="true" />
+    </PreferenceCategory>
+
 </PreferenceScreen>

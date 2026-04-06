@@ -9,7 +9,7 @@ v3.0.0 - Versión Evolución Global
 - Mensajes de bienvenida y estados inteligentes para saber si el chat está abierto.
 
 [ACCESIBILIDAD PRO]
-- Anuncios Globales: El lector de pantalla ahora te avisa de nuevos mensajes y menciones en toda la app, incluso con la pantalla apagada.
+- Anuncios Globales: El lector de pantalla ahora te avisa de nuevos mensajes y menciones en toda la app.
 - Sonido y Vibración: Nueva identidad sonora para mensajes entrantes con vibración sincronizada.
 - Configuración de Voz: Elige cuándo quieres recibir anuncios (Siempre, solo en reposo o nunca) desde los nuevos ajustes.
 
@@ -26,4 +26,3 @@ v3.0.0 - Versión Evolución Global
 
 [SISTEMA]
 - Optimización de Servicios: Separación de la lógica de reproducción y anuncios para mayor estabilidad.
-- Panel de Control Admin: Johan ahora puede enviar mensajes y gestionar el chat directamente desde la consola.

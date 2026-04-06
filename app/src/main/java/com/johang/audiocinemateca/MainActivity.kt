@@ -45,40 +45,23 @@ import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.navigateUp
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
+import com.google.firebase.auth.FirebaseAuth
 
 @AndroidEntryPoint
 @OptIn(androidx.media3.common.util.UnstableApi::class)
 class MainActivity : AppCompatActivity() {
 
-    @Inject
-    lateinit var searchRepository: SearchRepository
-
-    @Inject
-    lateinit var authCatalogRepository: com.johang.audiocinemateca.data.AuthCatalogRepository
-
-    @Inject
-    lateinit var sharedPreferencesManager: SharedPreferencesManager
-
-    @Inject
-    lateinit var cloudRepository: com.johang.audiocinemateca.data.repository.CloudRepository
-
-    @Inject
-    lateinit var favoritesDao: com.johang.audiocinemateca.data.local.dao.FavoritesDao
-
-    @Inject
-    lateinit var playbackProgressDao: com.johang.audiocinemateca.data.local.dao.PlaybackProgressDao
-
-    @Inject
-    lateinit var globalChatRepository: com.johang.audiocinemateca.data.repository.GlobalChatRepository
-
-    @Inject
-    lateinit var soundEffectsManager: com.johang.audiocinemateca.util.SoundEffectsManager
-
-    @Inject
-    lateinit var notificationDao: com.johang.audiocinemateca.data.local.dao.NotificationDao
+    @Inject lateinit var searchRepository: SearchRepository
+    @Inject lateinit var authCatalogRepository: com.johang.audiocinemateca.data.AuthCatalogRepository
+    @Inject lateinit var sharedPreferencesManager: SharedPreferencesManager
+    @Inject lateinit var cloudRepository: com.johang.audiocinemateca.data.repository.CloudRepository
+    @Inject lateinit var favoritesDao: com.johang.audiocinemateca.data.local.dao.FavoritesDao
+    @Inject lateinit var playbackProgressDao: com.johang.audiocinemateca.data.local.dao.PlaybackProgressDao
+    @Inject lateinit var globalChatRepository: com.johang.audiocinemateca.data.repository.GlobalChatRepository
+    @Inject lateinit var soundEffectsManager: com.johang.audiocinemateca.util.SoundEffectsManager
+    @Inject lateinit var notificationDao: com.johang.audiocinemateca.data.local.dao.NotificationDao
 
     private val accountViewModel: AccountViewModel by viewModels()
-
     private lateinit var navController: NavController
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var appBarConfiguration: AppBarConfiguration
@@ -93,25 +76,34 @@ class MainActivity : AppCompatActivity() {
     private var currentPlayingPartIndex: Int = -1
     private var currentPlayingEpisodeIndex: Int = -1
 
-    // --- LÓGICA DE CHAT GLOBAL (SILENCIOSA) ---
     private var isPlayerActive = false
     private var appStartTime = com.google.firebase.Timestamp.now()
+    private var chatMessagesJob: kotlinx.coroutines.Job? = null
+    private var chatStatusJob: kotlinx.coroutines.Job? = null
 
     private fun startGlobalChatWatcher() {
+        stopGlobalChatWatcher()
+        val auth = FirebaseAuth.getInstance()
+        val user = auth.currentUser ?: return
         val am = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
-        val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
 
-        lifecycleScope.launch {
+        // Usamos un flag para ignorar la primera carga del snapshot (mensajes viejos)
+        var isFirstLoad = true
+
+        chatMessagesJob = lifecycleScope.launch {
             globalChatRepository.getMessages().collect { messages ->
-                val lastMessage = messages.lastOrNull() ?: return@collect
-                if (lastMessage.senderId != auth.currentUser?.uid && 
-                    lastMessage.timestamp.seconds > appStartTime.seconds) {
-                    handleChatAnnouncement(lastMessage, null, am, auth)
+                if (isFirstLoad) {
+                    isFirstLoad = false
+                    return@collect
+                }
+                val last = messages.lastOrNull() ?: return@collect
+                if (last.senderId != user.uid) {
+                    handleChatAnnouncement(last, null, am, auth)
                 }
             }
         }
 
-        lifecycleScope.launch {
+        chatStatusJob = lifecycleScope.launch {
             var lastStatus: Boolean? = null
             globalChatRepository.getChatStatus().collect { isOpen ->
                 if (lastStatus != null && lastStatus != isOpen) {
@@ -123,69 +115,51 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleChatAnnouncement(
-        message: com.johang.audiocinemateca.data.model.ChatMessage?,
-        directText: String?,
-        am: AccessibilityManager,
-        auth: com.google.firebase.auth.FirebaseAuth,
-        force: Boolean = false
-    ) {
+    private fun stopGlobalChatWatcher() {
+        chatMessagesJob?.cancel(); chatStatusJob?.cancel()
+        chatMessagesJob = null; chatStatusJob = null
+    }
+
+    private fun handleChatAnnouncement(msg: com.johang.audiocinemateca.data.model.ChatMessage?, txt: String?, am: AccessibilityManager, auth: FirebaseAuth, force: Boolean = false) {
         val mode = sharedPreferencesManager.getString("chat_announcement_mode", "idle_only")
         if (mode == "never" && !force) return
-
         if (mode == "idle_only" && isPlayerActive && !force) return
 
-        val text = directText ?: message?.let { msg ->
-            val isMentioned = msg.mentions.contains(auth.currentUser?.uid) || msg.text.contains("@${auth.currentUser?.displayName}", true)
-            if (isMentioned) "${msg.senderName} te mencionó: ${msg.text}" else "${msg.senderName} escribió: ${msg.text}"
+        val finalMsg = txt ?: msg?.let {
+            val isMe = it.mentions.contains(auth.currentUser?.uid ?: "") || it.text.contains("@${auth.currentUser?.displayName}", true)
+            if (isMe) "${it.senderName} te mencionó: ${it.text}" else "${it.senderName} escribió: ${it.text}"
         }
 
-        text?.let {
+        finalMsg?.let {
             soundEffectsManager.playSound("receive_message")
             vibrateManually()
             if (am.isEnabled) {
                 val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_ANNOUNCEMENT)
-                event.text.add(it)
-                am.sendAccessibilityEvent(event)
+                event.text.add(it); am.sendAccessibilityEvent(event)
             }
         }
     }
 
     private fun vibrateManually() {
-        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            vibrator.vibrate(android.os.VibrationEffect.createOneShot(150, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
-        } else {
-            vibrator.vibrate(150)
-        }
+        val v = getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) v.vibrate(android.os.VibrationEffect.createOneShot(150, 150)) else v.vibrate(150)
     }
 
     private val miniPlayerUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 ACTION_SHOW_MINI_PLAYER, ACTION_UPDATE_MINI_PLAYER_METADATA -> {
-                    val title = intent.getStringExtra(EXTRA_TITLE)
-                    val subtitle = intent.getStringExtra(EXTRA_SUBTITLE)
                     val isPlaying = intent.getBooleanExtra(EXTRA_IS_PLAYING, false)
                     currentPlayingItemId = intent.getStringExtra(EXTRA_ITEM_ID)
                     currentPlayingItemType = intent.getStringExtra(EXTRA_ITEM_TYPE)
                     currentPlayingPartIndex = intent.getIntExtra(EXTRA_PART_INDEX, -1)
                     currentPlayingEpisodeIndex = intent.getIntExtra(EXTRA_EPISODE_INDEX, -1)
-                    updateMiniPlayerContent(title, subtitle, isPlaying)
+                    updateMiniPlayerContent(intent.getStringExtra(EXTRA_TITLE), intent.getStringExtra(EXTRA_SUBTITLE), isPlaying)
                     isPlayerActive = isPlaying
-                    if (intent.action == ACTION_SHOW_MINI_PLAYER && navController.currentDestination?.id != R.id.playerFragment) {
-                        miniPlayerContainer.visibility = View.VISIBLE
-                    }
+                    if (intent.action == ACTION_SHOW_MINI_PLAYER && navController.currentDestination?.id != R.id.playerFragment) miniPlayerContainer.visibility = View.VISIBLE
                 }
-                ACTION_HIDE_MINI_PLAYER -> {
-                    miniPlayerContainer.visibility = View.GONE
-                    isPlayerActive = false
-                }
-                ACTION_UPDATE_PLAY_PAUSE_BUTTON -> {
-                    val isPlaying = intent.getBooleanExtra(EXTRA_IS_PLAYING, false)
-                    isPlayerActive = isPlaying
-                    updateMiniPlayerPlayPauseButton(isPlaying)
-                }
+                ACTION_HIDE_MINI_PLAYER -> { miniPlayerContainer.visibility = View.GONE; isPlayerActive = false }
+                ACTION_UPDATE_PLAY_PAUSE_BUTTON -> { isPlayerActive = intent.getBooleanExtra(EXTRA_IS_PLAYING, false); updateMiniPlayerPlayPauseButton(isPlayerActive) }
             }
         }
     }
@@ -199,51 +173,36 @@ class MainActivity : AppCompatActivity() {
         val navView: NavigationView = findViewById(R.id.nav_view)
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         navController = navHostFragment.navController
-        val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottom_nav_view)
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_nav_view)
 
-        // CONFIGURAR BARRA SUPERIOR (Hamburguesa en destinos principales)
-        appBarConfiguration = AppBarConfiguration(
-            setOf(R.id.catalogFragment, R.id.myListsFragment, R.id.aiChatFragment, R.id.accountFragment, R.id.communityFragment, R.id.notificationsFragment),
-            drawerLayout
-        )
+        appBarConfiguration = AppBarConfiguration(setOf(R.id.catalogFragment, R.id.myListsFragment, R.id.aiChatFragment, R.id.accountFragment, R.id.communityFragment, R.id.notificationsFragment), drawerLayout)
         setupActionBarWithNavController(navController, appBarConfiguration)
 
-        // ESCUCHA DE AUTENTICACIÓN PARA HEADER Y SECCIONES
-        com.google.firebase.auth.FirebaseAuth.getInstance().addAuthStateListener { auth ->
-            val communityItem = navView.menu.findItem(R.id.communityFragment)
-            communityItem.isVisible = auth.currentUser != null
-            
-            val headerView = navView.getHeaderView(0)
-            val userNameText = headerView.findViewById<TextView>(R.id.tv_header_user_name)
-            val userEmailText = headerView.findViewById<TextView>(R.id.tv_header_user_email)
-            val appVersionText = headerView.findViewById<TextView>(R.id.tv_app_version)
-
-            val currentUser = auth.currentUser
-            if (currentUser != null) {
-                userNameText.text = currentUser.displayName ?: "Usuario de Audiocinemateca"
-                userEmailText.text = currentUser.email
-                userEmailText.visibility = View.VISIBLE
-            } else {
-                userNameText.text = "Audiocinemateca"
-                userEmailText.text = "Versión Accesible"
-                userEmailText.visibility = View.VISIBLE
-            }
-
+        FirebaseAuth.getInstance().addAuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
             try {
-                val pInfo = packageManager.getPackageInfo(packageName, 0)
-                appVersionText.text = "Versión ${pInfo.versionName}"
-            } catch (e: Exception) {
-                appVersionText.text = "Versión 3.0.0"
-            }
+                navView.menu.findItem(R.id.communityFragment)?.isVisible = (user != null)
+                if (navView.headerCount > 0) {
+                    val header = navView.getHeaderView(0)
+                    header.findViewById<TextView>(R.id.tv_header_user_name)?.text = user?.displayName ?: "Audiocinemateca"
+                    header.findViewById<TextView>(R.id.tv_header_user_email)?.text = user?.email ?: "Versión Accesible"
+                    try {
+                        val pInfo = packageManager.getPackageInfo(packageName, 0)
+                        header.findViewById<TextView>(R.id.tv_app_version)?.text = "Versión ${pInfo.versionName}"
+                    } catch (e: Exception) { header.findViewById<TextView>(R.id.tv_app_version)?.text = "Versión 3.0.0" }
+                }
+            } catch (e: Exception) { Log.e("MainActivity", "Error actualizando UI", e) }
+
+            if (user != null) startGlobalChatWatcher() else stopGlobalChatWatcher()
         }
 
-        navView.setNavigationItemSelectedListener { menuItem ->
-            val handled = when (menuItem.itemId) {
+        navView.setNavigationItemSelectedListener { item ->
+            val handled = when (item.itemId) {
                 R.id.catalogFragment -> { navController.navigate(R.id.catalogFragment); true }
-                R.id.communityFragment -> { navController.navigate(R.id.communityFragment); true }
+                R.id.communityFragment -> { if (FirebaseAuth.getInstance().currentUser != null) { navController.navigate(R.id.communityFragment); true } else false }
                 R.id.notificationsFragment -> { navController.navigate(R.id.notificationsFragment); true }
                 R.id.aiChatFragment -> { navController.navigate(R.id.aiChatFragment); true }
-                else -> androidx.navigation.ui.NavigationUI.onNavDestinationSelected(menuItem, navController)
+                else -> androidx.navigation.ui.NavigationUI.onNavDestinationSelected(item, navController)
             }
             if (handled) drawerLayout.closeDrawer(GravityCompat.START)
             handled
@@ -255,76 +214,50 @@ class MainActivity : AppCompatActivity() {
         miniPlayerPlayPauseButton = miniPlayerContainer.findViewById(R.id.mini_player_play_pause)
         miniPlayerCloseButton = miniPlayerContainer.findViewById(R.id.mini_player_close)
 
-        bottomNavigationView.setupWithNavController(navController)
-        navView.setCheckedItem(R.id.catalogFragment)
-
-        navController.addOnDestinationChangedListener { _, destination, _ ->
-            when (destination.id) {
-                R.id.playerFragment, R.id.contentDetailFragment, 
-                R.id.communityFragment, R.id.aiChatFragment, R.id.notificationsFragment -> {
-                    bottomNavigationView.visibility = View.GONE
-                    drawerLayout.setDrawerLockMode(if (destination.id == R.id.playerFragment || destination.id == R.id.contentDetailFragment) 
-                        DrawerLayout.LOCK_MODE_LOCKED_CLOSED else DrawerLayout.LOCK_MODE_UNLOCKED)
+        bottomNav.setupWithNavController(navController)
+        navController.addOnDestinationChangedListener { _, dest, _ ->
+            when (dest.id) {
+                R.id.playerFragment, R.id.contentDetailFragment, R.id.communityFragment, R.id.aiChatFragment, R.id.notificationsFragment -> {
+                    bottomNav.visibility = View.GONE
+                    drawerLayout.setDrawerLockMode(if (dest.id == R.id.playerFragment || dest.id == R.id.contentDetailFragment) DrawerLayout.LOCK_MODE_LOCKED_CLOSED else DrawerLayout.LOCK_MODE_UNLOCKED)
                 }
-                else -> {
-                    bottomNavigationView.visibility = View.VISIBLE
-                    drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
-                }
+                else -> { bottomNav.visibility = View.VISIBLE; drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED) }
             }
         }
 
         miniPlayerPlayPauseButton.setOnClickListener { LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(PlayerService.ACTION_PLAY_PAUSE)) }
-        miniPlayerCloseButton.setOnClickListener { 
-            LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(PlayerService.ACTION_STOP))
-            miniPlayerContainer.visibility = View.GONE
-            isPlayerActive = false
-        }
-
+        miniPlayerCloseButton.setOnClickListener { LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(PlayerService.ACTION_STOP)); miniPlayerContainer.visibility = View.GONE; isPlayerActive = false }
         miniPlayerContainer.setOnClickListener {
-            currentPlayingItemId?.let { itemId ->
-                currentPlayingItemType?.let { itemType ->
-                    lifecycleScope.launch {
-                        val catalogItem = searchRepository.getCatalogItemByIdAndType(itemId, itemType)
-                        catalogItem?.let {
-                            if (navController.currentDestination?.id != R.id.contentDetailFragment) {
-                                navController.navigate(MainNavGraphDirections.actionGlobalContentDetailFragment(itemId, itemType))
-                            }
-                            val bundle = Bundle().apply {
-                                putParcelable("catalogItem", it)
-                                putInt("partIndex", currentPlayingPartIndex)
-                                putInt("episodeIndex", currentPlayingEpisodeIndex)
-                            }
-                            navController.navigate(R.id.action_global_playerFragment, bundle)
-                        }
+            currentPlayingItemId?.let { id -> currentPlayingItemType?.let { type ->
+                lifecycleScope.launch {
+                    searchRepository.getCatalogItemByIdAndType(id, type)?.let {
+                        if (navController.currentDestination?.id != R.id.contentDetailFragment) navController.navigate(MainNavGraphDirections.actionGlobalContentDetailFragment(id, type))
+                        navController.navigate(R.id.action_global_playerFragment, Bundle().apply { putParcelable("catalogItem", it); putInt("partIndex", currentPlayingPartIndex); putInt("episodeIndex", currentPlayingEpisodeIndex) })
                     }
                 }
-            }
+            }}
         }
 
-        val filter = IntentFilter().apply {
-            addAction(ACTION_SHOW_MINI_PLAYER); addAction(ACTION_HIDE_MINI_PLAYER)
-            addAction(ACTION_UPDATE_PLAY_PAUSE_BUTTON); addAction(ACTION_UPDATE_MINI_PLAYER_METADATA)
-        }
-        LocalBroadcastManager.getInstance(this).registerReceiver(miniPlayerUpdateReceiver, filter)
+        LocalBroadcastManager.getInstance(this).registerReceiver(miniPlayerUpdateReceiver, IntentFilter().apply { addAction(ACTION_SHOW_MINI_PLAYER); addAction(ACTION_HIDE_MINI_PLAYER); addAction(ACTION_UPDATE_PLAY_PAUSE_BUTTON); addAction(ACTION_UPDATE_MINI_PLAYER_METADATA) })
 
         startRealtimeSync()
         startAnnouncementsWatcher()
-        startGlobalChatWatcher()
         handleIntent(intent)
     }
 
     private fun startAnnouncementsWatcher() {
+        var isFirstLoad = true
         com.google.firebase.firestore.FirebaseFirestore.getInstance().collection("anuncios")
             .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING).limit(1)
             .addSnapshotListener { snapshot, _ ->
+                if (isFirstLoad) {
+                    isFirstLoad = false
+                    return@addSnapshotListener
+                }
                 val doc = snapshot?.documents?.firstOrNull() ?: return@addSnapshotListener
                 val ann = doc.toObject(com.johang.audiocinemateca.data.model.Announcement::class.java)
-                if (ann != null && ann.timestamp.seconds > appStartTime.seconds) {
-                    lifecycleScope.launch {
-                        if (!notificationDao.existsByRemoteId(doc.id)) {
-                            notificationDao.insert(com.johang.audiocinemateca.data.local.entities.NotificationEntity(remoteId = doc.id, title = "Anuncio de ${ann.adminName}", body = ann.text, timestamp = ann.timestamp.toDate().time))
-                        }
-                    }
+                if (ann != null) {
+                    lifecycleScope.launch { if (!notificationDao.existsByRemoteId(doc.id)) notificationDao.insert(com.johang.audiocinemateca.data.local.entities.NotificationEntity(remoteId = doc.id, title = "Anuncio de ${ann.adminName}", body = ann.text, timestamp = ann.timestamp?.toDate()?.time ?: System.currentTimeMillis())) }
                 }
             }
     }
@@ -339,57 +272,34 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); handleIntent(intent) }
 
     private fun handleIntent(intent: Intent?) {
-        if (intent == null) return
-        val navTo = intent.getStringExtra("navigate_to")
-        if (navTo == "announcements") { navController.navigate(R.id.communityFragment, Bundle().apply { putString("select_tab", "announcements") }); intent.removeExtra("navigate_to") }
-        val url = intent.getStringExtra("url")
-        if (!url.isNullOrBlank()) { try { val uri = Uri.parse(url); if (uri.host?.contains("audiocinemateca.com") == true) handleDeepLink(Intent(Intent.ACTION_VIEW, uri)) else startActivity(Intent(Intent.ACTION_VIEW, uri)); intent.removeExtra("url") } catch (e: Exception) {} }
-        if (intent.action == ACTION_OPEN_PLAYER) handleOpenPlayer(intent)
+        intent?.let {
+            it.getStringExtra("navigate_to")?.let { nav -> if (nav == "announcements") navController.navigate(R.id.communityFragment, Bundle().apply { putString("select_tab", "announcements") }); it.removeExtra("navigate_to") }
+            it.getStringExtra("url")?.let { url -> try { val uri = Uri.parse(url); if (uri.host?.contains("audiocinemateca.com") == true) handleDeepLink(Intent(Intent.ACTION_VIEW, uri)) else startActivity(Intent(Intent.ACTION_VIEW, uri)); it.removeExtra("url") } catch (e: Exception) {} }
+            if (it.action == ACTION_OPEN_PLAYER) handleOpenPlayer(it)
+        }
     }
 
     private fun handleDeepLink(intent: Intent) {
         val uri = intent.data ?: return
         val path = uri.pathSegments
         if (path.isEmpty()) return
-        val itemId = uri.getQueryParameter("id") ?: if (path.size >= 2) path[1] else null
-        if (itemId != null) {
-            lifecycleScope.launch {
-                val item = searchRepository.findCatalogItemById(itemId)
-                item?.let { 
-                    val type = when(it){ is Movie -> "peliculas"; is Serie -> "series"; is Documentary -> "documentales"; else -> "cortometrajes" }
-                    navController.navigate(MainNavGraphDirections.actionGlobalContentDetailFragment(it.id, type)) 
-                }
-            }
-        }
+        val id = uri.getQueryParameter("id") ?: if (path.size >= 2) path[1] else null
+        if (id != null) lifecycleScope.launch { searchRepository.findCatalogItemById(id)?.let { val type = when(it){ is Movie -> "peliculas"; is Serie -> "series"; is Documentary -> "documentales"; else -> "cortometrajes" }; navController.navigate(MainNavGraphDirections.actionGlobalContentDetailFragment(it.id, type)) } }
     }
 
     private fun handleOpenPlayer(intent: Intent) {
         val id = intent.getStringExtra(EXTRA_ITEM_ID) ?: return
         val type = intent.getStringExtra(EXTRA_ITEM_TYPE) ?: return
-        lifecycleScope.launch {
-            val item = searchRepository.getCatalogItemByIdAndType(id, type)
-            item?.let {
-                if (navController.currentDestination?.id != R.id.contentDetailFragment) navController.navigate(MainNavGraphDirections.actionGlobalContentDetailFragment(id, type))
-                val bundle = Bundle().apply { putParcelable("catalogItem", it); putInt("partIndex", intent.getIntExtra(EXTRA_PART_INDEX, -1)); putInt("episodeIndex", intent.getIntExtra(EXTRA_EPISODE_INDEX, -1)) }
-                navController.navigate(R.id.action_global_playerFragment, bundle)
-            }
-        }
+        lifecycleScope.launch { searchRepository.getCatalogItemByIdAndType(id, type)?.let {
+            if (navController.currentDestination?.id != R.id.contentDetailFragment) navController.navigate(MainNavGraphDirections.actionGlobalContentDetailFragment(id, type))
+            navController.navigate(R.id.action_global_playerFragment, Bundle().apply { putParcelable("catalogItem", it); putInt("partIndex", intent.getIntExtra(EXTRA_PART_INDEX, -1)); putInt("episodeIndex", intent.getIntExtra(EXTRA_EPISODE_INDEX, -1)) })
+        }}
     }
 
-    private fun updateMiniPlayerContent(title: String?, subtitle: String?, isPlaying: Boolean) {
-        miniPlayerTitle.text = "Reproduciendo: ${title ?: ""}"
-        miniPlayerSubtitle.text = subtitle
-        updateMiniPlayerPlayPauseButton(isPlaying)
-    }
+    private fun updateMiniPlayerContent(t: String?, s: String?, isP: Boolean) { miniPlayerTitle.text = "Reproduciendo: ${t ?: ""}"; miniPlayerSubtitle.text = s; updateMiniPlayerPlayPauseButton(isP) }
+    private fun updateMiniPlayerPlayPauseButton(isP: Boolean) { miniPlayerPlayPauseButton.text = if (isP) "Pausar" else "Reproducir" }
 
-    private fun updateMiniPlayerPlayPauseButton(isPlaying: Boolean) {
-        miniPlayerPlayPauseButton.text = if (isPlaying) "Pausar" else "Reproducir"
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(miniPlayerUpdateReceiver)
-    }
+    override fun onDestroy() { super.onDestroy(); try { LocalBroadcastManager.getInstance(this).unregisterReceiver(miniPlayerUpdateReceiver) } catch (e: Exception) {} }
 
     companion object {
         const val ACTION_SHOW_MINI_PLAYER = "com.johang.audiocinemateca.SHOW_MINI_PLAYER"
