@@ -101,14 +101,9 @@ class MainActivity : AppCompatActivity() {
         val am = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
         val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
 
-        // 1. Vigilar Mensajes
         lifecycleScope.launch {
             globalChatRepository.getMessages().collect { messages ->
                 val lastMessage = messages.lastOrNull() ?: return@collect
-                
-                // CONDICIONES DE ORO:
-                // - No es nuestro
-                // - Es NUEVO (creado después de abrir la app)
                 if (lastMessage.senderId != auth.currentUser?.uid && 
                     lastMessage.timestamp.seconds > appStartTime.seconds) {
                     handleChatAnnouncement(lastMessage, null, am, auth)
@@ -116,7 +111,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // 2. Vigilar Estado
         lifecycleScope.launch {
             var lastStatus: Boolean? = null
             globalChatRepository.getChatStatus().collect { isOpen ->
@@ -139,9 +133,7 @@ class MainActivity : AppCompatActivity() {
         val mode = sharedPreferencesManager.getString("chat_announcement_mode", "idle_only")
         if (mode == "never" && !force) return
 
-        // Si modo es 'idle_only', no hablamos si el mini reproductor es visible (algo está cargado/sonando)
-        val isBusy = miniPlayerContainer.visibility == View.VISIBLE
-        if (mode == "idle_only" && isBusy && !force) return
+        if (mode == "idle_only" && isPlayerActive && !force) return
 
         val text = directText ?: message?.let { msg ->
             val isMentioned = msg.mentions.contains(auth.currentUser?.uid) || msg.text.contains("@${auth.currentUser?.displayName}", true)
@@ -180,11 +172,15 @@ class MainActivity : AppCompatActivity() {
                     currentPlayingPartIndex = intent.getIntExtra(EXTRA_PART_INDEX, -1)
                     currentPlayingEpisodeIndex = intent.getIntExtra(EXTRA_EPISODE_INDEX, -1)
                     updateMiniPlayerContent(title, subtitle, isPlaying)
+                    isPlayerActive = isPlaying
                     if (intent.action == ACTION_SHOW_MINI_PLAYER && navController.currentDestination?.id != R.id.playerFragment) {
                         miniPlayerContainer.visibility = View.VISIBLE
                     }
                 }
-                ACTION_HIDE_MINI_PLAYER -> miniPlayerContainer.visibility = View.GONE
+                ACTION_HIDE_MINI_PLAYER -> {
+                    miniPlayerContainer.visibility = View.GONE
+                    isPlayerActive = false
+                }
                 ACTION_UPDATE_PLAY_PAUSE_BUTTON -> {
                     val isPlaying = intent.getBooleanExtra(EXTRA_IS_PLAYING, false)
                     isPlayerActive = isPlaying
@@ -205,11 +201,41 @@ class MainActivity : AppCompatActivity() {
         navController = navHostFragment.navController
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottom_nav_view)
 
+        // CONFIGURAR BARRA SUPERIOR (Hamburguesa en destinos principales)
         appBarConfiguration = AppBarConfiguration(
             setOf(R.id.catalogFragment, R.id.myListsFragment, R.id.aiChatFragment, R.id.accountFragment, R.id.communityFragment, R.id.notificationsFragment),
             drawerLayout
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
+
+        // ESCUCHA DE AUTENTICACIÓN PARA HEADER Y SECCIONES
+        com.google.firebase.auth.FirebaseAuth.getInstance().addAuthStateListener { auth ->
+            val communityItem = navView.menu.findItem(R.id.communityFragment)
+            communityItem.isVisible = auth.currentUser != null
+            
+            val headerView = navView.getHeaderView(0)
+            val userNameText = headerView.findViewById<TextView>(R.id.tv_header_user_name)
+            val userEmailText = headerView.findViewById<TextView>(R.id.tv_header_user_email)
+            val appVersionText = headerView.findViewById<TextView>(R.id.tv_app_version)
+
+            val currentUser = auth.currentUser
+            if (currentUser != null) {
+                userNameText.text = currentUser.displayName ?: "Usuario de Audiocinemateca"
+                userEmailText.text = currentUser.email
+                userEmailText.visibility = View.VISIBLE
+            } else {
+                userNameText.text = "Audiocinemateca"
+                userEmailText.text = "Versión Accesible"
+                userEmailText.visibility = View.VISIBLE
+            }
+
+            try {
+                val pInfo = packageManager.getPackageInfo(packageName, 0)
+                appVersionText.text = "Versión ${pInfo.versionName}"
+            } catch (e: Exception) {
+                appVersionText.text = "Versión 3.0.0"
+            }
+        }
 
         navView.setNavigationItemSelectedListener { menuItem ->
             val handled = when (menuItem.itemId) {
@@ -234,9 +260,11 @@ class MainActivity : AppCompatActivity() {
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
             when (destination.id) {
-                R.id.playerFragment, R.id.contentDetailFragment -> {
+                R.id.playerFragment, R.id.contentDetailFragment, 
+                R.id.communityFragment, R.id.aiChatFragment, R.id.notificationsFragment -> {
                     bottomNavigationView.visibility = View.GONE
-                    drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+                    drawerLayout.setDrawerLockMode(if (destination.id == R.id.playerFragment || destination.id == R.id.contentDetailFragment) 
+                        DrawerLayout.LOCK_MODE_LOCKED_CLOSED else DrawerLayout.LOCK_MODE_UNLOCKED)
                 }
                 else -> {
                     bottomNavigationView.visibility = View.VISIBLE
@@ -249,6 +277,28 @@ class MainActivity : AppCompatActivity() {
         miniPlayerCloseButton.setOnClickListener { 
             LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(PlayerService.ACTION_STOP))
             miniPlayerContainer.visibility = View.GONE
+            isPlayerActive = false
+        }
+
+        miniPlayerContainer.setOnClickListener {
+            currentPlayingItemId?.let { itemId ->
+                currentPlayingItemType?.let { itemType ->
+                    lifecycleScope.launch {
+                        val catalogItem = searchRepository.getCatalogItemByIdAndType(itemId, itemType)
+                        catalogItem?.let {
+                            if (navController.currentDestination?.id != R.id.contentDetailFragment) {
+                                navController.navigate(MainNavGraphDirections.actionGlobalContentDetailFragment(itemId, itemType))
+                            }
+                            val bundle = Bundle().apply {
+                                putParcelable("catalogItem", it)
+                                putInt("partIndex", currentPlayingPartIndex)
+                                putInt("episodeIndex", currentPlayingEpisodeIndex)
+                            }
+                            navController.navigate(R.id.action_global_playerFragment, bundle)
+                        }
+                    }
+                }
+            }
         }
 
         val filter = IntentFilter().apply {
@@ -257,7 +307,6 @@ class MainActivity : AppCompatActivity() {
         }
         LocalBroadcastManager.getInstance(this).registerReceiver(miniPlayerUpdateReceiver, filter)
 
-        // START WATCHERS
         startRealtimeSync()
         startAnnouncementsWatcher()
         startGlobalChatWatcher()

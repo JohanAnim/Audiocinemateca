@@ -102,7 +102,14 @@ class GlobalChatFragment : Fragment() {
             val text = binding.etMessage.text.toString()
             if (viewModel.sendMessage(text)) {
                 binding.etMessage.text.clear()
-                toggleEmojiPicker(false)
+                // Solo cerramos si estaba abierto
+                if (binding.emojiPickerContainer.visibility == View.VISIBLE) {
+                    toggleEmojiPicker(false)
+                } else {
+                    // Si no estaba el panel de emojis, simplemente ocultamos el teclado
+                    val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.hideSoftInputFromWindow(binding.etMessage.windowToken, 0)
+                }
             } else {
                 Toast.makeText(requireContext(), "Espera 2 segundos entre mensajes.", Toast.LENGTH_SHORT).show()
             }
