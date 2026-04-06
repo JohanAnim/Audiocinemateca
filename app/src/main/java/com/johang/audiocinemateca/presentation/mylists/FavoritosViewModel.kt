@@ -8,6 +8,7 @@ import com.johang.audiocinemateca.domain.usecase.RemoveFavoriteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -34,6 +35,25 @@ class FavoritosViewModel @Inject constructor(
     val error = _error.asSharedFlow()
 
     val favorites: StateFlow<List<FavoriteEntity>> = getFavoritesUseCase()
+        .map { list -> 
+            list.map { fav ->
+                var fixedAt = fav.addedAt
+                
+                // Si el número empieza por 20 (formato YYYYMMDD de Windows)
+                // lo convertimos a un valor bajo (ej. año 2024) para que 
+                // cualquier cosa nueva agregada en Android (que empieza por 17...)
+                // sea cronológicamente superior en milisegundos reales.
+                if (fixedAt > 200000000000L && fixedAt < 210000000000L) {
+                    fixedAt = 1704067200000L // Reset a Enero 2024
+                } 
+                // Si son segundos, pasar a milisegundos
+                else if (fixedAt in 1L..9999999999L) {
+                    fixedAt *= 1000
+                }
+
+                fav.copy(addedAt = fixedAt)
+            }.sortedByDescending { it.addedAt }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -51,13 +71,19 @@ class FavoritosViewModel @Inject constructor(
             try {
                 val catalog = catalogRepository.getCatalog() ?: return@launch
                 
-                // Buscar el item en el catálogo según su tipo
-                val item = when (favorite.contentType) {
-                    "movie" -> catalog.movies?.find { it.id == favorite.contentId }
-                    "serie" -> catalog.series?.find { it.id == favorite.contentId }
-                    "documentary" -> catalog.documentaries?.find { it.id == favorite.contentId }
-                    "shortfilm" -> catalog.shortFilms?.find { it.id == favorite.contentId }
-                    else -> null
+                // Buscar el item en el catálogo siendo flexibles con el tipo
+                val item = when (favorite.contentType.lowercase()) {
+                    "movie", "peliculas" -> catalog.movies?.find { it.id == favorite.contentId }
+                    "serie", "series" -> catalog.series?.find { it.id == favorite.contentId }
+                    "documentary", "documentales" -> catalog.documentaries?.find { it.id == favorite.contentId }
+                    "shortfilm", "short", "cortometrajes" -> catalog.shortFilms?.find { it.id == favorite.contentId }
+                    else -> {
+                        // Búsqueda exhaustiva si el tipo no coincide
+                        catalog.movies?.find { it.id == favorite.contentId }
+                            ?: catalog.series?.find { it.id == favorite.contentId }
+                            ?: catalog.documentaries?.find { it.id == favorite.contentId }
+                            ?: catalog.shortFilms?.find { it.id == favorite.contentId }
+                    }
                 }
 
                 if (item != null) {

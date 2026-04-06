@@ -16,8 +16,8 @@ android {
         applicationId = "com.johang.audiocinemateca"
         minSdk = 25
         targetSdk = 35
-        versionCode = 2
-        versionName = "2.9.9    "
+        versionCode = 16
+        versionName = "3.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -149,4 +149,7 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
+
+    // Google AI (Gemini)
+    implementation(libs.google.generativeai)
 }

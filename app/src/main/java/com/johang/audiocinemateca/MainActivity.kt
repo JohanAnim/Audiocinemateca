@@ -41,6 +41,14 @@ import com.johang.audiocinemateca.presentation.WhatsNewDialogFragment
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
+import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.drawerlayout.widget.DrawerLayout
+import com.google.android.material.navigation.NavigationView
+import androidx.core.view.GravityCompat
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.setupActionBarWithNavController
+import androidx.navigation.ui.navigateUp
+
 @AndroidEntryPoint
 @OptIn(androidx.media3.common.util.UnstableApi::class)
 class MainActivity : AppCompatActivity() {
@@ -54,9 +62,23 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var sharedPreferencesManager: SharedPreferencesManager
 
+    @Inject
+    lateinit var cloudRepository: com.johang.audiocinemateca.data.repository.CloudRepository
+
+    @Inject
+    lateinit var favoritesDao: com.johang.audiocinemateca.data.local.dao.FavoritesDao
+
+    @Inject
+    lateinit var playbackProgressDao: com.johang.audiocinemateca.data.local.dao.PlaybackProgressDao
+
+    @Inject
+    lateinit var notificationDao: com.johang.audiocinemateca.data.local.dao.NotificationDao
+
     private val accountViewModel: AccountViewModel by viewModels()
 
     private lateinit var navController: NavController
+    private lateinit var drawerLayout: DrawerLayout
+    private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var miniPlayerContainer: View
     private lateinit var miniPlayerTitle: TextView
     private lateinit var miniPlayerSubtitle: TextView
@@ -124,6 +146,9 @@ class MainActivity : AppCompatActivity() {
 
         setSupportActionBar(findViewById(R.id.toolbar))
 
+        drawerLayout = findViewById(R.id.drawer_layout)
+        val navView: NavigationView = findViewById(R.id.nav_view)
+
         // Automatic catalog update check
         if (sharedPreferencesManager.getBoolean("auto_check_catalog", true)) {
             val lastUpdateTimestamp = sharedPreferencesManager.getLong(LAST_CATALOG_UPDATE_TIMESTAMP_KEY, 0L)
@@ -165,6 +190,44 @@ class MainActivity : AppCompatActivity() {
         navController = navHostFragment.navController
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottom_nav_view)
 
+        appBarConfiguration = AppBarConfiguration(
+            setOf(R.id.catalogFragment, R.id.myListsFragment, R.id.aiChatFragment, R.id.accountFragment, R.id.communityFragment, R.id.notificationsFragment),
+            drawerLayout
+        )
+        setupActionBarWithNavController(navController, appBarConfiguration)
+        // Eliminamos navView.setupWithNavController(navController) para evitar conflictos de selección doble
+
+        // Custom handling for drawer items that are not fragments or need arguments
+        navView.setNavigationItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.catalogFragment -> {
+                    navController.navigate(R.id.catalogFragment)
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.communityFragment -> {
+                    navController.navigate(R.id.communityFragment)
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.notificationsFragment -> {
+                    navController.navigate(R.id.notificationsFragment)
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                R.id.aiChatFragment -> {
+                    navController.navigate(R.id.aiChatFragment)
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                    true
+                }
+                else -> {
+                    val handled = androidx.navigation.ui.NavigationUI.onNavDestinationSelected(menuItem, navController)
+                    if (handled) drawerLayout.closeDrawer(GravityCompat.START)
+                    handled
+                }
+            }
+        }
+
         miniPlayerContainer = findViewById(R.id.mini_player_container)
         miniPlayerTitle = miniPlayerContainer.findViewById(R.id.mini_player_title)
         miniPlayerSubtitle = miniPlayerContainer.findViewById(R.id.mini_player_subtitle)
@@ -172,6 +235,9 @@ class MainActivity : AppCompatActivity() {
         miniPlayerCloseButton = miniPlayerContainer.findViewById(R.id.mini_player_close)
 
         bottomNavigationView.setupWithNavController(navController)
+
+        // Ensure Inicio is checked in drawer by default
+        navView.setCheckedItem(R.id.catalogFragment)
 
         val startupTab = sharedPreferencesManager.getString("startup_tab", "catalog")
         val startupItemId = when (startupTab) {
@@ -182,20 +248,54 @@ class MainActivity : AppCompatActivity() {
         bottomNavigationView.selectedItemId = startupItemId
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
+            // Sync drawer selection only for main destinations
+            when (destination.id) {
+                R.id.catalogFragment -> navView.setCheckedItem(R.id.catalogFragment)
+                R.id.communityFragment -> navView.setCheckedItem(R.id.communityFragment)
+                R.id.aiChatFragment -> navView.setCheckedItem(R.id.aiChatFragment)
+                else -> {
+                    // Si estamos en cualquier otra pantalla (detalle, cuenta, etc.), 
+                    // desmarcamos todo el grupo del drawer para no confundir
+                    val menu = navView.menu
+                    for (i in 0 until menu.size()) {
+                        val item = menu.getItem(i)
+                        if (item.hasSubMenu()) {
+                            for (j in 0 until item.subMenu!!.size()) {
+                                item.subMenu!!.getItem(j).isChecked = false
+                            }
+                        } else {
+                            item.isChecked = false
+                        }
+                    }
+                }
+            }
+
             when (destination.id) {
                 R.id.playerFragment -> {
                     bottomNavigationView.visibility = View.GONE
                     miniPlayerContainer.visibility = View.GONE
+                    drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
                 }
                 R.id.contentDetailFragment -> {
                     bottomNavigationView.visibility = View.GONE
+                    drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+                }
+                R.id.communityFragment -> {
+                    bottomNavigationView.visibility = View.GONE
+                    drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
+                }
+                R.id.aiChatFragment -> {
+                    bottomNavigationView.visibility = View.GONE
+                    drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
                 }
                 R.id.accountFragment -> {
                     bottomNavigationView.visibility = View.VISIBLE
                     miniPlayerContainer.visibility = View.GONE
+                    drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
                 }
                 else -> {
                     bottomNavigationView.visibility = View.VISIBLE
+                    drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED)
                     // When navigating to any other destination, check if we should show the mini-player.
                     val requestIntent = Intent(ACTION_REQUEST_MINI_PLAYER_STATE)
                     LocalBroadcastManager.getInstance(this).sendBroadcast(requestIntent)
@@ -222,15 +322,20 @@ class MainActivity : AppCompatActivity() {
                     lifecycleScope.launch {
                         val catalogItem = searchRepository.getCatalogItemByIdAndType(itemId, itemType)
                         catalogItem?.let {
+                            // 1. Asegurar que los detalles estén en la pila si no estamos ya allí
+                            val currentDest = navController.currentDestination?.id
+                            if (currentDest != R.id.contentDetailFragment) {
+                                val detailAction = MainNavGraphDirections.actionGlobalContentDetailFragment(itemId, itemType)
+                                navController.navigate(detailAction)
+                            }
+
+                            // 2. Navegar al reproductor sin borrar el historial
                             val bundle = Bundle().apply {
                                 putParcelable("catalogItem", it)
                                 putInt("partIndex", currentPlayingPartIndex)
                                 putInt("episodeIndex", currentPlayingEpisodeIndex)
                             }
-                            val navOptions = NavOptions.Builder()
-                                .setPopUpTo(navController.graph.startDestinationId, false)
-                                .build()
-                            navController.navigate(R.id.action_global_playerFragment, bundle, navOptions)
+                            navController.navigate(R.id.action_global_playerFragment, bundle)
                         } ?: run {
                             Toast.makeText(this@MainActivity, "No se pudo cargar el contenido para reanudar la reproducción.", Toast.LENGTH_SHORT).show()
                         }
@@ -253,6 +358,19 @@ class MainActivity : AppCompatActivity() {
             addAction(ACTION_HIDE_UPDATE_INDICATOR)
         }
         LocalBroadcastManager.getInstance(this).registerReceiver(updateIndicatorReceiver, updateIndicatorFilter)
+
+        // Handle Back Press to close Drawer if open
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    isEnabled = true
+                }
+            }
+        })
 
         // Handle deep links
         handleIntent(intent)
@@ -301,6 +419,148 @@ class MainActivity : AppCompatActivity() {
         }
         // Check for What's New dialog
         checkAndShowWhatsNewDialog()
+
+        // ACTIVAR SINCRONIZACIÓN EN TIEMPO REAL (Estilo Netflix)
+        startRealtimeSync()
+
+        // DESPERTAR SERVICIOS (Reproducción y Anuncios de Chat)
+        val chatServiceIntent = Intent(this, com.johang.audiocinemateca.service.ChatAnnouncementService::class.java)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                startForegroundService(chatServiceIntent)
+            } else {
+                startService(chatServiceIntent)
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "No se pudo arrancar el servicio de anuncios: ${e.message}")
+        }
+        
+        // Listen for Auth changes to update header
+        com.google.firebase.auth.FirebaseAuth.getInstance().addAuthStateListener { auth ->
+            val communityItem = navView.menu.findItem(R.id.communityFragment)
+            communityItem.isVisible = auth.currentUser != null
+            
+            // Update header with Name, Email and Version
+            val headerView = navView.getHeaderView(0)
+            val userNameText = headerView.findViewById<TextView>(R.id.tv_header_user_name)
+            val userEmailText = headerView.findViewById<TextView>(R.id.tv_header_user_email)
+            val appVersionText = headerView.findViewById<TextView>(R.id.tv_app_version)
+
+            val currentUser = auth.currentUser
+            if (currentUser != null) {
+                userNameText.text = currentUser.displayName ?: "Usuario de Audiocinemateca"
+                userEmailText.text = currentUser.email
+                userEmailText.visibility = View.VISIBLE
+            } else {
+                userNameText.text = "Audiocinemateca"
+                userEmailText.text = "Versión Accesible"
+                userEmailText.visibility = View.VISIBLE
+            }
+
+            // Get App Version
+            try {
+                val pInfo = packageManager.getPackageInfo(packageName, 0)
+                appVersionText.text = "Versión ${pInfo.versionName}"
+            } catch (e: Exception) {
+                appVersionText.text = "Versión Desconocida"
+            }
+        }
+
+        // Suscribir a todos los usuarios al tema unificado
+        val fcm = com.google.firebase.messaging.FirebaseMessaging.getInstance()
+        fcm.subscribeToTopic("audiocinemateca_global")
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) Log.d("MainActivity", "Suscrito al tema unificado: audiocinemateca_global")
+            }
+
+        // --- VIGILANTE DE ANUNCIOS EN TIEMPO REAL (Gratis y Spark compatible) ---
+        startAnnouncementsWatcher()
+
+        // Manejar navegación desde notificación al iniciar (onCreate)
+        handleIntent(intent)
+    }
+
+    private fun startAnnouncementsWatcher() {
+        val startTime = com.google.firebase.Timestamp.now()
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            .collection("anuncios")
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(1)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) return@addSnapshotListener
+                
+                val doc = snapshot?.documents?.firstOrNull() ?: return@addSnapshotListener
+                val announcement = doc.toObject(com.johang.audiocinemateca.data.model.Announcement::class.java)
+                
+                // Solo notificamos si el anuncio es nuevo (creado después de abrir la app)
+                if (announcement != null && announcement.timestamp.seconds > startTime.seconds) {
+                    // GUARDAR EN HISTORIAL LOCAL EVITANDO DUPLICADOS
+                    // Eliminamos sendLocalAnnouncementNotification porque el Backend ya envia una Push real
+                    lifecycleScope.launch {
+                        if (!notificationDao.existsByRemoteId(doc.id)) {
+                            notificationDao.insert(
+                                com.johang.audiocinemateca.data.local.entities.NotificationEntity(
+                                    remoteId = doc.id,
+                                    title = "Anuncio de ${announcement.adminName}",
+                                    body = announcement.text,
+                                    timestamp = announcement.timestamp.toDate().time
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
+    }
+
+    private fun startRealtimeSync() {
+        lifecycleScope.launch {
+            // Sincronización de Favoritos
+            cloudRepository.getFavoritesRealtimeFlow().collect { cloudFavs ->
+                cloudFavs.forEach { cloud ->
+                    val local = favoritesDao.isFavorite(cloud.contentId).first()
+                    // Solo actualizamos si no existe localmente o si queremos forzar el estado remoto
+                    // Para simplificar y dar prioridad a la nube (sincronía total):
+                    favoritesDao.insertFavorite(
+                        com.johang.audiocinemateca.data.local.entities.FavoriteEntity(
+                            contentId = cloud.contentId,
+                            title = cloud.title,
+                            contentType = cloud.contentType,
+                            addedAt = cloud.addedAt
+                        )
+                    )
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            // Sincronización de Historial
+            cloudRepository.getHistoryRealtimeFlow().collect { cloudHist ->
+                cloudHist.forEach { cloud ->
+                    val local = playbackProgressDao.getPlaybackProgress(cloud.contentId, cloud.partIndex, cloud.episodeIndex)
+                    
+                    // Solo actualizamos si el de la nube es más reciente
+                    if (local == null || cloud.lastPlayedTimestamp > local.lastPlayedTimestamp) {
+                        playbackProgressDao.insertPlaybackProgress(
+                            com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity(
+                                contentId = cloud.contentId,
+                                contentType = cloud.contentType,
+                                currentPositionMs = cloud.currentPositionMs,
+                                totalDurationMs = cloud.totalDurationMs,
+                                partIndex = cloud.partIndex,
+                                episodeIndex = cloud.episodeIndex,
+                                lastPlayedTimestamp = cloud.lastPlayedTimestamp,
+                                isFinished = cloud.isFinished
+                            )
+                        )
+                        Log.d("Sync", "Historial actualizado desde la nube: ${cloud.title}")
+                    }
+                }
+            }
+        }
     }
 
     private fun checkAndShowWhatsNewDialog() {
@@ -357,44 +617,125 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        Log.d("MainActivity", "handleIntent called with action: ${intent?.action}")
-        when (intent?.action) {
-            Intent.ACTION_VIEW -> handleDeepLink(intent)
-            ACTION_OPEN_PLAYER -> handleOpenPlayer(intent)
+        if (intent == null) return
+        Log.d("MainActivity", "handleIntent processing intent with action: ${intent.action}")
+
+        // 1. Manejar navegación interna (Anuncios)
+        val navigateTo = intent.getStringExtra("navigate_to")
+        if (navigateTo == "announcements") {
+            Log.d("MainActivity", "Navigating to announcements from notification")
+            val bundle = Bundle().apply { putString("select_tab", "announcements") }
+            navController.navigate(R.id.communityFragment, bundle)
+            intent.removeExtra("navigate_to") // Limpiar para evitar duplicados
+        }
+
+        // 2. Manejar URLs (Internas vs Externas)
+        val url = intent.getStringExtra("url")
+        if (!url.isNullOrBlank()) {
+            Log.d("MainActivity", "Processing URL from notification: $url")
+            try {
+                val uri = Uri.parse(url)
+                if (uri.host?.contains("audiocinemateca.com") == true) {
+                    val deepLinkIntent = Intent(Intent.ACTION_VIEW, uri)
+                    handleDeepLink(deepLinkIntent)
+                } else {
+                    val browserIntent = Intent(Intent.ACTION_VIEW, uri)
+                    startActivity(browserIntent)
+                }
+                intent.removeExtra("url") // Limpiar para evitar duplicados
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error processing URL from notification", e)
+            }
+        }
+
+        // 3. Manejar Deep Links del sistema y el Player
+        when (intent.action) {
+            Intent.ACTION_VIEW -> {
+                handleDeepLink(intent)
+                intent.action = null // Limpiar la acción una vez procesada
+            }
+            ACTION_OPEN_PLAYER -> {
+                handleOpenPlayer(intent)
+                intent.action = null // Limpiar la acción una vez procesada
+            }
         }
     }
-
     private fun handleDeepLink(intent: Intent) {
         val uri: Uri? = intent.data
         Log.d("DeepLink", "Intent data URI: $uri")
         uri?.let {
             val pathSegments = it.pathSegments
             Log.d("DeepLink", "URI path segments: $pathSegments")
-            if (pathSegments.size >= 1) {
-                val itemType = pathSegments[0]
-                val itemId = it.getQueryParameter("id")
-                Log.d("DeepLink", "Extracted itemType: $itemType, itemId: $itemId")
+            
+            if (pathSegments.isNotEmpty()) {
+                // El tipo suele ser el primer segmento (peliculas, series, etc.)
+                val rawType = pathSegments[0].lowercase()
+                
+                // El ID puede venir como parámetro ?id=... o como segundo segmento /peliculas/ID
+                val itemId = it.getQueryParameter("id") ?: if (pathSegments.size >= 2) pathSegments[1] else null
+                
+                Log.d("DeepLink", "Extracted rawType: $rawType, itemId: $itemId")
 
                 if (itemId != null) {
                     lifecycleScope.launch {
-                        val catalogItem = searchRepository.getCatalogItemByIdAndType(itemId, itemType)
+                        // Intentamos mapear el tipo de la URL a algo que SearchRepository entienda
+                        val normalizedType = when {
+                            rawType.contains("pelicula") || rawType.contains("movie") -> "pelicula"
+                            rawType.contains("serie") -> "serie"
+                            rawType.contains("document") -> "documental"
+                            rawType.contains("corto") -> "cortometraje"
+                            else -> rawType
+                        }
+
+                        // Intentamos buscar por tipo primero
+                        var catalogItem = searchRepository.getCatalogItemByIdAndType(itemId, normalizedType)
+                        
+                        // Si no lo encuentra por tipo, hacemos una búsqueda global (fallback)
+                        if (catalogItem == null) {
+                            Log.d("DeepLink", "Item not found by type $normalizedType, trying global search...")
+                            catalogItem = searchRepository.findCatalogItemById(itemId)
+                        }
+
                         Log.d("DeepLink", "CatalogItem found: ${catalogItem != null}")
-                        catalogItem?.let {
-                            val action = MainNavGraphDirections.actionGlobalContentDetailFragment(it.id, itemType)
-                            Log.d("DeepLink", "Navigating to ContentDetailFragment with itemId: ${it.id}, itemType: $itemType using NavDirections")
+                        
+                        catalogItem?.let { item ->
+                            // IMPORTANTE: El itemType para la navegación debe ser el "plural" que espera el fragmento de detalle
+                            val finalType = when (item) {
+                                is Movie -> "peliculas"
+                                is Serie -> "series"
+                                is Documentary -> "documentales"
+                                is ShortFilm -> "cortometrajes"
+                                else -> normalizedType
+                            }
+                            
+                            val action = MainNavGraphDirections.actionGlobalContentDetailFragment(item.id, finalType)
+                            Log.d("DeepLink", "Navigating to ContentDetailFragment with itemId: ${item.id}, itemType: $finalType")
                             navController.navigate(action)
                         } ?: run {
-                            Toast.makeText(this@MainActivity, "No se pudo cargar el contenido para reanudar la reproducción.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@MainActivity, "No se encontró el contenido: $itemId", Toast.LENGTH_SHORT).show()
                         }
                     }
                 } else {
                     Log.w("DeepLink", "Content ID not found in URI: $uri")
-                    Toast.makeText(this@MainActivity, "ID de contenido no encontrado en el enlace.", Toast.LENGTH_SHORT).show()
+                    // Si no hay ID pero es una sección válida, podríamos navegar a esa pestaña
+                    handleSectionNavigation(rawType)
                 }
             } else {
                 Log.w("DeepLink", "Invalid URI format: $uri")
-                Toast.makeText(this@MainActivity, "Formato de enlace no válido.", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun handleSectionNavigation(rawType: String) {
+        when {
+            rawType.contains("anuncio") || rawType.contains("comunidad") -> {
+                val bundle = Bundle().apply { putString("select_tab", "announcements") }
+                navController.navigate(R.id.communityFragment, bundle)
+            }
+            rawType.contains("chat") || rawType.contains("ia") -> {
+                navController.navigate(R.id.aiChatFragment)
+            }
+            // Agrega más secciones si es necesario
         }
     }
 
@@ -408,6 +749,13 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 val catalogItem = searchRepository.getCatalogItemByIdAndType(itemId, itemType)
                 catalogItem?.let {
+                    // Verificar si ya estamos en el detalle de este contenido para no duplicarlo en la pila
+                    val currentDest = navController.currentDestination?.id
+                    if (currentDest != R.id.contentDetailFragment) {
+                        val detailAction = MainNavGraphDirections.actionGlobalContentDetailFragment(itemId, itemType)
+                        navController.navigate(detailAction)
+                    }
+
                     val bundle = Bundle().apply {
                         putParcelable("catalogItem", it)
                         putInt("partIndex", partIndex)

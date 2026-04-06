@@ -2,163 +2,63 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <Preference
-        app:layout="@layout/pref_header"
-        app:selectable="false" />
+    <PreferenceCategory
+        app:title="Configuración"
+        app:key="cat_config">
 
-    <PreferenceCategory android:title="General">
+        <Preference
+            app:key="pref_general"
+            app:title="General"
+            app:summary="Temas, pestaña de inicio y actualizaciones."
+            app:icon="@drawable/ic_account"
+            app:layout="@layout/item_preference_large" />
 
-        <ListPreference
-            android:key="theme"
-            android:title="Tema de la aplicación"
-            android:summary="%s"
-            android:entries="@array/theme_entries"
-            android:entryValues="@array/theme_values"
-            android:defaultValue="system" />
+        <Preference
+            app:key="pref_playback"
+            app:title="Reproducción"
+            app:summary="Controles, temporizador e historial."
+            app:icon="@drawable/ic_history"
+            app:layout="@layout/item_preference_large" />
 
-        <ListPreference
-            android:key="startup_tab"
-            android:title="Pestaña de inicio"
-            android:summary="%s"
-            android:entries="@array/startup_tab_entries"
-            android:entryValues="@array/startup_tab_values"
-            android:defaultValue="catalog" />
+        <Preference
+            app:key="pref_community"
+            app:title="Comunidad"
+            app:summary="Ajustes del Chat Global y anuncios de voz."
+            app:icon="@drawable/ic_catalog"
+            app:layout="@layout/item_preference_large" />
 
-        <ListPreference
-            android:key="default_content_tab"
-            android:title="Pestaña de contenido predeterminada"
-            android:summary="%s"
-            android:entries="@array/default_content_tab_entries"
-            android:entryValues="@array/default_content_tab_values"
-            android:defaultValue="peliculas" />
+        <Preference
+            app:key="pref_ai"
+            app:title="Inteligencia Artificial"
+            app:summary="Configuración de Gemini y clave API."
+            app:icon="@drawable/ic_ai_chat"
+            app:layout="@layout/item_preference_large" />
 
-        <ListPreference
-            android:key="default_filter_type"
-            android:title="Filtro por defecto del catálogo"
-            android:summary="%s"
-            android:entries="@array/default_filter_entries"
-            android:entryValues="@array/default_filter_values"
-            android:defaultValue="alpha_asc" />
-
-        <SwitchPreferenceCompat
-            android:key="auto_check_catalog"
-            android:title="Comprobación automática del catálogo"
-            android:summary="Buscar y aplicar actualizaciones del catálogo al iniciar la app."
-            android:defaultValue="true" />
-
-        <SwitchPreferenceCompat
-            android:key="auto_check_app"
-            android:title="Comprobación automática de la aplicación"
-            android:summary="Mostrar un diálogo al iniciar la app si hay una nueva versión disponible."
-            android:defaultValue="true" />
-
+        <Preference
+            app:key="pref_downloads"
+            app:title="Descargas"
+            app:summary="Ubicación de archivos y modo offline."
+            app:icon="@drawable/ic_downloads"
+            app:layout="@layout/item_preference_large" />
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="Descargas">
-
-        <ListPreference
-            android:key="download_location"
-            android:title="Ubicación de almacenamiento"
-            android:summary="Elige dónde se guardarán las descargas."
-            app:useSimpleSummaryProvider="true" />
-
-        <SwitchPreferenceCompat
-            android:key="offline_mode"
-            android:title="Modo offline total"
-            android:summary="Activa este modo para usar la app sin conexión a internet."
-            android:defaultValue="false" />
-
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="Búsqueda">
-
-        <EditTextPreference
-            android:key="search_history_limit"
-            android:title="Límite del historial de búsqueda"
-            android:summary="Cantidad de elementos a guardar (por defecto: 10)"
-            android:defaultValue="10"
-            android:dialogMessage="Introduce la cantidad de elementos a guardar en el historial de búsqueda."
-            app:useSimpleSummaryProvider="true"
-            android:inputType="number" />
+    <PreferenceCategory
+        app:title="Información Legal"
+        app:key="cat_legal">
 
         <Preference
-            android:key="clear_search_history"
-            android:title="Eliminar historial de búsqueda"
-            android:summary="Borra todas las búsquedas que has realizado."/>
-
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="Reproducción">
-
-        <SwitchPreferenceCompat
-            android:key="autoplay"
-            android:title="Reproducción automática"
-            android:summary="Reproducir la siguiente parte o episodio automáticamente."
-            android:defaultValue="true" />
-
-        <SwitchPreferenceCompat
-            android:key="sleep_timer_enabled"
-            android:title="Temporizador de descanso"
-            android:summary="Pausa la reproducción después de un tiempo de inactividad."
-            android:defaultValue="false" />
-
-        <ListPreference
-            android:key="sleep_timer_duration"
-            android:title="Tiempo de inactividad"
-            android:summary="%s"
-            android:entries="@array/sleep_timer_entries"
-            android:entryValues="@array/sleep_timer_values"
-            android:defaultValue="60"
-            android:dependency="sleep_timer_enabled" />
+            app:key="nav_privacy"
+            app:title="Política de Privacidad"
+            app:summary="Lee cómo protegemos tus datos personales."
+            app:icon="@drawable/ic_account"
+            app:layout="@layout/item_preference_large" />
 
         <Preference
-            android:key="clear_playback_history"
-            android:title="Eliminar historial de reproducción"
-            android:summary="Borra todo el contenido que has visto."/>
-
-        <ListPreference
-            android:key="rewind_interval"
-            android:title="Intervalo de retroceso"
-            android:summary="%s"
-            android:entries="@array/rewind_interval_entries"
-            android:entryValues="@array/rewind_interval_values"
-            android:defaultValue="5" />
-
-        <ListPreference
-            android:key="forward_interval"
-            android:title="Intervalo de avance"
-            android:summary="%s"
-            android:entries="@array/forward_interval_entries"
-            android:entryValues="@array/forward_interval_values"
-            android:defaultValue="15" />
-
-        <Preference
-            android:key="playback_buttons_info"
-            android:title="Nota sobre los botones"
-            android:summary="Esta configuración también se puede cambiar manteniendo pulsados los botones de retroceder y adelantar en el reproductor."
-            app:selectable="false"/>
-
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="Funciones de Inteligencia Artificial">
-
-        <Preference
-            android:summary="¡Atención! Estos ajustes aún no se han implementado, por lo que no tienen ninguna funcionalidad. Se implementarán en futuras actualizaciones."
-            app:selectable="false" />
-
-        <EditTextPreference
-            android:key="gemini_api_key"
-            android:title="Clave API de Gemini"
-            android:summary="Introduce tu clave para activar funciones de IA."
-            android:dialogMessage="Pega aquí tu clave API de Google AI Studio."
-            app:useSimpleSummaryProvider="true"
-            android:inputType="textPassword" />
-
-        <Preference
-            android:key="check_api_status"
-            android:title="Comprobar estado de la API"
-            android:summary="Verifica si la clave API introducida es válida."/>
-
+            app:key="nav_terms"
+            app:title="Términos y Condiciones"
+            app:summary="Normas de uso de la aplicación."
+            app:icon="@drawable/ic_account"
+            app:layout="@layout/item_preference_large" />
     </PreferenceCategory>
 
 </PreferenceScreen>

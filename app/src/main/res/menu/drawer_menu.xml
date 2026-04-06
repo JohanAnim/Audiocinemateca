@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/catalogFragment"
+            android:icon="@drawable/ic_catalog"
+            android:title="Inicio" />
+        <item
+            android:id="@+id/communityFragment"
+            android:icon="@drawable/ic_account"
+            android:title="Comunidad"
+            android:visible="false" />
+        <item
+            android:id="@+id/aiChatFragment"
+            android:icon="@drawable/ic_ai_chat"
+            android:title="Asistente IA" />
+        <item
+            android:id="@+id/notificationsFragment"
+            android:icon="@drawable/ic_share"
+            android:title="Notificaciones" />
+    </group>
+
+</menu>

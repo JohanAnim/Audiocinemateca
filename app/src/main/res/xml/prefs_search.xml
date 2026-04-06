@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <EditTextPreference
+        android:key="search_history_limit"
+        android:title="Límite del historial de búsqueda"
+        android:summary="Cantidad de elementos a guardar (por defecto: 10)"
+        android:defaultValue="10"
+        android:dialogMessage="Introduce la cantidad de elementos a guardar en el historial de búsqueda."
+        app:useSimpleSummaryProvider="true"
+        android:inputType="number" />
+
+    <Preference
+        android:key="clear_search_history"
+        android:title="Eliminar historial de búsqueda"
+        android:summary="Borra todas las búsquedas que has realizado."/>
+
+</PreferenceScreen>

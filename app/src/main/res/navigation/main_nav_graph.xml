@@ -78,9 +78,40 @@
     </fragment>
 
     <fragment
+        android:id="@+id/communityFragment"
+        android:name="com.johang.audiocinemateca.presentation.community.CommunityFragment"
+        android:label="Comunidad"
+        tools:layout="@layout/fragment_community" />
+
+    <fragment
         android:id="@+id/settingsFragment"
         android:name="com.johang.audiocinemateca.presentation.settings.SettingsFragment"
-        android:label="Ajustes" />
+        android:label="Ajustes">
+        <action
+            android:id="@+id/action_settingsFragment_to_categorySettingsFragment"
+            app:destination="@id/categorySettingsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/categorySettingsFragment"
+        android:name="com.johang.audiocinemateca.presentation.settings.CategorySettingsFragment"
+        android:label="Ajustes de Categoría">
+        <argument
+            android:name="category"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/aiChatFragment"
+        android:name="com.johang.audiocinemateca.presentation.aichat.AIChatFragment"
+        android:label="Chat IA"
+        tools:layout="@layout/fragment_ai_chat" />
+
+    <fragment
+        android:id="@+id/notificationsFragment"
+        android:name="com.johang.audiocinemateca.presentation.notifications.NotificationsFragment"
+        android:label="Notificaciones"
+        tools:layout="@layout/fragment_notifications" />
 
     <fragment
         android:id="@+id/contentDetailFragment"
@@ -100,6 +131,10 @@
     <action
         android:id="@+id/action_global_contentDetailFragment"
         app:destination="@id/contentDetailFragment" />
+
+    <action
+        android:id="@+id/action_global_settingsFragment"
+        app:destination="@id/settingsFragment" />
 
     <fragment
         android:id="@+id/playerFragment"

@@ -20,8 +20,8 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -52,6 +52,7 @@ import com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
 import com.johang.audiocinemateca.databinding.FragmentPlayerBinding
 import com.johang.audiocinemateca.domain.model.CatalogItem
 import com.johang.audiocinemateca.presentation.equalizer.EqualizerDialogFragment
+import com.johang.audiocinemateca.presentation.player.CommentsBottomSheetFragment
 import com.johang.audiocinemateca.util.TimeFormatUtils
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
@@ -193,8 +194,8 @@ class PlayerFragment : Fragment() {
                 }
                 val intent = Intent(MainActivity.ACTION_SHOW_MINI_PLAYER).apply {
                     val metadata = mediaController?.currentMediaItem?.mediaMetadata
-                    putExtra(MainActivity.EXTRA_TITLE, metadata?.albumTitle?.toString() ?: metadata?.title?.toString())
-                    putExtra(MainActivity.EXTRA_SUBTITLE, metadata?.displayTitle?.toString())
+                    putExtra(MainActivity.EXTRA_TITLE, metadata?.title?.toString())
+                    putExtra(MainActivity.EXTRA_SUBTITLE, metadata?.artist?.toString())
                     putExtra(MainActivity.EXTRA_IS_PLAYING, mediaController?.isPlaying == true)
                     putExtra(MainActivity.EXTRA_ITEM_ID, it.id)
                     putExtra(MainActivity.EXTRA_ITEM_TYPE, contentType)
@@ -513,8 +514,6 @@ class PlayerFragment : Fragment() {
     }
 
     private fun initializeMediaController() {
-        val serviceIntent = Intent(requireContext(), PlayerService::class.java)
-        requireContext().startService(serviceIntent)
         val sessionToken = SessionToken(requireContext(), ComponentName(requireContext(), PlayerService::class.java))
         controllerFuture = MediaController.Builder(requireContext(), sessionToken).buildAsync()
         controllerFuture.addListener({
@@ -538,7 +537,7 @@ class PlayerFragment : Fragment() {
             val mediaItems = createMediaItems(catalogItem)
             if (mediaItems.isEmpty()) return@launch
             var startIndex = 0
-            if (catalogItem is Movie) {
+            if (catalogItem is Movie || catalogItem is Documentary || catalogItem is ShortFilm) {
                 startIndex = currentPartIndex.coerceAtLeast(0).coerceAtMost(mediaItems.size - 1)
             } else if (catalogItem is Serie) {
                 for ((index, mediaItem) in mediaItems.withIndex()) {
@@ -549,7 +548,14 @@ class PlayerFragment : Fragment() {
                 }
             }
             val savedProgress = playbackProgressRepository.getPlaybackProgress(catalogItem.id, currentPartIndex, currentEpisodeIndex)
-            mediaController?.setMediaItems(mediaItems, startIndex, savedProgress?.currentPositionMs ?: 0L)
+            
+            // SI EL PROGRESO ESTÁ CASI AL FINAL (o completado), EMPEZAMOS DE CERO
+            val startPosition = if (savedProgress != null) {
+                if (savedProgress.currentPositionMs >= (savedProgress.totalDurationMs - 2000)) 0L 
+                else savedProgress.currentPositionMs
+            } else 0L
+
+            mediaController?.setMediaItems(mediaItems, startIndex, startPosition)
             mediaController?.prepare(); mediaController?.playWhenReady = true
             updateToolbarTitle(); updateNavigationButtonsState()
         }
@@ -611,7 +617,11 @@ class PlayerFragment : Fragment() {
         val currentItem = currentContentItem ?: return
         val duration = player.duration
         val timeLeftSeconds = (duration - player.currentPosition) / 1000
-        val shouldAuto = when (currentItem) { is Movie -> currentItem.enlaces.size > 1; is Serie -> true; else -> false }
+        val shouldAuto = when (currentItem) { 
+            is Movie -> currentItem.enlaces.size > 1
+            is Serie -> true 
+            else -> false 
+        }
         if (shouldAuto && sharedPreferencesManager.getBoolean("autoplay", true) && timeLeftSeconds <= 10 && timeLeftSeconds > 0 && !autoAdvanceTriggeredForCurrentItem) {
             Toast.makeText(requireContext(), "Siguiente en $timeLeftSeconds segundos", Toast.LENGTH_SHORT).show(); autoAdvanceTriggeredForCurrentItem = true
         } else if (shouldAuto && timeLeftSeconds <= 1 && autoAdvanceTriggeredForCurrentItem) {
@@ -645,27 +655,43 @@ class PlayerFragment : Fragment() {
     }
 
     private suspend fun createMediaItems(catalogItem: CatalogItem): List<MediaItem> {
-        val mediaItems = mutableListOf<MediaItem>()
-        if (catalogItem is Movie) {
-            catalogItem.enlaces.forEachIndexed { index, urlPath ->
-                val d = downloadRepository.getDownload(catalogItem.id, index, -1)
-                val uri = if (d?.downloadStatus == "COMPLETE" && d.filePath != null) android.net.Uri.parse(d.filePath) else android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${urlPath.removePrefix("/")}")
-                val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "peliculas"); putInt("partIndex", index); putInt("episodeIndex", -1) }
-                val title = if (catalogItem.enlaces.size > 1) "${catalogItem.title} - Parte ${index + 1}" else catalogItem.title
-                mediaItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(MediaMetadata.Builder().setTitle(title).setAlbumTitle(catalogItem.title).setExtras(meta).build()).build())
-            }
-        } else if (catalogItem is Serie) {
-            catalogItem.capitulos.keys.sorted().forEachIndexed { sIdx, sKey ->
-                catalogItem.capitulos[sKey]?.forEachIndexed { eIdx, ep ->
-                    val d = downloadRepository.getDownload(catalogItem.id, sIdx, eIdx)
-                    val uri = if (d?.downloadStatus == "COMPLETE" && d.filePath != null) android.net.Uri.parse(d.filePath) else android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${ep.enlace.removePrefix("/")}")
-                    val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "series"); putInt("partIndex", sIdx); putInt("episodeIndex", eIdx) }
-                    val epTitle = "T${sIdx + 1}:E${ep.capitulo} - ${ep.titulo}"
-                    mediaItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(MediaMetadata.Builder().setTitle("$epTitle - ${catalogItem.title}").setAlbumTitle(catalogItem.title).setDisplayTitle(epTitle).setExtras(meta).build()).build())
+        val resultItems = mutableListOf<MediaItem>()
+        when (catalogItem) {
+            is Movie -> {
+                catalogItem.enlaces.forEachIndexed { index, urlPath ->
+                    val d = downloadRepository.getDownload(catalogItem.id, index, -1)
+                    val uri = if (d?.downloadStatus == "COMPLETE" && d.filePath != null) android.net.Uri.parse(d.filePath) else android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${urlPath.removePrefix("/")}")
+                    val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "peliculas"); putInt("partIndex", index); putInt("episodeIndex", -1) }
+                    val partTitle = if (catalogItem.enlaces.size > 1) "Parte ${index + 1}" else catalogItem.title
+                    resultItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(MediaMetadata.Builder().setTitle(partTitle).setArtist(catalogItem.title).setExtras(meta).build()).build())
                 }
             }
+            is Serie -> {
+                catalogItem.capitulos.keys.sorted().forEachIndexed { sIdx, sKey ->
+                    catalogItem.capitulos[sKey]?.forEach { ep ->
+                        val eIdx = catalogItem.capitulos[sKey]?.indexOf(ep) ?: -1
+                        val d = downloadRepository.getDownload(catalogItem.id, sIdx, eIdx)
+                        val uri = if (d?.downloadStatus == "COMPLETE" && d.filePath != null) android.net.Uri.parse(d.filePath) else android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${ep.enlace.removePrefix("/")}")
+                        val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "series"); putInt("partIndex", sIdx); putInt("episodeIndex", eIdx) }
+                        val epTitle = "T${sIdx + 1}:E${ep.capitulo} - ${ep.titulo}"
+                        resultItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(MediaMetadata.Builder().setTitle(epTitle).setArtist(catalogItem.title).setExtras(meta).build()).build())
+                    }
+                }
+            }
+            is Documentary -> {
+                val d = downloadRepository.getDownload(catalogItem.id, 0, -1)
+                val uri = if (d?.downloadStatus == "COMPLETE" && d.filePath != null) android.net.Uri.parse(d.filePath) else android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${catalogItem.enlace.removePrefix("/")}")
+                val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "documentales"); putInt("partIndex", 0); putInt("episodeIndex", -1) }
+                resultItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(MediaMetadata.Builder().setTitle(catalogItem.title).setArtist("Audiocinemateca").setExtras(meta).build()).build())
+            }
+            is ShortFilm -> {
+                val d = downloadRepository.getDownload(catalogItem.id, 0, -1)
+                val uri = if (d?.downloadStatus == "COMPLETE" && d.filePath != null) android.net.Uri.parse(d.filePath) else android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${catalogItem.enlace.removePrefix("/")}")
+                val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "cortometrajes"); putInt("partIndex", 0); putInt("episodeIndex", -1) }
+                resultItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(MediaMetadata.Builder().setTitle(catalogItem.title).setArtist("Audiocinemateca").setExtras(meta).build()).build())
+            }
         }
-        return mediaItems
+        return resultItems
     }
 
     private fun showErrorDialog(title: String, message: String) {
@@ -674,9 +700,8 @@ class PlayerFragment : Fragment() {
 
     private fun shareContent() {
         val item = currentContentItem ?: return
-        val typeLabel = when (item) { is Movie -> "película"; is Serie -> "serie"; is Documentary -> "documental"; is ShortFilm -> "cortometraje"; else -> "contenido" }
+        val message = "¡Oye! Estoy escuchando '${item.title}' en la Audiocinemateca. ¡Seguro que a ti también te podría gustar! Da clic en este enlace para que lo escuches en la app."
         val typeSlug = when (item) { is Movie -> "pelicula"; is Serie -> "serie"; is Documentary -> "documental"; is ShortFilm -> "cortometraje"; else -> "contenido" }
-        val message = "¡Oye! Estoy escuchando esta increíble $typeLabel llamada '${item.title}' en la Audiocinemateca. ¡Seguro que a ti también te podría gustar! Da clic en este enlace para que lo escuches en la app."
         val url = "https://audiocinemateca.com/$typeSlug?id=${item.id}"
         val shareIntent = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "$message\n\n$url") }
         startActivity(Intent.createChooser(shareIntent, "Compartir contenido"))

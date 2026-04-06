@@ -95,7 +95,7 @@ class RegisterCloudFragment : Fragment() {
             auth.currentUser?.updateProfile(profileUpdates)?.addOnCompleteListener {
                 lifecycleScope.launch {
                     try {
-                        cloudRepository.syncUserProfile(username)
+                        cloudRepository.syncUserProfile()
                     } catch (e: Exception) {}
                     
                     setLoading(false)

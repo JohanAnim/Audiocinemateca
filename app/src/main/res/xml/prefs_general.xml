@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <ListPreference
+        android:key="theme"
+        android:title="Tema de la aplicación"
+        android:summary="%s"
+        android:entries="@array/theme_entries"
+        android:entryValues="@array/theme_values"
+        android:defaultValue="system" />
+
+    <ListPreference
+        android:key="startup_tab"
+        android:title="Pestaña de inicio"
+        android:summary="%s"
+        android:entries="@array/startup_tab_entries"
+        android:entryValues="@array/startup_tab_values"
+        android:defaultValue="catalog" />
+
+    <ListPreference
+        android:key="default_content_tab"
+        android:title="Pestaña de contenido predeterminada"
+        android:summary="%s"
+        android:entries="@array/default_content_tab_entries"
+        android:entryValues="@array/default_content_tab_values"
+        android:defaultValue="peliculas" />
+
+    <SwitchPreferenceCompat
+        android:key="auto_check_catalog"
+        android:title="Comprobación automática del catálogo"
+        android:summary="Buscar y aplicar actualizaciones del catálogo al iniciar la app."
+        android:defaultValue="true" />
+
+    <SwitchPreferenceCompat
+        android:key="auto_check_app"
+        android:title="Comprobación automática de la aplicación"
+        android:summary="Mostrar un diálogo al iniciar la app si hay una nueva versión disponible."
+        android:defaultValue="true" />
+
+</PreferenceScreen>

@@ -210,25 +210,35 @@ class ProfileFragment : Fragment() {
 
     private fun firebaseAuthWithGoogle(idToken: String) {
         val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
-        Toast.makeText(requireContext(), "Vinculando con Firebase...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "Verificando credenciales...", Toast.LENGTH_SHORT).show()
 
         firebaseAuth.signInWithCredential(firebaseCredential)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     lifecycleScope.launch {
                         try {
+                            // INTENTO DE CREACIÓN/VERIFICACIÓN DE PERFIL EN BASE DE DATOS
                             cloudRepository.syncUserProfile()
-                        } catch (e: Exception) {}
-                        
-                        syncUsernameWithFirebase()
-                        updateFirebaseUI()
-                        checkAndPromptSync()
-                        
-                        MaterialAlertDialogBuilder(requireContext())
-                            .setTitle("¡Bienvenido a la Nube!")
-                            .setMessage("Tu cuenta ha sido vinculada con éxito.")
-                            .setPositiveButton("Genial", null)
-                            .show()
+                            
+                            // Si pasa de aquí, todo está correcto
+                            syncUsernameWithFirebase()
+                            updateFirebaseUI()
+                            checkAndPromptSync()
+                            
+                            MaterialAlertDialogBuilder(requireContext())
+                                .setTitle("¡Bienvenido a la Nube!")
+                                .setMessage("Tu cuenta ha sido vinculada y tu base de datos está lista.")
+                                .setPositiveButton("Genial", null)
+                                .show()
+
+                        } catch (e: Exception) {
+                            Log.e("GoogleLogin", "Error iniciando DB: ${e.message}")
+                            MaterialAlertDialogBuilder(requireContext())
+                                .setTitle("Error de Inicialización")
+                                .setMessage("Se inició sesión, pero no se pudo crear tu espacio en la base de datos.\n\nError: ${e.localizedMessage}\n\nEs posible que algunas funciones de guardado fallen.")
+                                .setPositiveButton("Entendido", null)
+                                .show()
+                        }
                     }
                 } else {
                     val error = task.exception?.localizedMessage ?: "Fallo de autenticación"
@@ -283,12 +293,19 @@ class ProfileFragment : Fragment() {
                 
                 // Convertir y guardar Favoritos
                 cloudFavs.forEach { cloud ->
+                    // REPARACIÓN DE FECHA: Si viene en segundos (10 dígitos) convertir a milisegundos
+                    var timestamp = cloud.addedAt
+                    if (timestamp in 1L..9999999999L) {
+                        timestamp *= 1000
+                    }
+                    if (timestamp <= 0) timestamp = System.currentTimeMillis()
+
                     favoritesDao.insertFavorite(
                         com.johang.audiocinemateca.data.local.entities.FavoriteEntity(
                             contentId = cloud.contentId,
                             title = cloud.title,
                             contentType = cloud.contentType,
-                            addedAt = cloud.addedAt
+                            addedAt = timestamp
                         )
                     )
                 }
@@ -323,50 +340,101 @@ class ProfileFragment : Fragment() {
         }
     }
 
-    private fun syncLocalDataToCloud(favorites: List<com.johang.audiocinemateca.data.local.entities.FavoriteEntity>, history: List<com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity>) {
+    private fun syncLocalDataToCloud(
+        localFavorites: List<com.johang.audiocinemateca.data.local.entities.FavoriteEntity>,
+        localHistory: List<com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity>
+    ) {
         lifecycleScope.launch {
             try {
-                Toast.makeText(requireContext(), "Sincronizando con la nube...", Toast.LENGTH_SHORT).show()
-                
-                // 1. SUBIMOS lo que hay en este móvil a la nube
-                favorites.forEach { cloudRepository.uploadFavorite(it) }
-                history.forEach { cloudRepository.uploadHistory(it) }
+                val currentUser = firebaseAuth.currentUser
+                if (currentUser == null) return@launch
 
-                // 2. BAJAMOS lo que hubiera en la nube para completar lo que falta en el móvil
-                val cloudFavs = cloudRepository.getAllCloudFavorites()
-                val cloudHist = cloudRepository.getAllCloudHistory()
+                Toast.makeText(requireContext(), "Iniciando Sincronización Inteligente...", Toast.LENGTH_SHORT).show()
                 
-                // Guardamos lo de la nube en local (Room se encarga de no duplicar por ID)
-                cloudFavs.forEach { cloud ->
-                    favoritesDao.insertFavorite(
-                        com.johang.audiocinemateca.data.local.entities.FavoriteEntity(
-                            contentId = cloud.contentId, title = cloud.title, 
-                            contentType = cloud.contentType, addedAt = cloud.addedAt
+                // 1. Obtener datos de la nube (ya vienen reparados por el repositorio)
+                val cloudFavorites = cloudRepository.getAllCloudFavorites()
+                val cloudHistory = cloudRepository.getAllCloudHistory()
+
+                // --- SMART SYNC: FAVORITOS ---
+                var favsUploaded = 0
+                var favsDownloaded = 0
+                
+                val cloudFavMap = cloudFavorites.associateBy { it.contentId }
+                val localFavMap = localFavorites.associateBy { it.contentId }
+
+                // De Local a Nube
+                localFavorites.forEach { local ->
+                    val cloud = cloudFavMap[local.contentId]
+                    if (cloud == null || local.addedAt > cloud.addedAt) {
+                        cloudRepository.uploadFavorite(local)
+                        favsUploaded++
+                    }
+                }
+                
+                // De Nube a Local
+                cloudFavorites.forEach { cloud ->
+                    val local = localFavMap[cloud.contentId]
+                    if (local == null || cloud.addedAt > local.addedAt) {
+                        favoritesDao.insertFavorite(
+                            com.johang.audiocinemateca.data.local.entities.FavoriteEntity(
+                                contentId = cloud.contentId,
+                                title = cloud.title,
+                                contentType = cloud.contentType,
+                                addedAt = cloud.addedAt
+                            )
                         )
-                    )
+                        favsDownloaded++
+                    }
                 }
+
+                // --- SMART SYNC: HISTORIAL ---
+                val cloudHistMap = cloudHistory.associateBy { "${it.contentId}_${it.partIndex}_${it.episodeIndex}" }
+                val localHistMap = localHistory.associateBy { "${it.contentId}_${it.partIndex}_${it.episodeIndex}" }
                 
-                cloudHist.forEach { cloud ->
-                    playbackProgressDao.insertPlaybackProgress(
-                        com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity(
-                            contentId = cloud.contentId, contentType = cloud.contentType,
-                            currentPositionMs = cloud.currentPositionMs, totalDurationMs = cloud.totalDurationMs,
-                            partIndex = cloud.partIndex, episodeIndex = cloud.episodeIndex,
-                            lastPlayedTimestamp = cloud.lastPlayedTimestamp, isFinished = cloud.isFinished
+                var histUploaded = 0
+                var histDownloaded = 0
+
+                // De Local a Nube
+                localHistory.forEach { local ->
+                    val key = "${local.contentId}_${local.partIndex}_${local.episodeIndex}"
+                    val cloud = cloudHistMap[key]
+
+                    if (cloud == null || local.lastPlayedTimestamp > cloud.lastPlayedTimestamp) {
+                        cloudRepository.uploadHistory(local)
+                        histUploaded++
+                    }
+                }
+
+                // De Nube a Local
+                cloudHistory.forEach { cloud ->
+                    val key = "${cloud.contentId}_${cloud.partIndex}_${cloud.episodeIndex}"
+                    val local = localHistMap[key]
+
+                    if (local == null || cloud.lastPlayedTimestamp > local.lastPlayedTimestamp) {
+                        playbackProgressDao.insertPlaybackProgress(
+                            com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity(
+                                contentId = cloud.contentId,
+                                contentType = cloud.contentType,
+                                currentPositionMs = cloud.currentPositionMs,
+                                totalDurationMs = cloud.totalDurationMs,
+                                partIndex = cloud.partIndex,
+                                episodeIndex = cloud.episodeIndex,
+                                lastPlayedTimestamp = cloud.lastPlayedTimestamp,
+                                isFinished = cloud.isFinished
+                            )
                         )
-                    )
+                        histDownloaded++
+                    }
                 }
 
-                val user = firebaseAuth.currentUser
-                if (user != null) {
-                    sharedPreferencesManager.saveBoolean("initial_sync_done_${user.uid}", true)
-                }
-
-                Toast.makeText(requireContext(), "¡Sincronización total completada!", Toast.LENGTH_LONG).show()
+                sharedPreferencesManager.saveBoolean("initial_sync_done_${currentUser.uid}", true)
+                
+                val summary = "Sincronizado: +$favsUploaded subidos, +$favsDownloaded bajados."
+                Toast.makeText(requireContext(), summary, Toast.LENGTH_LONG).show()
                 updateFirebaseUI()
             } catch (e: Exception) {
-                Log.e("SyncError", "Error al sincronizar: ${e.message}")
-                Toast.makeText(requireContext(), "Error en la sincronización", Toast.LENGTH_SHORT).show()
+                Log.e("SyncError", "Error en la sincronización", e)
+                Toast.makeText(requireContext(), "Fallo en la sincronización: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -485,15 +553,25 @@ class ProfileFragment : Fragment() {
 
             lifecycleScope.launch {
                 binding.layoutStats.visibility = View.VISIBLE
-                binding.tvCountFavorites.text = "..."
-                binding.tvCountHistory.text = "..."
+                
+                // Observar Favoritos en tiempo real
+                launch {
+                    favoritesDao.getAllFavorites().collect { list ->
+                        binding.tvCountFavorites.text = "${list.size} títulos"
+                    }
+                }
+
+                // Observar Historial en tiempo real
+                launch {
+                    playbackProgressDao.getAllPlaybackProgress().collect { list ->
+                        // Agrupamos para contar títulos únicos igual que en la lista
+                        val uniqueCount = list.distinctBy { it.contentId }.size
+                        binding.tvCountHistory.text = "$uniqueCount títulos"
+                    }
+                }
+
                 try {
-                    val cloudFavs = cloudRepository.getAllCloudFavorites()
-                    val cloudHist = cloudRepository.getAllCloudHistory()
-                    binding.tvCountFavorites.text = "${cloudFavs.size} títulos"
-                    binding.tvCountHistory.text = "${cloudHist.size} títulos"
-                    
-                    // CARGAR ROL
+                    // CARGAR ROL (Esto sí puede ser una sola vez o cuando cambie)
                     val role = cloudRepository.getUserRole()
                     binding.tvUserRole.text = when(role) {
                         "admin" -> "ADMINISTRADOR"
@@ -502,19 +580,12 @@ class ProfileFragment : Fragment() {
                     }
                     binding.tvUserRole.visibility = View.VISIBLE
                     
-                    // Aplicar color al fondo del rol
-                    val colorRes = if (role == "admin") {
-                        android.R.color.holo_blue_dark
-                    } else {
-                        android.R.color.darker_gray
-                    }
+                    val colorRes = if (role == "admin") android.R.color.holo_blue_dark else android.R.color.darker_gray
                     binding.tvUserRole.backgroundTintList = ColorStateList.valueOf(
                         ContextCompat.getColor(requireContext(), colorRes)
                     )
-
                 } catch (e: Exception) {
-                    binding.tvCountFavorites.text = "Error"
-                    binding.tvCountHistory.text = "Error"
+                    Log.e("Profile", "Error cargando rol")
                 }
                 binding.btnManualSync.visibility = View.VISIBLE
             }

@@ -120,6 +120,10 @@ class AuthCatalogRepository @Inject constructor(
         saveBanState()
     }
 
+    suspend fun getCatalog(): com.johang.audiocinemateca.data.model.CatalogResponse? {
+        return catalogRepository.getCatalog()
+    }
+
     suspend fun getCatalogVersion(): Date? {
         return catalogRepository.getCatalogVersion()
     }

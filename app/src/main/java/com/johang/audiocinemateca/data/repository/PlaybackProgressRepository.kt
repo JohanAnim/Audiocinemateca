@@ -11,15 +11,17 @@ class PlaybackProgressRepository @Inject constructor(
     private val cloudRepository: CloudRepository
 ) {
 
-    suspend fun savePlaybackProgress(progress: PlaybackProgressEntity) {
-        // Guardamos el capítulo específico
+    suspend fun savePlaybackProgress(progress: PlaybackProgressEntity, syncToCloud: Boolean = true) {
+        // Siempre guardamos en local
         playbackProgressDao.insertPlaybackProgress(progress)
 
-        try {
-            // Sincronizamos este capítulo con la nube
-            cloudRepository.uploadHistory(progress)
-        } catch (e: Exception) {
-            android.util.Log.e("SyncHistory", "Error al subir progreso: ${e.message}")
+        if (syncToCloud) {
+            try {
+                // Solo sincronizamos con la nube si se solicita expresamente (Pausa, Stop, Cambio)
+                cloudRepository.uploadHistory(progress)
+            } catch (e: Exception) {
+                android.util.Log.e("SyncHistory", "Error al subir progreso: ${e.message}")
+            }
         }
     }
 

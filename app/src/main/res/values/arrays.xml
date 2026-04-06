@@ -99,4 +99,14 @@
         <item>date_asc</item>
     </string-array>
 
+    <string-array name="chat_announcement_entries">
+        <item>Solo cuando no escucho nada (Por defecto)</item>
+        <item>En todo momento</item>
+        <item>Nunca</item>
+    </string-array>
+    <string-array name="chat_announcement_values">
+        <item>idle_only</item>
+        <item>always</item>
+        <item>never</item>
+    </string-array>
 </resources>

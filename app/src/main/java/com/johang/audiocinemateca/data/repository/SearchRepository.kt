@@ -20,6 +20,7 @@ class SearchRepository @Inject constructor(
         }
 
         val lowerCaseQuery = query.lowercase()
+        val queryWords = lowerCaseQuery.split(" ").filter { it.length > 2 }
         val allItems = mutableListOf<CatalogItem>()
         catalogRepository.getCatalog()?.let {
             it.movies?.let { movies -> allItems.addAll(movies) }
@@ -29,15 +30,27 @@ class SearchRepository @Inject constructor(
         }
 
         val scoredItems = allItems.mapNotNull { item ->
-            val score = when {
-                item.title.equals(query, ignoreCase = true) -> 3 // Coincidencia exacta del título
-                item.title.startsWith(query, ignoreCase = true) -> 2 // El título comienza con la búsqueda (para secuelas)
-                item.title.lowercase().contains(lowerCaseQuery) ||
-                item.director.lowercase().contains(lowerCaseQuery) ||
-                item.reparto.lowercase().contains(lowerCaseQuery) ||
-                item.sinopsis.lowercase().contains(lowerCaseQuery) -> 1 // Coincidencia en otros campos
-                else -> 0
+            val titleLower = item.title.lowercase()
+            val directorLower = item.director.lowercase()
+            val repartoLower = item.reparto.lowercase()
+            val sinopsisLower = item.sinopsis.lowercase()
+            val generoLower = item.genero.lowercase()
+
+            var score = 0
+            if (titleLower == lowerCaseQuery) score += 10
+            if (titleLower.startsWith(lowerCaseQuery)) score += 5
+            
+            // Búsqueda por palabras clave en sinopsis y otros campos
+            for (word in queryWords) {
+                if (titleLower.contains(word)) score += 3
+                if (generoLower.contains(word)) score += 3
+                if (sinopsisLower.contains(word)) score += 2
+                if (directorLower.contains(word)) score += 1
+                if (repartoLower.contains(word)) score += 1
             }
+
+            // Si la consulta original (frase completa) está en la sinopsis, bono extra
+            if (sinopsisLower.contains(lowerCaseQuery)) score += 4
 
             if (score > 0) item to score else null
         }
@@ -85,6 +98,24 @@ class SearchRepository @Inject constructor(
             "documentales" -> catalog?.documentaries?.find { it.id == itemId }
             "cortometrajes" -> catalog?.shortFilms?.find { it.id == itemId }
             else -> null
+        }
+    }
+
+    suspend fun findCatalogItemById(itemId: String, isSeriesHint: Boolean = false): CatalogItem? {
+        val catalog = catalogRepository.getCatalog() ?: return null
+        
+        if (isSeriesHint) {
+            // Si sabemos que es una serie (por los índices en la ruta), buscamos primero en series
+            return catalog.series?.firstOrNull { it.id.equals(itemId, ignoreCase = true) }
+                ?: catalog.movies?.firstOrNull { it.id.equals(itemId, ignoreCase = true) }
+                ?: catalog.documentaries?.firstOrNull { it.id.equals(itemId, ignoreCase = true) }
+                ?: catalog.shortFilms?.firstOrNull { it.id.equals(itemId, ignoreCase = true) }
+        } else {
+            // Si NO tiene índices, buscamos primero en categorías de contenido único (Películas, Docs, Cortos)
+            return catalog.movies?.firstOrNull { it.id.equals(itemId, ignoreCase = true) }
+                ?: catalog.documentaries?.firstOrNull { it.id.equals(itemId, ignoreCase = true) }
+                ?: catalog.shortFilms?.firstOrNull { it.id.equals(itemId, ignoreCase = true) }
+                ?: catalog.series?.firstOrNull { it.id.equals(itemId, ignoreCase = true) }
         }
     }
 }

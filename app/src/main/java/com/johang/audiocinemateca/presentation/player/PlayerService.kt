@@ -59,8 +59,8 @@ class PlayerService : MediaSessionService() {
     private val progressSaveHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val progressSaveRunnable = object : Runnable {
         override fun run() {
-            serviceScope.launch { savePlaybackProgress() }
-            progressSaveHandler.postDelayed(this, 2000) // Guardar cada 2 segundos
+            serviceScope.launch { savePlaybackProgress(syncToCloud = false) }
+            progressSaveHandler.postDelayed(this, 2000) 
         }
     }
 
@@ -69,118 +69,53 @@ class PlayerService : MediaSessionService() {
             val activePlayer = mediaSession?.player ?: return
             when (intent?.action) {
                 ACTION_PLAY_PAUSE -> {
-                    Log.d("PlayerService", "Received ACTION_PLAY_PAUSE.")
-                    activePlayer.run {
-                        if (isPlaying) pause() else play()
-                    }
+                    if (activePlayer.isPlaying) {
+                        serviceScope.launch { savePlaybackProgress(syncToCloud = true) }
+                        activePlayer.pause()
+                    } else { activePlayer.play() }
                 }
                 ACTION_STOP -> {
-                    Log.d("PlayerService", "Received ACTION_STOP.")
-                    runBlocking { savePlaybackProgress() } // Guardar progreso antes de detener
-                    activePlayer.stop()
-                    activePlayer.clearMediaItems()
+                    Log.d("PlayerService", "Cierre forzado solicitado (Botón X).")
+                    serviceScope.launch { savePlaybackProgress(syncToCloud = true) }
+                    
+                    // IMPORTANTE: Liberar recursos antes de parar el servicio
+                    mediaSession?.run {
+                        player.stop()
+                        player.clearMediaItems()
+                        release()
+                        mediaSession = null
+                    }
+                    stopForeground(true)
                     stopSelf()
                 }
                 MainActivity.ACTION_REQUEST_PLAYBACK_STATE -> {
-                    Log.d("PlayerService", "Received ACTION_REQUEST_PLAYBACK_STATE. Sending current playback state.")
-                    val isPlaying = activePlayer.isPlaying
-                    val responseIntent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply {
-                        putExtra(MainActivity.EXTRA_IS_PLAYING, isPlaying)
-                    }
+                    val responseIntent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply { putExtra(MainActivity.EXTRA_IS_PLAYING, activePlayer.isPlaying) }
                     LocalBroadcastManager.getInstance(this@PlayerService).sendBroadcast(responseIntent)
                 }
-                MainActivity.ACTION_REQUEST_MINI_PLAYER_STATE -> {
-                    Log.d("PlayerService", "Received ACTION_REQUEST_MINI_PLAYER_STATE.")
-                    broadcastMiniPlayerState(MainActivity.ACTION_SHOW_MINI_PLAYER)
-                }
-                MainActivity.ACTION_SAVE_PLAYBACK_PROGRESS -> {
-                    Log.d("PlayerService", "Received ACTION_SAVE_PLAYBACK_PROGRESS. Saving current playback state.")
-                    serviceScope.launch { savePlaybackProgress() }
-                }
-                MainActivity.ACTION_SEEK_TO_PREVIOUS -> {
-                    Log.d("PlayerService", "Received ACTION_SEEK_TO_PREVIOUS. Saving progress and seeking to previous.")
-                    val itemId = intent.getStringExtra(MainActivity.EXTRA_ITEM_ID)
-                    val itemType = intent.getStringExtra(MainActivity.EXTRA_ITEM_TYPE)
-                    val partIndex = intent.getIntExtra(MainActivity.EXTRA_PART_INDEX, -1)
-                    val episodeIndex = intent.getIntExtra(MainActivity.EXTRA_EPISODE_INDEX, -1)
-                    val currentPosition = intent.getLongExtra(MainActivity.EXTRA_CURRENT_POSITION, 0L)
-
-                    runBlocking {
-                        if (itemId != null && itemType != null) {
-                            savePlaybackProgress(itemId, itemType, partIndex, episodeIndex, currentPosition)
-                        }
-                        // FORZAR SALTO REAL AL ANTERIOR
-                        if (activePlayer.hasPreviousMediaItem()) {
-                            activePlayer.seekToPreviousMediaItem()
-                        } else {
-                            activePlayer.seekTo(0) // Si no hay anterior, reinicia el actual
-                        }
-                    }
-                }
-                MainActivity.ACTION_SEEK_TO_NEXT -> {
-                    Log.d("PlayerService", "Received ACTION_SEEK_TO_NEXT. Saving progress and seeking to next.")
-                    val itemId = intent.getStringExtra(MainActivity.EXTRA_ITEM_ID)
-                    val itemType = intent.getStringExtra(MainActivity.EXTRA_ITEM_TYPE)
-                    val partIndex = intent.getIntExtra(MainActivity.EXTRA_PART_INDEX, -1)
-                    val episodeIndex = intent.getIntExtra(MainActivity.EXTRA_EPISODE_INDEX, -1)
-                    val currentPosition = intent.getLongExtra(MainActivity.EXTRA_CURRENT_POSITION, 0L)
-
-                    runBlocking {
-                        if (itemId != null && itemType != null) {
-                            savePlaybackProgress(itemId, itemType, partIndex, episodeIndex, currentPosition)
-                        }
-                        activePlayer.seekToNextMediaItem()
-                    }
-                }
-            }
-        }
-    }
-
-    private fun broadcastMiniPlayerState(action: String) {
-        player.currentMediaItem?.let { mediaItem ->
-            val metadata = mediaItem.mediaMetadata
-            val extras = metadata.extras
-            val intent = Intent(action).apply {
-                putExtra(MainActivity.EXTRA_TITLE, metadata.albumTitle?.toString() ?: metadata.title?.toString())
-                putExtra(MainActivity.EXTRA_SUBTITLE, metadata.displayTitle?.toString())
-                putExtra(MainActivity.EXTRA_IS_PLAYING, player.isPlaying)
-                putExtra(MainActivity.EXTRA_ITEM_ID, extras?.getString("itemId"))
-                putExtra(MainActivity.EXTRA_ITEM_TYPE, extras?.getString("itemType"))
-                putExtra(MainActivity.EXTRA_PART_INDEX, extras?.getInt("partIndex", -1) ?: -1)
-                putExtra(MainActivity.EXTRA_EPISODE_INDEX, extras?.getInt("episodeIndex", -1) ?: -1)
-            }
-            LocalBroadcastManager.getInstance(this@PlayerService).sendBroadcast(intent)
-            Log.d("PlayerService", "Sent $action in response.")
-        }
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return super.onStartCommand(intent, flags, startId)
-    }
-
-    private fun createForcedPreviousPlayer(basePlayer: Player): Player {
-        return object : ForwardingPlayer(basePlayer) {
-            override fun seekToPrevious() {
-                if (hasPreviousMediaItem()) {
-                    seekToPreviousMediaItem()
-                } else {
-                    seekTo(0)
-                }
+                MainActivity.ACTION_REQUEST_MINI_PLAYER_STATE -> broadcastMiniPlayerState(MainActivity.ACTION_SHOW_MINI_PLAYER)
+                MainActivity.ACTION_SAVE_PLAYBACK_PROGRESS -> serviceScope.launch { savePlaybackProgress() }
+                MainActivity.ACTION_SEEK_TO_PREVIOUS -> { if (activePlayer.hasPreviousMediaItem()) activePlayer.seekToPreviousMediaItem() else activePlayer.seekTo(0) }
+                MainActivity.ACTION_SEEK_TO_NEXT -> activePlayer.seekToNextMediaItem()
             }
         }
     }
 
     override fun onCreate() {
         super.onCreate()
+        setupPlayer()
+        
+        val filter = IntentFilter().apply {
+            addAction(ACTION_PLAY_PAUSE); addAction(ACTION_STOP)
+            addAction(MainActivity.ACTION_REQUEST_PLAYBACK_STATE); addAction(MainActivity.ACTION_REQUEST_MINI_PLAYER_STATE)
+            addAction(MainActivity.ACTION_SAVE_PLAYBACK_PROGRESS); addAction(MainActivity.ACTION_SEEK_TO_PREVIOUS); addAction(MainActivity.ACTION_SEEK_TO_NEXT)
+        }
+        LocalBroadcastManager.getInstance(this).registerReceiver(playerActionReceiver, filter)
+    }
 
-        // Create a factory for HTTP data sources using the shared OkHttpClient
+    private fun setupPlayer() {
         val httpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
-
-        // Create a DefaultDataSourceFactory that can handle content URIs, file URIs, and our custom HTTP source
         val dataSourceFactory = DefaultDataSource.Factory(this, httpDataSourceFactory)
-
-        val mediaSourceFactory = DefaultMediaSourceFactory(this)
-            .setDataSourceFactory(dataSourceFactory)
+        val mediaSourceFactory = DefaultMediaSourceFactory(this).setDataSourceFactory(dataSourceFactory)
 
         val basePlayer = ExoPlayer.Builder(this)
             .setAudioAttributes(AudioAttributes.DEFAULT, true)
@@ -189,96 +124,83 @@ class PlayerService : MediaSessionService() {
             .setMediaSourceFactory(mediaSourceFactory)
             .build()
             
-        player = createForcedPreviousPlayer(basePlayer)
+        player = object : ForwardingPlayer(basePlayer) {
+            override fun seekToPrevious() { if (hasPreviousMediaItem()) seekToPreviousMediaItem() else seekTo(0) }
+        }
 
         playerListener = object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                super.onIsPlayingChanged(isPlaying)
-                val intent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply {
-                    putExtra(MainActivity.EXTRA_IS_PLAYING, isPlaying)
-                }
+                val intent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply { putExtra(MainActivity.EXTRA_IS_PLAYING, isPlaying) }
                 LocalBroadcastManager.getInstance(this@PlayerService).sendBroadcast(intent)
-                Log.d("PlayerService", "onIsPlayingChanged: isPlaying = $isPlaying. Broadcast sent.")
             }
-
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                super.onMediaItemTransition(mediaItem, reason)
                 updateSessionActivity()
                 broadcastMiniPlayerState(MainActivity.ACTION_UPDATE_MINI_PLAYER_METADATA)
-                
-                // CARGA AUTOMÁTICA DE PROGRESO AL CAMBIAR DE CAPÍTULO/PISTA
-                mediaItem?.mediaMetadata?.extras?.let { extras ->
-                    val itemId = extras.getString("itemId")
-                    val partIndex = extras.getInt("partIndex", -1)
-                    val episodeIndex = extras.getInt("episodeIndex", -1)
-                    
-                    if (itemId != null) {
-                        serviceScope.launch {
-                            val progress = playbackProgressRepository.getPlaybackProgress(itemId, partIndex, episodeIndex)
-                            progress?.let {
-                                // Solo saltamos si el progreso es relevante (> 2 segundos y no ha terminado)
-                                if (it.currentPositionMs > 2000 && it.currentPositionMs < it.totalDurationMs - 5000) {
-                                    Log.d("PlayerService", "Restaurando posición automática: ${it.currentPositionMs}ms")
-                                    player.seekTo(it.currentPositionMs)
-                                }
-                            }
-                        }
-                    }
-                }
             }
-
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                super.onPlaybackStateChanged(playbackState)
-                val stateString = when (playbackState) {
-                    Player.STATE_IDLE -> "STATE_IDLE"
-                    Player.STATE_BUFFERING -> "STATE_BUFFERING"
-                    Player.STATE_READY -> "STATE_READY"
-                    Player.STATE_ENDED -> "STATE_ENDED"
-                    else -> "UNKNOWN_STATE"
-                }
-                Log.d("PlayerService", "onPlaybackStateChanged: playbackState = $stateString")
-            }
-
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                if (equalizer == null) {
-                    equalizer = Equalizer(0, audioSessionId)
-                    val enabled = sharedPreferencesManager.getBoolean("equalizer_enabled", false)
-                    equalizer?.enabled = enabled
-                    if (enabled) {
-                        for (i in 0 until equalizer!!.numberOfBands) {
-                            val level = sharedPreferencesManager.getInt("equalizer_band_${i}", 0)
-                            equalizer?.setBandLevel(i.toShort(), level.toShort())
-                        }
-                    }
-                }
+                setupEqualizer(audioSessionId)
+                setupHapticSystem(audioSessionId)
             }
         }
         player.addListener(playerListener)
+        mediaSession = MediaSession.Builder(this, player).setId("AudiocinematecaPlayerSession").build()
+        updateSessionActivity()
+        progressSaveHandler.post(progressSaveRunnable)
+    }
 
-        mediaSession = MediaSession.Builder(this, player)
-            .setId("AudiocinematecaPlayerSession")
-            .build()
+    private var hapticGenerator: android.media.audiofx.HapticGenerator? = null
+    private var equalizer: Equalizer? = null
 
-        updateSessionActivity() // Set initial session activity
-
-        progressSaveHandler.post(progressSaveRunnable) // Start periodic saving
-
-        val filter = IntentFilter().apply {
-            addAction(ACTION_PLAY_PAUSE)
-            addAction(ACTION_STOP)
-            addAction(MainActivity.ACTION_REQUEST_PLAYBACK_STATE)
-            addAction(MainActivity.ACTION_REQUEST_MINI_PLAYER_STATE)
-            addAction(MainActivity.ACTION_SAVE_PLAYBACK_PROGRESS)
-            addAction(MainActivity.ACTION_SEEK_TO_PREVIOUS)
-            addAction(MainActivity.ACTION_SEEK_TO_NEXT)
+    private fun setupEqualizer(audioSessionId: Int) {
+        if (equalizer == null) {
+            equalizer = Equalizer(0, audioSessionId)
+            val enabled = sharedPreferencesManager.getBoolean("equalizer_enabled", false)
+            equalizer?.enabled = enabled
+            if (enabled) {
+                for (i in 0 until equalizer!!.numberOfBands) {
+                    val level = sharedPreferencesManager.getInt("equalizer_band_${i}", 0)
+                    equalizer?.setBandLevel(i.toShort(), level.toShort())
+                }
+            }
         }
-        LocalBroadcastManager.getInstance(this).registerReceiver(playerActionReceiver, filter)
+    }
+
+    private fun setupHapticSystem(audioSessionId: Int) {
+        if (sharedPreferencesManager.getBoolean("haptic_audio_enabled", false) && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            try {
+                if (android.media.audiofx.HapticGenerator.isAvailable()) {
+                    hapticGenerator?.release()
+                    hapticGenerator = android.media.audiofx.HapticGenerator.create(audioSessionId)
+                    hapticGenerator?.enabled = true
+                }
+            } catch (e: Exception) { Log.e("PlayerService", "Haptic Error", e) }
+        }
+    }
+
+    private fun releaseHapticSystem() {
+        hapticGenerator?.release(); hapticGenerator = null
+    }
+
+    private fun broadcastMiniPlayerState(action: String) {
+        player.currentMediaItem?.let { mediaItem ->
+            val metadata = mediaItem.mediaMetadata
+            val extras = metadata.extras
+            val intent = Intent(action).apply {
+                putExtra(MainActivity.EXTRA_TITLE, metadata.title?.toString())
+                putExtra(MainActivity.EXTRA_SUBTITLE, metadata.artist?.toString()) // Nombre de la serie/película
+                putExtra(MainActivity.EXTRA_IS_PLAYING, player.isPlaying)
+                putExtra(MainActivity.EXTRA_ITEM_ID, extras?.getString("itemId"))
+                putExtra(MainActivity.EXTRA_ITEM_TYPE, extras?.getString("itemType"))
+                putExtra(MainActivity.EXTRA_PART_INDEX, extras?.getInt("partIndex", -1) ?: -1)
+                putExtra(MainActivity.EXTRA_EPISODE_INDEX, extras?.getInt("episodeIndex", -1) ?: -1)
+            }
+            LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+        }
     }
 
     private fun updateSessionActivity() {
         val mediaItem = player.currentMediaItem ?: return
         val extras = mediaItem.mediaMetadata.extras ?: return
-
         val intent = Intent(this, MainActivity::class.java).apply {
             action = MainActivity.ACTION_OPEN_PLAYER
             putExtra(MainActivity.EXTRA_ITEM_ID, extras.getString("itemId"))
@@ -286,83 +208,29 @@ class PlayerService : MediaSessionService() {
             putExtra(MainActivity.EXTRA_PART_INDEX, extras.getInt("partIndex", -1))
             putExtra(MainActivity.EXTRA_EPISODE_INDEX, extras.getInt("episodeIndex", -1))
         }
-
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
+        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         mediaSession?.setSessionActivity(pendingIntent)
-    }
-
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        val mediaItem = player.currentMediaItem
-        val customMetadata = mediaItem?.mediaMetadata?.extras
-        val itemId = customMetadata?.getString("itemId")
-        val itemType = customMetadata?.getString("itemType")
-        val partIndex = customMetadata?.getInt("partIndex", -1) ?: -1
-        val episodeIndex = customMetadata?.getInt("episodeIndex", -1) ?: -1
-        val currentPosition = player.currentPosition
-
-        runBlocking { 
-            if (itemId != null && itemType != null) {
-                savePlaybackProgress(itemId, itemType, partIndex, episodeIndex, currentPosition)
-            }
-        }
-        if (!player.playWhenReady || player.mediaItemCount == 0) {
-            stopSelf()
-        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
 
-    private suspend fun savePlaybackProgress(
-        itemId: String? = null,
-        itemType: String? = null,
-        partIndex: Int = -1,
-        episodeIndex: Int = -1,
-        position: Long? = null
-    ) {
+    private suspend fun savePlaybackProgress(itemId: String? = null, itemType: String? = null, partIndex: Int = -1, episodeIndex: Int = -1, position: Long? = null, syncToCloud: Boolean = true) {
         val mediaItem = player.currentMediaItem ?: return
-        val customMetadata = mediaItem.mediaMetadata.extras ?: return
-
-        val currentItem = itemId ?: customMetadata.getString("itemId") ?: return
-        val currentType = itemType ?: customMetadata.getString("itemType") ?: return
-        val currentPartIndex = if (partIndex != -1) partIndex else customMetadata.getInt("partIndex", -1)
-        val currentEpisodeIndex = if (episodeIndex != -1) episodeIndex else customMetadata.getInt("episodeIndex", -1)
-
-        val currentPositionMs = position ?: player.currentPosition
-        val totalDuration = player.duration
-
-        Log.d("PlayerService", "savePlaybackProgress: Saving for $currentItem, Type: $currentType, Part: $currentPartIndex, Episode: $currentEpisodeIndex, Position: $currentPositionMs, Duration: $totalDuration")
-
-        if (totalDuration <= 0) return
-
-        val progress = PlaybackProgressEntity(
-            contentId = currentItem,
-            contentType = currentType,
-            currentPositionMs = currentPositionMs,
-            totalDurationMs = totalDuration,
-            partIndex = currentPartIndex,
-            episodeIndex = currentEpisodeIndex,
-            lastPlayedTimestamp = System.currentTimeMillis()
-        )
-
-        playbackProgressRepository.savePlaybackProgress(progress)
-        Log.d("PlayerService", "Progreso guardado: $currentItem - Posición: $currentPositionMs")
+        val meta = mediaItem.mediaMetadata.extras ?: return
+        val id = itemId ?: meta.getString("itemId") ?: return
+        val type = itemType ?: meta.getString("itemType") ?: return
+        val pos = position ?: player.currentPosition
+        val dur = player.duration
+        if (pos < 5000 || dur <= 0) return
+        val progress = PlaybackProgressEntity(contentId = id, contentType = type, currentPositionMs = pos, totalDurationMs = dur, partIndex = if (partIndex != -1) partIndex else meta.getInt("partIndex", -1), episodeIndex = if (episodeIndex != -1) episodeIndex else meta.getInt("episodeIndex", -1), lastPlayedTimestamp = System.currentTimeMillis())
+        playbackProgressRepository.savePlaybackProgress(progress, syncToCloud)
     }
 
     override fun onDestroy() {
-        runBlocking { savePlaybackProgress() }
-        serviceScope.cancel()
-        progressSaveHandler.removeCallbacks(progressSaveRunnable)
+        serviceScope.cancel(); progressSaveHandler.removeCallbacks(progressSaveRunnable)
         mediaSession?.run {
-            player.removeListener(playerListener)
-            player.release()
-            release()
-            mediaSession = null
+            try { player.removeListener(playerListener); player.release() } catch (e: Exception) {}
+            release(); mediaSession = null
         }
         LocalBroadcastManager.getInstance(this).unregisterReceiver(playerActionReceiver)
         super.onDestroy()

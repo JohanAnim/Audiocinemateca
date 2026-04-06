@@ -205,8 +205,13 @@ class ContentDetailViewModel @Inject constructor(
         }
         val item = _contentItem.value ?: return
         viewModelScope.launch {
-            setRatingUseCase(item.id, rating)
-            _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowMessage("¡Gracias por calificar!")))
+            try {
+                setRatingUseCase(item.id, rating)
+                _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowMessage("¡Gracias por calificar!")))
+            } catch (e: Exception) {
+                Log.e("ContentDetailVM", "Error al calificar: ${e.message}")
+                _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowMessage("No se pudo enviar la calificación. Inténtalo más tarde.")))
+            }
         }
     }
 

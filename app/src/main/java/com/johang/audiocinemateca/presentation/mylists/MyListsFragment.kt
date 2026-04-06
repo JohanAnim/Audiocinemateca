@@ -52,7 +52,7 @@ class MyListsFragment : Fragment() {
             tab.text = when (position) {
                 0 -> "Historial"
                 1 -> "Favoritos"
-                2 -> "Recomendaciones"
+                2 -> getString(R.string.downloads_title)
                 else -> null
             }
         }.attach()

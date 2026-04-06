@@ -12,6 +12,7 @@
 .DS_Store
 /build
 /captures
+/Audiocinemateca-for-windows
 .externalNativeBuild
 .cxx
 local.properties
@@ -20,3 +21,4 @@ logs.txt
 !/app/release/*.apk
 
 google-services.json
+/back/

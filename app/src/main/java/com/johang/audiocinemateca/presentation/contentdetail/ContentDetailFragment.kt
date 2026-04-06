@@ -25,8 +25,10 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.johang.audiocinemateca.MainActivity
 import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity
 import com.johang.audiocinemateca.data.model.Documentary
@@ -93,6 +95,21 @@ class ContentDetailFragment : Fragment() {
         }
     }
 
+    private val playbackUpdateReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+            if (intent?.action == MainActivity.ACTION_UPDATE_MINI_PLAYER_METADATA) {
+                val itemId = intent.getStringExtra(MainActivity.EXTRA_ITEM_ID)
+                if (itemId == args.itemId) {
+                    val seasonIndex = intent.getIntExtra(MainActivity.EXTRA_PART_INDEX, -1)
+                    if (seasonIndex >= 0 && seasonSpinner.selectedItemPosition != seasonIndex) {
+                        Log.d("ContentDetail", "Sincronizando spinner con reproducción: Temporada $seasonIndex")
+                        seasonSpinner.setSelection(seasonIndex)
+                    }
+                }
+            }
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -119,6 +136,12 @@ class ContentDetailFragment : Fragment() {
         contentRatingText.setOnClickListener {
             showRatingDialog()
         }
+
+        // Registrar receptor para sincronización en tiempo real
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(
+            playbackUpdateReceiver, 
+            android.content.IntentFilter(MainActivity.ACTION_UPDATE_MINI_PLAYER_METADATA)
+        )
     }
 
     private fun initializeViews(view: View) {
@@ -362,14 +385,14 @@ class ContentDetailFragment : Fragment() {
     }
 
     private fun updateStaticUI(item: CatalogItem) {
-        val typeLabel = when (item) {
-            is Movie -> "película"
-            is Serie -> "serie"
-            is Documentary -> "documental"
-            is ShortFilm -> "cortometraje"
-            else -> "contenido"
+        val actionBarTitle = when (item) {
+            is Movie -> "Detalles de la película"
+            is Serie -> "Detalles de la serie"
+            is Documentary -> "Detalles del documental"
+            is ShortFilm -> "Detalles del cortometraje"
+            else -> "Detalles del contenido"
         }
-        (activity as? AppCompatActivity)?.supportActionBar?.title = "Detalles de la $typeLabel"
+        (activity as? AppCompatActivity)?.supportActionBar?.title = actionBarTitle
         
         contentYear.text = "Año: ${item.anio}"
         contentGenre.text = "Género: ${item.genero}"
@@ -432,11 +455,17 @@ class ContentDetailFragment : Fragment() {
         seasonAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         seasonSpinner.adapter = seasonAdapter
 
+        // SELECCIÓN INTELIGENTE AL ENTRAR
         lifecycleScope.launch {
-            val progress = playbackProgressRepository.getPlaybackProgress(serie.id, -1, -1)
-            if (progress != null && progress.partIndex < seasons.size) {
-                seasonSpinner.setSelection(progress.partIndex)
-            }
+            val allProgress = playbackProgressRepository.getPlaybackProgressForContent(serie.id)
+            val latest = allProgress.maxByOrNull { it.lastPlayedTimestamp }
+            
+            val initialSeasonIndex = if (latest != null && latest.partIndex >= 0 && latest.partIndex < seasons.size) {
+                latest.partIndex
+            } else 0
+
+            seasonSpinner.setSelection(initialSeasonIndex)
+            updateEpisodeList(serie, seasons[initialSeasonIndex], initialSeasonIndex)
         }
 
         seasonSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -445,7 +474,6 @@ class ContentDetailFragment : Fragment() {
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
-        if (seasons.isNotEmpty()) updateEpisodeList(serie, seasons[0], 0)
     }
 
     private fun updateEpisodeList(serie: Serie, seasonKey: String, seasonIndex: Int) {
@@ -679,6 +707,7 @@ class ContentDetailFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(playbackUpdateReceiver)
         (activity as? AppCompatActivity)?.supportActionBar?.title = getString(R.string.app_name)
         (activity as? AppCompatActivity)?.supportActionBar?.subtitle = null
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(false)

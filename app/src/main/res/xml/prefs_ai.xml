@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <EditTextPreference
+        android:key="gemini_api_key"
+        android:title="Clave API de Gemini"
+        android:summary="Introduce tu clave para activar funciones de IA."
+        android:dialogMessage="Pega aquí tu clave API de Google AI Studio."
+        app:useSimpleSummaryProvider="true"
+        android:inputType="textPassword" />
+
+    <ListPreference
+        android:key="gemini_model"
+        android:title="Modelo de Inteligencia Artificial"
+        android:summary="%s"
+        android:entries="@array/gemini_model_entries"
+        android:entryValues="@array/gemini_model_values"
+        android:defaultValue="gemini-3-flash-preview" />
+
+    <Preference
+        android:key="check_api_status"
+        android:title="Comprobar estado de la API"
+        android:summary="Verifica si la clave API introducida es válida."/>
+
+    <Preference
+        android:key="get_api_key"
+        android:title="¿No tienes una API Key?"
+        android:summary="Pulsa aquí para conseguir una gratis en Google AI Studio"
+        app:icon="@drawable/ic_share" />
+
+</PreferenceScreen>

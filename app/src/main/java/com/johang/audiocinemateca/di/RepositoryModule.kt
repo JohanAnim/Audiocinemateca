@@ -95,7 +95,11 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideCloudRepository(): com.johang.audiocinemateca.data.repository.CloudRepository {
-        return com.johang.audiocinemateca.data.repository.CloudRepository()
+    fun provideCloudRepository(
+        firestore: com.google.firebase.firestore.FirebaseFirestore,
+        auth: com.google.firebase.auth.FirebaseAuth,
+        authCatalogRepository: AuthCatalogRepository
+    ): com.johang.audiocinemateca.data.repository.CloudRepository {
+        return com.johang.audiocinemateca.data.repository.CloudRepository(firestore, auth, authCatalogRepository)
     }
 }

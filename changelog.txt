@@ -1,42 +1,29 @@
-Versión 2.9.9 - El Salto a la Comunidad y la Nube
+v3.0.0 - Versión Evolución Global
+---------------------------------
+¡Bienvenidos a la versión más avanzada de Audiocinemateca! En esta actualización hemos redefinido la experiencia de usuario y la comunicación.
 
-¡Hola a todos!
+[NUEVO] Chat Global Comunitario:
+- Chatea en tiempo real con toda la comunidad desde la nueva pestaña en la sección de Comunidad.
+- Dictado por voz: Mantén pulsado el micrófono para escribir mensajes rápidamente.
+- Panel de emojis profesional integrado para una comunicación más divertida.
+- Mensajes de bienvenida y estados inteligentes para saber si el chat está abierto.
 
-Hoy es un día muy especial. Durante mucho tiempo estuve pensando en cómo integrar funciones avanzadas en la nube para llevar la Audiocinemateca al siguiente nivel. No sabía si esta idea sería bien recibida, pero hoy me llena de orgullo presentarles la versión más ambiciosa y potente que he lanzado hasta la fecha.
+[ACCESIBILIDAD PRO]
+- Anuncios Globales: El lector de pantalla ahora te avisa de nuevos mensajes y menciones en toda la app, incluso con la pantalla apagada.
+- Sonido y Vibración: Nueva identidad sonora para mensajes entrantes con vibración sincronizada.
+- Configuración de Voz: Elige cuándo quieres recibir anuncios (Siempre, solo en reposo o nunca) desde los nuevos ajustes.
 
-Es muy importante aclarar que esta nueva "Cuenta de la Nube" es un COMPLEMENTO opcional a tu cuenta estándar de audiocinemateca.com. Su objetivo es darte superpoderes sociales: comentar, votar y sincronizar tus datos. Sin embargo, la app sigue siendo totalmente funcional sin ella; tú decides cómo quieres disfrutar de la plataforma.
+[EXPERIENCIA DE REPRODUCCIÓN]
+- Vibración Háptica Avanzada: Sincronización real del motor de vibración con el audio para una inmersión total (Android 12+).
+- Gestión de Temporadas Inteligente: La app recuerda tu última temporada vista y sincroniza el selector automáticamente mientras oyes la serie.
+- Reanudación sin Fallos: Se corrigió el error que bloqueaba los capítulos al final; ahora se reinician automáticamente si estaban terminados.
+- Navegación Fluida: El botón atrás ahora respeta siempre tu camino, llevándote del reproductor a los detalles sin saltos extraños.
 
-Sobre la seguridad y el acceso:
-- Conexión Instantánea: Puedes vincular tu cuenta rápidamente usando Google.
-- Privacidad ante todo: Si prefieres usar correo y contraseña, te recomendamos por seguridad usar una contraseña diferente a la que usas en el sitio web principal.
-- Flexibilidad total: Si inicias sesión con Google, puedes establecer una contraseña más adelante desde tu perfil para tener una capa extra de protección o para poder entrar solo con tu correo en el futuro.
+[DISEÑO Y ORGANIZACIÓN]
+- Nuevos Ajustes Categorizados: Pantalla de configuración limpia y organizada por categorías (General, Reproducción, Comunidad, IA, Descargas).
+- Menú Lateral Refinado: Ahora muestra tu nombre de usuario y la versión exacta de la app.
+- Información Legal: Políticas de privacidad y términos de uso integrados profesionalmente en los ajustes.
 
-¡Nuevas formas de estar conectados!
-A partir de ahora, la app es capaz de recibir notificaciones. Por esa vía les enviaré invitaciones para escuchar los mejores contenidos, avisos importantes o mensajes directos para que no se pierdan de nada.
-
-El camino hacia el futuro y tu apoyo:
-Mantener una infraestructura en la nube conlleva costos constantes. Por ahora, hay algunas funciones muy avanzadas que no he podido implementar porque requieren un plan de facturación de pago. Mi plan a futuro es aprovechar cada herramienta disponible para que todos y todas las disfrutemos al máximo. 
-
-Aquí es donde tu apoyo es vital: con una pequeña donación, por mínima que sea, podemos cubrir estos gastos y hacer que la Audiocinemateca sea algo mucho mejor, más potente y, lo más importante, ¡manteniéndola siempre gratis para todos!
-
----
-
-Novedades de esta versión:
-
-Social y Comunidad:
-- Sistema de comentarios en tiempo real con respuestas y menciones (@usuario).
-- Interacción completa: Dale "Me gusta" a comentarios y copia textos fácilmente.
-- Filtros inteligentes: Ordena por más recientes, antiguos o populares.
-- Tu voz cuenta: Sistema de votos (Like/Dislike) y calificaciones globales por estrellas.
-- Comunidad Sana: Panel de reportes para avisar sobre contenido inapropiado.
-
-Perfil y Notificaciones:
-- Notificaciones Push: Recibe avisos y sugerencias de contenido directamente.
-- Identidad: Sistema de perfiles con roles (Administrador, Editor y Cliente).
-- Sincronización Total: Tus Favoritos e Historial ahora te siguen a cualquier dispositivo.
-
-Experiencia y Accesibilidad:
-- Modo Invitado: Usa la app sin registros si así lo prefieres.
-- Accesibilidad Premium: Descripciones optimizadas y anuncios por voz para lectores de pantalla.
-- Diseño Refinado: Títulos más naturales en la barra superior y mejor espaciado visual.
-- Respuesta Táctica: Vibración integrada en botones sociales para una mejor sensación al tacto.
+[SISTEMA]
+- Optimización de Servicios: Separación de la lógica de reproducción y anuncios para mayor estabilidad.
+- Panel de Control Admin: Johan ahora puede enviar mensajes y gestionar el chat directamente desde la consola.

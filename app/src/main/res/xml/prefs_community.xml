@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <ListPreference
+        app:defaultValue="idle_only"
+        app:entries="@array/chat_announcement_entries"
+        app:entryValues="@array/chat_announcement_values"
+        app:key="chat_announcement_mode"
+        app:title="Anuncios de voz del Chat Global"
+        app:summary="Elige cuándo quieres que el lector de pantalla te avise de nuevos mensajes." />
+
+</PreferenceScreen>

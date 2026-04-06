@@ -123,11 +123,11 @@ class FavoritosFragment : Fragment() {
     }
 
     private fun navigateToContent(favorite: FavoriteEntity) {
-        val typeForNav = when (favorite.contentType) {
-            "movie" -> "peliculas"
-            "serie" -> "series"
-            "documentary" -> "documentales"
-            "shortfilm" -> "cortometrajes"
+        val typeForNav = when (favorite.contentType.lowercase()) {
+            "movie", "peliculas" -> "peliculas"
+            "serie", "series" -> "series"
+            "documentary", "documentales" -> "documentales"
+            "shortfilm", "short", "cortometrajes" -> "cortometrajes"
             else -> "unknown"
         }
         val action = MyListsFragmentDirections.actionMyListsFragmentToContentDetailFragment(

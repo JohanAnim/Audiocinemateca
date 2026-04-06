@@ -48,49 +48,43 @@ class CommentAdapter(
         fun bind(comment: Comment) {
             userName.text = "${comment.userName} Dice:"
             commentText.text = comment.commentText
-            dateText.text = dateFormat.format(comment.timestamp.toDate())
             
-            val likesCount = comment.likes.size
-            val isLikedByMe = currentUserId != null && comment.likes.containsKey(currentUserId)
-
-            // Texto dinámico: Me gusta (X) o Quitar me gusta (X)
-            likeButton.text = if (isLikedByMe) {
-                "Quitar me gusta ($likesCount)"
+            // SI ES PENDIENTE: Forzamos visualmente el estado de carga y ocultamos TODO lo demás
+            if (comment.isPending) {
+                dateText.text = "Esperando confirmación del servidor..."
+                dateText.visibility = View.VISIBLE
+                likeButton.visibility = View.GONE
+                replyButton.visibility = View.GONE
+                menuButton.visibility = View.GONE
+                itemView.alpha = 0.5f
             } else {
-                "Me gusta ($likesCount)"
-            }
-            
-            // Si el usuario actual le dio like, resaltamos el botón
-            if (isLikedByMe) {
+                dateText.text = dateFormat.format(comment.timestamp.toDate())
+                dateText.visibility = View.VISIBLE
+                likeButton.visibility = View.VISIBLE
+                replyButton.visibility = View.VISIBLE
+                menuButton.visibility = View.VISIBLE
+                itemView.alpha = 1.0f
+                
+                val likesCount = comment.likes.size
+                val isLikedByMe = currentUserId != null && comment.likes.containsKey(currentUserId)
+
+                likeButton.text = if (isLikedByMe) "Quitar me gusta ($likesCount)" else "Me gusta ($likesCount)"
+                likeButton.alpha = if (isLikedByMe) 1.0f else 0.5f
                 likeButton.setIconResource(R.drawable.ic_thumb_up)
-                likeButton.alpha = 1.0f
-            } else {
-                likeButton.setIconResource(R.drawable.ic_thumb_up) // Mismo icono pero con transparencia
-                likeButton.alpha = 0.5f
+
+                likeButton.setOnClickListener { onLikeClick(comment) }
+                
+                val replyAction = {
+                    onReplyClick(comment.userName)
+                }
+                replyButton.setOnClickListener { replyAction() }
+                itemView.setOnClickListener { replyAction() }
+                menuButton.setOnClickListener { onMenuClick(menuButton, comment) }
             }
 
-            likeButton.setOnClickListener { onLikeClick(comment) }
-            
-            // Lógica de responder
-            val replyAction = {
-                onReplyClick(comment.userName)
-            }
-            replyButton.setOnClickListener { replyAction() }
-            itemView.setOnClickListener { replyAction() }
-
-            // Menú de opciones
-            menuButton.setOnClickListener { onMenuClick(menuButton, comment) }
-
-            // Accesibilidad simplificada
-            itemView.contentDescription = "${comment.userName} dice: ${comment.commentText}. Publicado el ${dateText.text}."
-            
-            likeButton.contentDescription = if (isLikedByMe) {
-                "$likesCount me gusta. Toca para quitar."
-            } else {
-                "$likesCount me gusta. Toca para indicar que te gusta."
-            }
-            replyButton.contentDescription = "Responder a ${comment.userName}"
-            menuButton.contentDescription = "Opciones del comentario"
+            // Accesibilidad
+            val status = if (comment.isPending) "Enviando comentario, por favor espera" else "Publicado el ${dateText.text}"
+            itemView.contentDescription = "${comment.userName} dice: ${comment.commentText}. $status."
         }
     }
 }

@@ -32,14 +32,33 @@ class FavoritesAdapter(
         fun bind(item: FavoriteEntity) {
             binding.favoriteTitle.text = item.title
             
+            // Reparación de fecha: Si el número es demasiado grande o parece un formato YYYYMMDDHHmm, lo corregimos.
+            val rawTimestamp = item.addedAt
+            val validTimestamp = when {
+                rawTimestamp > 200000000000L && rawTimestamp < 210000000000L -> {
+                    // Si parece YYYYMMDDHHmm (ej. 202511122204), intentamos usar la actual como parche
+                    System.currentTimeMillis()
+                }
+                rawTimestamp < 1704067200000L -> {
+                    // Si es menor a 2024, usamos la actual
+                    System.currentTimeMillis()
+                }
+                else -> rawTimestamp
+            }
+
             val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-            val dateStr = dateFormat.format(Date(item.addedAt))
+            var dateStr = dateFormat.format(Date(validTimestamp))
             
-            val typeStr = when (item.contentType) {
-                "movie" -> "Película"
-                "serie" -> "Serie"
-                "documentary" -> "Documental"
-                "shortfilm" -> "Corto"
+            // Si el año tiene más de 4 dígitos (ej. 14/01/20262204), lo truncamos a 10 caracteres (dd/MM/yyyy)
+            if (dateStr.length > 10) {
+                dateStr = dateStr.substring(0, 10)
+            }
+            
+            val typeStr = when (item.contentType.lowercase()) {
+                "movie", "peliculas" -> "Película"
+                "serie", "series" -> "Serie"
+                "documentary", "documentales" -> "Documental"
+                "shortfilm", "short", "cortometrajes" -> "Corto"
                 else -> "Contenido"
             }
             

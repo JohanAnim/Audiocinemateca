@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <ListPreference
+        android:key="download_location"
+        android:title="Ubicación de almacenamiento"
+        android:summary="Elige dónde se guardarán las descargas."
+        app:useSimpleSummaryProvider="true" />
+
+    <SwitchPreferenceCompat
+        android:key="offline_mode"
+        android:title="Modo offline total"
+        android:summary="Activa este modo para usar la app sin conexión a internet."
+        android:defaultValue="false" />
+
+</PreferenceScreen>

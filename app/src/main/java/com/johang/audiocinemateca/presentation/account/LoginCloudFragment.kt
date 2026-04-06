@@ -70,17 +70,27 @@ class LoginCloudFragment : Fragment() {
                     if (task.isSuccessful) {
                         lifecycleScope.launch {
                             try {
+                                // 1. OBLIGATORIO: Crear/Verificar DB del usuario
                                 cloudRepository.syncUserProfile()
+                                
+                                // 2. Si éxito -> Continuar flujo
+                                checkAndPromptSync()
+                                MaterialAlertDialogBuilder(requireContext())
+                                    .setTitle("Conexión Exitosa")
+                                    .setMessage("Has conectado tu cuenta con la nube y tu base de datos está lista.")
+                                    .setPositiveButton("Genial") { _, _ -> findNavController().navigateUp() }
+                                    .show()
+                                    
                             } catch (e: Exception) {
-                                Log.e("LoginCloud", "Error syncing profile: ${e.message}")
+                                // 3. Si fallo -> Alerta de Error
+                                Log.e("LoginCloud", "Error creando perfil DB: ${e.message}")
+                                MaterialAlertDialogBuilder(requireContext())
+                                    .setTitle("Error de Base de Datos")
+                                    .setMessage("Se inició sesión, pero falló la creación de tu perfil en la nube.\n\nError: ${e.localizedMessage}")
+                                    .setPositiveButton("Entendido", null)
+                                    .show()
                             }
                         }
-                        checkAndPromptSync()
-                        MaterialAlertDialogBuilder(requireContext())
-                            .setTitle("Conexión Exitosa")
-                            .setMessage("Has conectado tu cuenta con la nube.")
-                            .setPositiveButton("Genial") { _, _ -> findNavController().navigateUp() }
-                            .show()
                     } else {
                         Toast.makeText(requireContext(), "Error: ${task.exception?.localizedMessage}", Toast.LENGTH_LONG).show()
                     }
@@ -127,12 +137,18 @@ class LoginCloudFragment : Fragment() {
             try {
                 Toast.makeText(requireContext(), "Restaurando datos...", Toast.LENGTH_SHORT).show()
                 cloudFavs.forEach { cloud ->
+                    var timestamp = cloud.addedAt
+                    if (timestamp in 1L..9999999999L) {
+                        timestamp *= 1000
+                    }
+                    if (timestamp <= 0) timestamp = System.currentTimeMillis()
+
                     favoritesDao.insertFavorite(
                         com.johang.audiocinemateca.data.local.entities.FavoriteEntity(
                             contentId = cloud.contentId,
                             title = cloud.title,
                             contentType = cloud.contentType,
-                            addedAt = cloud.addedAt
+                            addedAt = timestamp
                         )
                     )
                 }

@@ -35,6 +35,8 @@ class CatalogRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
+    private var cachedCatalog: CatalogResponse? = null
+
     private val gson = GsonBuilder()
         .registerTypeAdapter(Movie::class.java, MovieTypeAdapter())
         .registerTypeAdapter(Serie::class.java, SerieTypeAdapter())
@@ -55,6 +57,9 @@ class CatalogRepository @Inject constructor(
     suspend fun saveCatalog(catalog: CatalogResponse) = withContext(Dispatchers.IO) {
         Log.d("CatalogRepository", "Saving catalog: ${catalog.javaClass.simpleName}")
         try {
+            // Update cache
+            cachedCatalog = catalog
+
             // Delete old catalog file if it exists
             val oldCatalogFile = File(context.filesDir, CATALOG_FILE_NAME)
             if (oldCatalogFile.exists()) {
@@ -78,7 +83,12 @@ class CatalogRepository @Inject constructor(
     }
 
     suspend fun getCatalog(): CatalogResponse? = withContext(Dispatchers.IO) {
-        Log.d("CatalogRepository", "Attempting to get catalog")
+        if (cachedCatalog != null) {
+            Log.d("CatalogRepository", "Returning cached catalog")
+            return@withContext cachedCatalog
+        }
+
+        Log.d("CatalogRepository", "Attempting to get catalog from file")
         try {
             val catalogEntity = catalogDao.getCatalogData("mainCatalogFile").firstOrNull()
             if (catalogEntity != null) {
@@ -87,16 +97,12 @@ class CatalogRepository @Inject constructor(
                 Log.d("CatalogRepository", "Catalog file path from DB: ${filePath}")
                 if (catalogFile.exists()) {
                     val jsonString = catalogFile.readText()
-                    Log.d("CatalogRepository", "Read catalog JSON: ${jsonString.take(200)}...") // Log first 200 chars
                     val type = object : TypeToken<CatalogResponse>() {}.type
                     val catalog = gson.fromJson<CatalogResponse>(jsonString, type)
-                    Log.d("CatalogRepository", "Deserialized catalog: ${catalog != null}")
+                    cachedCatalog = catalog
+                    Log.d("CatalogRepository", "Deserialized and cached catalog")
                     return@withContext catalog
-                } else {
-                    Log.w("CatalogRepository", "Catalog file does not exist: ${filePath}")
                 }
-            } else {
-                Log.w("CatalogRepository", "Catalog file path not found in DB.")
             }
             return@withContext null
         } catch (e: Exception) {

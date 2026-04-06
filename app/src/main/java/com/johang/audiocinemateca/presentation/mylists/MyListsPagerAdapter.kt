@@ -10,15 +10,17 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.view.Gravity
 
+import com.johang.audiocinemateca.presentation.downloads.DownloadsFragment
+
 class MyListsPagerAdapter(fragmentActivity: FragmentActivity) : FragmentStateAdapter(fragmentActivity) {
 
-    override fun getItemCount(): Int = 3 // Recomendaciones, Favoritos, Historial
+    override fun getItemCount(): Int = 3 // Historial, Favoritos, Descargas
 
     override fun createFragment(position: Int): Fragment {
         return when (position) {
             0 -> PlaybackHistoryFragment() // Nuestro nuevo fragmento de historial
             1 -> FavoritosFragment() // Fragmento real de Favoritos
-            2 -> RecomendacionesFragment() // El nuevo chat con IA de Gemini
+            2 -> DownloadsFragment() // Fragmento de Descargas movido aquí
             else -> throw IllegalArgumentException("Invalid position")
         }
     }

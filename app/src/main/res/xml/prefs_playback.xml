@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <SwitchPreferenceCompat
+        android:key="autoplay"
+        android:title="Reproducción automática"
+        android:summary="Reproducir la siguiente parte o episodio automáticamente."
+        android:defaultValue="true" />
+
+    <SwitchPreferenceCompat
+        android:key="sleep_timer_enabled"
+        android:title="Temporizador de descanso"
+        android:summary="Pausa la reproducción después de un tiempo de inactividad."
+        android:defaultValue="false" />
+
+    <ListPreference
+        android:key="sleep_timer_duration"
+        android:title="Tiempo de inactividad"
+        android:summary="%s"
+        android:entries="@array/sleep_timer_entries"
+        android:entryValues="@array/sleep_timer_values"
+        android:defaultValue="60"
+        android:dependency="sleep_timer_enabled" />
+
+    <ListPreference
+        android:key="rewind_interval"
+        android:title="Intervalo de retroceso"
+        android:summary="%s"
+        android:entries="@array/rewind_interval_entries"
+        android:entryValues="@array/rewind_interval_values"
+        android:defaultValue="5" />
+
+    <ListPreference
+        android:key="forward_interval"
+        android:title="Intervalo de avance"
+        android:summary="%s"
+        android:entries="@array/forward_interval_entries"
+        android:entryValues="@array/forward_interval_values"
+        android:defaultValue="15" />
+
+    <Preference
+        android:key="clear_playback_history"
+        android:title="Eliminar historial de reproducción"
+        android:summary="Borra todo el contenido que has visto."/>
+
+    <PreferenceCategory
+        app:title="Inmersión Sensorial"
+        app:key="cat_advanced_playback">
+
+        <SwitchPreferenceCompat
+            android:key="haptic_audio_enabled"
+            android:title="Vibración Háptica Avanzada"
+            android:summary="Sincroniza el motor de vibración con el audio en tiempo real para una inmersión total. Función revolucionaria disponible solo en dispositivos de gama alta con Android 12+."
+            android:defaultValue="false" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

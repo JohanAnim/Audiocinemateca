@@ -130,7 +130,7 @@ class AccountFragment : Fragment() {
             val username = authCatalogRepository.getStoredUsername()
             val displayUsername = username ?: "Invitado"
             headerUsername.text = displayUsername
-            headerUsername.contentDescription = "Conectado actualmente: $displayUsername, toca para ver tu perfil"
+            headerUsername.contentDescription = "$displayUsername, toca para ver tu perfil"
 
             if (username == "Johan-a-g") {
                 viewModel.updateState.collect {
@@ -156,14 +156,19 @@ class AccountFragment : Fragment() {
 
         updateCatalogVersionText(catalogVersionText)
 
+        // Acción para forzar redescarga del catálogo
+        catalogVersionText.setOnClickListener {
+            showForceDownloadDialog()
+        }
+
         try {
             requireContext().packageManager.getPackageInfo(requireContext().packageName, 0).versionName?.let {
-                appVersionText.text = "App Versión: $it"
+                appVersionText.text = "Versión de la app: $it (for Android)"
             } ?: run {
-                appVersionText.text = "App Versión: N/A"
+                appVersionText.text = "Versión de la app: N/A (for Android)"
             }
         } catch (e: Exception) {
-            appVersionText.text = "App Versión: N/A"
+            appVersionText.text = "Versión de la app: N/A (for Android)"
         }
 
         observeUpdateState()
@@ -482,7 +487,26 @@ class AccountFragment : Fragment() {
     private fun updateCatalogVersionText(catalogVersionText: TextView) {
         lifecycleScope.launch {
             val catalogVersion = authCatalogRepository.getCatalogVersion()
-            catalogVersionText.text = "Versión del Catálogo: ${catalogVersion?.let { android.text.format.DateFormat.format("dd/MM/yyyy HH:mm", it) } ?: "N/A"}"
+            catalogVersionText.text = "Versión actual del catálogo local: ${catalogVersion?.let { android.text.format.DateFormat.format("dd/MM/yyyy HH:mm", it) } ?: "N/A"}"
         }
+    }
+
+    private fun showForceDownloadDialog() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Reparar Catálogo")
+            .setMessage("¿Deseas forzar la descarga del catálogo completo de nuevo? Usa esto si el catálogo no carga correctamente.")
+            .setPositiveButton("Redescargar") { _, _ ->
+                lifecycleScope.launch {
+                    val serverVersion = authCatalogRepository.getCatalogVersion() // Intentamos obtener la última del servidor
+                    if (serverVersion != null) {
+                        downloadAndUpdateCatalog(serverVersion)
+                    } else {
+                        // Si falla al obtener versión, usamos la fecha actual como fallback
+                        downloadAndUpdateCatalog(java.util.Date())
+                    }
+                }
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 }

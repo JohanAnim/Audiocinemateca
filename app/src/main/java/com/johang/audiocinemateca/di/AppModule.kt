@@ -35,7 +35,14 @@ object AppModule {
     @Provides
     @Singleton
     fun provideFirestore(): FirebaseFirestore {
-        return FirebaseFirestore.getInstance()
+        val firestore = FirebaseFirestore.getInstance()
+        // DESACTIVAR CACHÉ LOCAL: Forzamos honestidad total con el servidor.
+        // Si no se puede escribir en la nube (por cuota), la app NO lo mostrará localmente.
+        val settings = com.google.firebase.firestore.FirebaseFirestoreSettings.Builder()
+            .setPersistenceEnabled(false)
+            .build()
+        firestore.firestoreSettings = settings
+        return firestore
     }
 
     @Provides
@@ -112,11 +119,34 @@ object AppModule {
             }
         }
 
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("CREATE TABLE IF NOT EXISTS `notifications` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `body` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `isRead` INTEGER NOT NULL DEFAULT 0)")
+            }
+        }
+
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `notifications` ADD COLUMN `remoteId` TEXT")
+                database.execSQL("ALTER TABLE `notifications` ADD COLUMN `linkUrl` TEXT")
+            }
+        }
+
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `notifications` ADD COLUMN `destination` TEXT")
+            }
+        }
+
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             "audiocinemateca.db"
-        ).addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+        ).addMigrations(
+            MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, 
+            MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, 
+            MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15
+        )
         .fallbackToDestructiveMigration()
         .build()
     }
@@ -149,6 +179,12 @@ object AppModule {
     @Singleton
     fun provideFavoritesDao(appDatabase: AppDatabase): com.johang.audiocinemateca.data.local.dao.FavoritesDao {
         return appDatabase.favoritesDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationDao(appDatabase: AppDatabase): com.johang.audiocinemateca.data.local.dao.NotificationDao {
+        return appDatabase.notificationDao()
     }
 
     @Provides
