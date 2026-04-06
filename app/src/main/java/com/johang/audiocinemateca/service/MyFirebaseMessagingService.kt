@@ -12,60 +12,30 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.johang.audiocinemateca.MainActivity
 import com.johang.audiocinemateca.R
-
+import com.johang.audiocinemateca.data.local.SharedPreferencesManager
+import com.johang.audiocinemateca.util.SoundEffectsManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import com.johang.audiocinemateca.data.local.entities.NotificationEntity
 
 @AndroidEntryPoint
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     @Inject
-    lateinit var notificationDao: com.johang.audiocinemateca.data.local.dao.NotificationDao
+    lateinit var sharedPreferencesManager: SharedPreferencesManager
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        super.onMessageReceived(remoteMessage)
+        Log.d("FCM", "Mensaje recibido de: ${remoteMessage.from}")
 
-        // IMPORTANTE: Ahora el backend solo envía el bloque 'data' para garantizar que onMessageReceived se ejecute siempre
-        val title = remoteMessage.data["title"] ?: remoteMessage.notification?.title ?: "Audiocinemateca"
-        val body = remoteMessage.data["body"] ?: remoteMessage.notification?.body ?: ""
-
-        val url = remoteMessage.data["url"]
+        val title = remoteMessage.data["title"] ?: "Audiocinemateca"
+        val message = remoteMessage.data["body"] ?: ""
         val destination = remoteMessage.data["destination"]
-        val remoteId = remoteMessage.data["remoteId"] ?: "PUSH_${System.currentTimeMillis()}"
+        val url = remoteMessage.data["url"]
 
-        Log.d("FCM", "Mensaje recibido: $title. Destino: $destination. URL: $url")
-
-        // GUARDAR TODAS LAS NOTIFICACIONES EN EL HISTORIAL LOCAL
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                if (!notificationDao.existsByRemoteId(remoteId)) {
-                    notificationDao.insert(
-                        NotificationEntity(
-                            remoteId = remoteId,
-                            title = title,
-                            body = body,
-                            timestamp = System.currentTimeMillis(),
-                            linkUrl = url,
-                            destination = destination
-                        )
-                    )
-                    Log.d("FCM", "Notificación guardada en historial: $title")
-                }
-            } catch (e: Exception) {
-                Log.e("FCM", "Error al guardar notificación en DB", e)
-            }
-        }
-
-        showNotification(title, body, destination, url)
+        showNotification(title, message, destination, url)
     }
+
     private fun showNotification(title: String, message: String, destination: String?, url: String?) {
         val channelId = "community_announcements"
-        
-        // El toque principal SIEMPRE abre la app y maneja la lógica en MainActivity
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("navigate_to", destination)
@@ -87,16 +57,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setContentIntent(pendingIntent)
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Anuncios de la Comunidad",
-                NotificationManager.IMPORTANCE_HIGH
-            )
+            val channel = NotificationChannel(channelId, "Anuncios de la Comunidad", NotificationManager.IMPORTANCE_HIGH)
             notificationManager.createNotificationChannel(channel)
         }
-
         notificationManager.notify(System.currentTimeMillis().toInt(), builder.build())
+    }
+
+    override fun onNewToken(token: String) {
+        Log.d("FCM", "Nuevo token: $token")
     }
 }

@@ -87,11 +87,6 @@
             </intent-filter>
         </service>
 
-        <service
-            android:name=".service.ChatAnnouncementService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
-
     </application>
 
 </manifest>

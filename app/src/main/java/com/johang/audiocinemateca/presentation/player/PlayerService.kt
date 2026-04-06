@@ -132,6 +132,9 @@ class PlayerService : MediaSessionService() {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 val intent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply { putExtra(MainActivity.EXTRA_IS_PLAYING, isPlaying) }
                 LocalBroadcastManager.getInstance(this@PlayerService).sendBroadcast(intent)
+                
+                // GUARDAR ESTADO PARA OTROS SERVICIOS (FCM)
+                sharedPreferencesManager.saveBoolean("is_currently_playing", isPlaying)
             }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 updateSessionActivity()
