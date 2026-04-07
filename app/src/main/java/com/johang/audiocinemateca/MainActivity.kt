@@ -32,6 +32,7 @@ import com.johang.audiocinemateca.data.AuthCatalogRepository
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -80,6 +81,9 @@ class MainActivity : AppCompatActivity() {
     private var appStartTime = com.google.firebase.Timestamp.now()
     private var chatMessagesJob: kotlinx.coroutines.Job? = null
     private var chatStatusJob: kotlinx.coroutines.Job? = null
+    private var syncFavoritesJob: kotlinx.coroutines.Job? = null
+    private var syncHistoryJob: kotlinx.coroutines.Job? = null
+    private var announcementsListener: com.google.firebase.firestore.ListenerRegistration? = null
 
     private fun startGlobalChatWatcher() {
         stopGlobalChatWatcher()
@@ -87,31 +91,28 @@ class MainActivity : AppCompatActivity() {
         val user = auth.currentUser ?: return
         val am = getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
 
-        // Usamos un flag para ignorar la primera carga del snapshot (mensajes viejos)
         var isFirstLoad = true
-
         chatMessagesJob = lifecycleScope.launch {
-            globalChatRepository.getMessages().collect { messages ->
-                if (isFirstLoad) {
-                    isFirstLoad = false
-                    return@collect
+            globalChatRepository.getMessages()
+                .catch { e -> Log.e("MainActivity", "Error flujo chat: ${e.message}") }
+                .collect { messages ->
+                    if (isFirstLoad) { isFirstLoad = false; return@collect }
+                    val last = messages.lastOrNull() ?: return@collect
+                    if (last.senderId != user.uid) handleChatAnnouncement(last, null, am, auth)
                 }
-                val last = messages.lastOrNull() ?: return@collect
-                if (last.senderId != user.uid) {
-                    handleChatAnnouncement(last, null, am, auth)
-                }
-            }
         }
 
         chatStatusJob = lifecycleScope.launch {
             var lastStatus: Boolean? = null
-            globalChatRepository.getChatStatus().collect { isOpen ->
-                if (lastStatus != null && lastStatus != isOpen) {
-                    val text = if (isOpen) "El chat global ha sido abierto." else "El chat global ha sido cerrado."
-                    handleChatAnnouncement(null, text, am, auth, force = true)
+            globalChatRepository.getChatStatus()
+                .catch { e -> Log.e("MainActivity", "Error flujo status chat: ${e.message}") }
+                .collect { isOpen ->
+                    if (lastStatus != null && lastStatus != isOpen) {
+                        val text = if (isOpen) "El chat global ha sido abierto." else "El chat global ha sido cerrado."
+                        handleChatAnnouncement(null, text, am, auth, force = true)
+                    }
+                    lastStatus = isOpen
                 }
-                lastStatus = isOpen
-            }
         }
     }
 
@@ -182,18 +183,26 @@ class MainActivity : AppCompatActivity() {
             val user = firebaseAuth.currentUser
             try {
                 navView.menu.findItem(R.id.communityFragment)?.isVisible = (user != null)
-                if (navView.headerCount > 0) {
-                    val header = navView.getHeaderView(0)
-                    header.findViewById<TextView>(R.id.tv_header_user_name)?.text = user?.displayName ?: "Audiocinemateca"
-                    header.findViewById<TextView>(R.id.tv_header_user_email)?.text = user?.email ?: "Versión Accesible"
+                val header = if (navView.headerCount > 0) navView.getHeaderView(0) else null
+                header?.let {
+                    it.findViewById<TextView>(R.id.tv_header_user_name)?.text = user?.displayName ?: "Audiocinemateca"
+                    it.findViewById<TextView>(R.id.tv_header_user_email)?.text = user?.email ?: "Versión Accesible"
                     try {
                         val pInfo = packageManager.getPackageInfo(packageName, 0)
-                        header.findViewById<TextView>(R.id.tv_app_version)?.text = "Versión ${pInfo.versionName}"
-                    } catch (e: Exception) { header.findViewById<TextView>(R.id.tv_app_version)?.text = "Versión 3.0.0" }
+                        it.findViewById<TextView>(R.id.tv_app_version)?.text = "Versión ${pInfo.versionName}"
+                    } catch (e: Exception) { it.findViewById<TextView>(R.id.tv_app_version)?.text = "Versión 3.0.0" }
                 }
             } catch (e: Exception) { Log.e("MainActivity", "Error actualizando UI", e) }
 
-            if (user != null) startGlobalChatWatcher() else stopGlobalChatWatcher()
+            if (user != null) {
+                startGlobalChatWatcher()
+                startRealtimeSync()
+                startAnnouncementsWatcher()
+            } else {
+                stopGlobalChatWatcher()
+                stopRealtimeSync()
+                stopAnnouncementsWatcher()
+            }
         }
 
         navView.setNavigationItemSelectedListener { item ->
@@ -240,20 +249,17 @@ class MainActivity : AppCompatActivity() {
 
         LocalBroadcastManager.getInstance(this).registerReceiver(miniPlayerUpdateReceiver, IntentFilter().apply { addAction(ACTION_SHOW_MINI_PLAYER); addAction(ACTION_HIDE_MINI_PLAYER); addAction(ACTION_UPDATE_PLAY_PAUSE_BUTTON); addAction(ACTION_UPDATE_MINI_PLAYER_METADATA) })
 
-        startRealtimeSync()
-        startAnnouncementsWatcher()
         handleIntent(intent)
     }
 
     private fun startAnnouncementsWatcher() {
+        stopAnnouncementsWatcher()
         var isFirstLoad = true
-        com.google.firebase.firestore.FirebaseFirestore.getInstance().collection("anuncios")
+        announcementsListener = com.google.firebase.firestore.FirebaseFirestore.getInstance().collection("anuncios")
             .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING).limit(1)
-            .addSnapshotListener { snapshot, _ ->
-                if (isFirstLoad) {
-                    isFirstLoad = false
-                    return@addSnapshotListener
-                }
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { Log.e("MainActivity", "Error en anuncios: ${error.message}"); return@addSnapshotListener }
+                if (isFirstLoad) { isFirstLoad = false; return@addSnapshotListener }
                 val doc = snapshot?.documents?.firstOrNull() ?: return@addSnapshotListener
                 val ann = doc.toObject(com.johang.audiocinemateca.data.model.Announcement::class.java)
                 if (ann != null) {
@@ -262,12 +268,29 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
-    override fun onSupportNavigateUp(): Boolean = navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
+    private fun stopAnnouncementsWatcher() { try { announcementsListener?.remove() } catch (e: Exception) {}; announcementsListener = null }
 
     private fun startRealtimeSync() {
-        lifecycleScope.launch { cloudRepository.getFavoritesRealtimeFlow().collect { favs -> favs.forEach { f -> favoritesDao.insertFavorite(com.johang.audiocinemateca.data.local.entities.FavoriteEntity(contentId = f.contentId, title = f.title, contentType = f.contentType, addedAt = f.addedAt)) } } }
-        lifecycleScope.launch { cloudRepository.getHistoryRealtimeFlow().collect { hist -> hist.forEach { h -> playbackProgressDao.insertPlaybackProgress(com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity(contentId = h.contentId, contentType = h.contentType, currentPositionMs = h.currentPositionMs, totalDurationMs = h.totalDurationMs, partIndex = h.partIndex, episodeIndex = h.episodeIndex, lastPlayedTimestamp = h.lastPlayedTimestamp, isFinished = h.isFinished)) } } }
+        stopRealtimeSync()
+        syncFavoritesJob = lifecycleScope.launch { 
+            cloudRepository.getFavoritesRealtimeFlow()
+                .catch { e -> Log.e("MainActivity", "Error sync favoritos: ${e.message}") }
+                .collect { favs -> 
+                    favs.forEach { f -> favoritesDao.insertFavorite(com.johang.audiocinemateca.data.local.entities.FavoriteEntity(contentId = f.contentId, title = f.title, contentType = f.contentType, addedAt = f.addedAt)) } 
+                } 
+        }
+        syncHistoryJob = lifecycleScope.launch { 
+            cloudRepository.getHistoryRealtimeFlow()
+                .catch { e -> Log.e("MainActivity", "Error sync historial: ${e.message}") }
+                .collect { hist -> 
+                    hist.forEach { h -> playbackProgressDao.insertPlaybackProgress(com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity(contentId = h.contentId, contentType = h.contentType, currentPositionMs = h.currentPositionMs, totalDurationMs = h.totalDurationMs, partIndex = h.partIndex, episodeIndex = h.episodeIndex, lastPlayedTimestamp = h.lastPlayedTimestamp, isFinished = h.isFinished)) } 
+                } 
+        }
     }
+
+    private fun stopRealtimeSync() { syncFavoritesJob?.cancel(); syncHistoryJob?.cancel(); syncFavoritesJob = null; syncHistoryJob = null }
+
+    override fun onSupportNavigateUp(): Boolean = navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
 
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); handleIntent(intent) }
 

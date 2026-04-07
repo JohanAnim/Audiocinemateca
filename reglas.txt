@@ -22,8 +22,24 @@ service cloud.firestore {
       allow read, write: if isOwner(userId) || isAdmin();
     }
 
-    // --- 3. COMENTARIOS ---
-    // Regla para subcolecciones y soporte para Collection Group Queries
+    // --- 3. CHAT GLOBAL (NUEVO) ---
+    match /global_chat/{messageId} {
+      // Todos los logueados pueden leer el chat
+      allow read: if request.auth != null;
+      // Solo logueados pueden escribir sus propios mensajes
+      allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
+      // NADIE puede borrar o editar mensajes excepto los Admins
+      allow update, delete: if isAdmin();
+    }
+
+    match /config/chat_global {
+      // Todos pueden leer si el chat está abierto o cerrado
+      allow read: if request.auth != null;
+      // Solo los Admins pueden cambiar el estado
+      allow write: if isAdmin();
+    }
+
+    // --- 4. COMENTARIOS ---
     match /{path=**}/comments/{commentId} {
       allow read: if true;
       allow write: if request.auth != null;
@@ -34,37 +50,35 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // --- 4. ANUNCIOS (NUEVO) ---
+    // --- 5. ANUNCIOS ---
     match /anuncios/{announcementId} {
       allow read: if true;
-      // Solo admins pueden crear o borrar anuncios
       allow create, delete: if isAdmin();
-      // Usuarios pueden actualizar SOLO el campo de reacciones
       allow update: if isAdmin() || (
         request.auth != null && 
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
       );
     }
 
-    // --- 5. VOTOS (LIKES/DISLIKES) ---
+    // --- 6. VOTOS (LIKES/DISLIKES) ---
     match /content_votes/{document=**} {
       allow read: if true;
       allow write: if request.auth != null;
     }
 
-    // --- 6. CALIFICACIONES (ESTRELLAS) ---
+    // --- 7. CALIFICACIONES (ESTRELLAS) ---
     match /content_ratings/{document=**} {
       allow read: if true;
       allow write: if request.auth != null;
     }
 
-    // --- 7. ESTADÍSTICAS Y VISTAS ---
+    // --- 8. ESTADÍSTICAS Y VISTAS ---
     match /content_stats/{document=**} {
       allow read: if true;
       allow write: if request.auth != null;
     }
 
-    // --- 8. RED DE SEGURIDAD ---
+    // --- 9. RED DE SEGURIDAD ---
     match /{document=**} {
       allow read, write: if isAdmin();
     }

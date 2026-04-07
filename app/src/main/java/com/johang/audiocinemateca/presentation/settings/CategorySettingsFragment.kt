@@ -101,6 +101,12 @@ class CategorySettingsFragment : PreferenceFragmentCompat() {
 
     private fun updateGeminiModels(repository: GeminiRepository, pref: ListPreference?) {
         if (pref == null) return
+
+        // Actualizar título inicialmente con lo que ya tenga
+        pref.entry?.let {
+            pref.title = "Modelo de IA seleccionado: $it"
+        }
+
         lifecycleScope.launch {
             val models = repository.fetchAvailableModels()
             if (models.isNotEmpty()) {
@@ -109,16 +115,36 @@ class CategorySettingsFragment : PreferenceFragmentCompat() {
                 if (pref.value == null || pref.value !in pref.entryValues) {
                     pref.value = pref.entryValues.firstOrNull()?.toString()
                 }
+                
+                // Actualizar título de nuevo tras cargar modelos
+                pref.entry?.let {
+                    pref.title = "Modelo de IA seleccionado: $it"
+                }
             }
+        }
+
+        pref.setOnPreferenceChangeListener { _, newValue ->
+            val index = pref.findIndexOfValue(newValue as String)
+            if (index >= 0) {
+                val entry = pref.entries[index]
+                pref.title = "Modelo de IA seleccionado: $entry"
+            }
+            true
         }
     }
 
     private fun checkGeminiApiStatus(repository: GeminiRepository) {
         lifecycleScope.launch {
             if (repository.initialize()) {
-                val result = repository.generateContent("OK")
-                val message = if (result.isSuccess) "API Válida" else "API Inválida o sin conexión"
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+                val result = repository.generateContent("Di 'OK' para verificar la API")
+                if (result.isSuccess) {
+                    Toast.makeText(requireContext(), "API Válida (${result.getOrNull()})", Toast.LENGTH_SHORT).show()
+                } else {
+                    val error = result.exceptionOrNull()?.message ?: "Error desconocido"
+                    Toast.makeText(requireContext(), "Error de API: $error", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                Toast.makeText(requireContext(), "No se pudo inicializar (revisa la clave API)", Toast.LENGTH_SHORT).show()
             }
         }
     }

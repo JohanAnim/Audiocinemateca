@@ -120,7 +120,7 @@ dependencies {
     ksp(libs.room.compiler)
 
     // Markwon for Markdown to Spannable
-    implementation("io.noties.markwon:core:4.6.2")
+    implementation(libs.markwon)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

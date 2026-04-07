@@ -82,12 +82,10 @@ class AIChatViewModel @Inject constructor(
         
         val systemInstruction = content {
             text("Eres Aura, la IA oficial de Audiocinemateca. Eres una experta cinematográfica de élite.")
-            text("PERSONALIDAD: Eres natural, culta y apasionada. No sigas un formato rígido. Tú decides qué info es relevante: a veces destacarás el guionista, otras el país o el año, según lo que haga la recomendación más 'fina'.")
-            text("BÚSQUEDA PROFESIONAL: Tienes la herramienta 'search_catalog'. ÚSALA de forma exhaustiva:")
-            text("- Si una búsqueda falla o es pobre, intenta otra por país, director o palabras clave de la sinopsis.")
-            text("- Tienes acceso a metadatos profundos (país, guion, música, productora). Úsalos para dar respuestas con autoridad.")
-            text("VÍNCULOS Y DIÁLOGO: Usa [[Título]] ÚNICAMENTE para las obras que realmente quieras recomendar y que aparezcan en el diálogo de selección.")
-            text("Tu objetivo es que el usuario sienta que habla con una experta que conoce cada rincón del catálogo.")
+            text("PERSONALIDAD: Eres natural, culta y apasionada. Sé elegante y directa.")
+            text("DIRECTIVA CRÍTICA DE SALIDA: Responde DIRECTAMENTE al usuario. NO incluyas procesos de pensamiento, razonamientos internos, análisis de la petición ni listas de objetivos en tu respuesta. Tu salida debe ser exclusivamente el diálogo de Aura.")
+            text("BÚSQUEDA PROFESIONAL: Tienes la herramienta 'search_catalog'. ÚSALA de forma exhaustiva para dar respuestas con autoridad.")
+            text("VÍNCULOS: Usa [[Título]] únicamente para obras que realmente quieras recomendar y existan en el catálogo.")
             text(AuraKnowledge.APP_CONTEXT)
         }
 
@@ -203,17 +201,28 @@ class AIChatViewModel @Inject constructor(
                 }
             }
         } else {
-            val responseText = response.text ?: ""
-            if (responseText.isBlank()) {
+            val rawText = response.text ?: ""
+            if (rawText.isBlank()) {
+                _auraStatus.value = "Aura En línea"
+                return
+            }
+
+            // Limpieza profunda de bloques de razonamiento (Thinking) de Gemma 4
+            var cleanText = rawText
+                .replace(Regex("""<\|channel>thought[\s\S]*?<channel|>""", RegexOption.IGNORE_CASE), "") // Tags oficiales
+                .replace(Regex("""^\s*\*.*?\n""", RegexOption.MULTILINE), "") // Listas de "pensamiento" (vistas en logs2.txt)
+                .trim()
+            
+            if (cleanText.isBlank()) {
                 _auraStatus.value = "Aura En línea"
                 return
             }
             
-            val linked = parseLinkedContentGlobally(responseText)
-            val cleanText = responseText.replace("[[", "").replace("]]", "")
+            val linked = parseLinkedContentGlobally(cleanText)
+            val textForUi = cleanText.replace("[[", "").replace("]]", "")
             
-            _messages.value = _messages.value + ChatMessage(UUID.randomUUID().toString(), cleanText, false, linkedItems = linked)
-            _accessibilityAnnouncement.value = "Aura dice: $cleanText"
+            _messages.value = _messages.value + ChatMessage(UUID.randomUUID().toString(), textForUi, false, linkedItems = linked)
+            _accessibilityAnnouncement.value = "Aura dice: $textForUi"
             _auraStatus.value = "Aura En línea"
             vibrateSuccess()
         }

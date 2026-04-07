@@ -70,7 +70,7 @@ class GeminiRepository @Inject constructor(
                             break
                         }
                     }
-                    if (supportsGenerate && name.contains("gemini", ignoreCase = true)) {
+                    if (supportsGenerate && (name.contains("gemini", ignoreCase = true) || name.contains("gemma", ignoreCase = true))) {
                         result.add(name to displayName)
                     }
                 }
@@ -91,6 +91,20 @@ class GeminiRepository @Inject constructor(
             lastSystemInstruction = systemInstruction
         }
 
+        // Determinar capacidades según el modelo basándose en la documentación oficial
+        val isGemini = selectedModel.contains("gemini", ignoreCase = true)
+        val isGemma4 = selectedModel.contains("gemma-4", ignoreCase = true)
+        val isGemma3 = selectedModel.contains("gemma-3", ignoreCase = true)
+        val isOldGemma = selectedModel.contains("gemma-1", ignoreCase = true) || selectedModel.contains("gemma-2", ignoreCase = true)
+        
+        // Según la doc: Gemma 1, 2 y 3 NO soportan system_instruction nativo ni tools (salvo variantes function)
+        // Gemma 4 y Gemini SI soportan las características avanzadas nativas
+        val supportsNativeSystem = isGemini || isGemma4
+        val supportsTools = isGemini || isGemma4 || selectedModel.contains("function", ignoreCase = true)
+
+        val tools = if (supportsTools) listOf(catalogSearchTool) else null
+        val sysInst = if (supportsNativeSystem) lastSystemInstruction else null
+
         return try {
             generativeModel = GenerativeModel(
                 modelName = selectedModel,
@@ -100,6 +114,7 @@ class GeminiRepository @Inject constructor(
                     topK = 40
                     topP = 0.95f
                     maxOutputTokens = 2048
+                    // Nota: Si el SDK soporta thinking_config para Gemma 4, se podría añadir aquí
                 },
                 safetySettings = listOf(
                     SafetySetting(HarmCategory.HARASSMENT, BlockThreshold.MEDIUM_AND_ABOVE),
@@ -107,11 +122,12 @@ class GeminiRepository @Inject constructor(
                     SafetySetting(HarmCategory.SEXUALLY_EXPLICIT, BlockThreshold.MEDIUM_AND_ABOVE),
                     SafetySetting(HarmCategory.DANGEROUS_CONTENT, BlockThreshold.MEDIUM_AND_ABOVE),
                 ),
-                systemInstruction = lastSystemInstruction,
-                tools = listOf(catalogSearchTool)
+                systemInstruction = sysInst,
+                tools = tools
             )
             true
         } catch (e: Exception) {
+            Log.e("GeminiRepo", "Error inicializando modelo $selectedModel", e)
             false
         }
     }
@@ -129,8 +145,18 @@ class GeminiRepository @Inject constructor(
 
         val chat = chatSession ?: return@withContext Result.failure(IllegalStateException("Error iniciando sesión."))
 
+        // Para modelos que no soportan systemInstruction nativo (Gemma 1, 2, 3), 
+        // inyectamos la personalidad en el primer mensaje.
+        val needsManualInjection = generativeModel?.systemInstruction == null && lastSystemInstruction != null
+        val finalMessage = if (needsManualInjection && chat.history.isEmpty()) {
+            val instructionText = lastSystemInstruction?.parts?.filterIsInstance<TextPart>()?.joinToString(" ") { it.text } ?: ""
+            "INSTRUCCIÓN DE SISTEMA: $instructionText\n\nMENSAJE DEL USUARIO: $message"
+        } else {
+            message
+        }
+
         try {
-            val response: GenerateContentResponse = chat.sendMessage(message)
+            val response: GenerateContentResponse = chat.sendMessage(finalMessage)
             Result.success(response)
         } catch (e: Exception) {
             Log.e("GeminiRepo", "Error en sendMessage", e)

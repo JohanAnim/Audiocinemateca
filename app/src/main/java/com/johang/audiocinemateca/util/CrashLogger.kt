@@ -41,20 +41,22 @@ class CrashLogger(private val context: Context) : Thread.UncaughtExceptionHandle
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
             val filename = "ERROR_AUDIOCINEMATECA_$timestamp.log"
 
-            // Carpeta de Descargas estándar
-            val logDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Audiocinemateca_Logs")
+            // RUTA SOLICITADA: Música/Audiocinemateca/logs_audiocinemateca
+            val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+            val appDir = File(musicDir, "Audiocinemateca")
+            val logDir = File(appDir, "logs_audiocinemateca")
+            
             if (!logDir.exists()) logDir.mkdirs()
 
             val logFile = File(logDir, filename)
             val out = FileOutputStream(logFile)
 
             val report = StringBuilder().apply {
-                append("--- REPORTE DE ERROR FATAL ---\n")
+                append("--- REPORTE DE ERROR FATAL (v3.0.0) ---\n")
                 append("Fecha: ${SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date())}\n")
                 append("Dispositivo: ${Build.MANUFACTURER} ${Build.MODEL}\n")
                 append("Versión Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n")
-                append("App Version: 3.0.0\n")
-                append("------------------------------\n\n")
+                append("--------------------------------------\n\n")
                 append("DETALLE DEL ERROR:\n")
                 append(stackTrace)
             }.toString()
