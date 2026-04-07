@@ -1,7 +1,227 @@
-Aura dice: *   User wants a brief greeting for "Johan-a-g".
-    *   My persona: Aura, elite cinema expert for Audiocinemateca.
-    *   Tone: Natural, cultured, passionate.
+15 issues were found when checking AAR metadata:
 
-    *   Brief greeting.
-    *   Personalized to "Johan-a-g".
-    *   Reflect Aura's personality. ¡Hola, Johan-a-g! Es un placer saludarte. Aquí me tienes para guiarte por los rincones más fascinantes de nuestro catálogo. ¿Qué te apetece descubrir hoy?
+  1.  Dependency 'androidx.media3:media3-exoplayer:1.10.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+  2.  Dependency 'androidx.media3:media3-ui:1.10.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+  3.  Dependency 'androidx.media3:media3-datasource-okhttp:1.10.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+  4.  Dependency 'androidx.media3:media3-extractor:1.10.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+  5.  Dependency 'androidx.media3:media3-container:1.10.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+  6.  Dependency 'androidx.media3:media3-datasource:1.10.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+  7.  Dependency 'androidx.media3:media3-decoder:1.10.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+  8.  Dependency 'androidx.media3:media3-database:1.10.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+  9.  Dependency 'androidx.media3:media3-common:1.10.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+ 10.  Dependency 'androidx.media3:media3-session:1.10.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+ 11.  Dependency 'androidx.core:core:1.18.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+ 12.  Dependency 'androidx.navigationevent:navigationevent-android:1.0.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+ 13.  Dependency 'androidx.activity:activity-ktx:1.13.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+ 14.  Dependency 'androidx.activity:activity:1.13.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+
+ 15.  Dependency 'androidx.core:core-ktx:1.18.0' requires libraries and applications that
+      depend on it to compile against version 36 or later of the
+      Android APIs.
+
+      :app is currently compiled against android-35.
+
+      Recommended action: Update this project to use a newer compileSdk
+      of at least 36, for example 36.
+
+      Note that updating a library or application's compileSdk (which
+      allows newer APIs to be used) can be done separately from updating
+      targetSdk (which opts the app in to new runtime behavior) and
+      minSdk (which determines which devices the app can be installed
+      on).
+Update minCompileSdk in modules with dependencies that require a higher minCompileSdk.

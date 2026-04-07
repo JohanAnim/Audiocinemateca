@@ -10,12 +10,12 @@ plugins {
 
 android {
     namespace = "com.johang.audiocinemateca"
-    compileSdk = 35
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "com.johang.audiocinemateca"
         minSdk = 25
-        targetSdk = 35
+        targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 16
         versionName = "3.0.0"
 
