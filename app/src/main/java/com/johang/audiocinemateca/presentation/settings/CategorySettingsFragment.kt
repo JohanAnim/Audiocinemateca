@@ -36,6 +36,7 @@ class CategorySettingsFragment : PreferenceFragmentCompat() {
             "playback" -> R.xml.prefs_playback
             "search" -> R.xml.prefs_search
             "ai" -> R.xml.prefs_ai
+            "tts" -> R.xml.prefs_tts
             "downloads" -> R.xml.prefs_downloads
             "community" -> R.xml.prefs_community
             else -> R.xml.prefs_general
@@ -51,6 +52,10 @@ class CategorySettingsFragment : PreferenceFragmentCompat() {
         
         val geminiRepository = try {
             EntryPointAccessors.fromApplication(requireContext().applicationContext, SettingsFragment.GeminiEntryPoint::class.java).geminiRepository()
+        } catch (e: Exception) { null }
+
+        val ttsManager = try {
+            EntryPointAccessors.fromApplication(requireContext().applicationContext, SettingsFragment.GeminiEntryPoint::class.java).ttsManager()
         } catch (e: Exception) { null }
 
         when (category) {
@@ -96,6 +101,149 @@ class CategorySettingsFragment : PreferenceFragmentCompat() {
                     }
                 }
             }
+            "tts" -> {
+                ttsManager?.let { tts ->
+                    setupTtsPreferences(tts)
+                }
+            }
+        }
+    }
+    
+    private fun setupTtsPreferences(ttsManager: com.johang.audiocinemateca.util.TtsManager) {
+        val enginePref = findPreference<ListPreference>("tts_engine")
+        val langPref = findPreference<ListPreference>("tts_language")
+        val voicePref = findPreference<ListPreference>("tts_voice")
+        val ratePref = findPreference<androidx.preference.SeekBarPreference>("tts_rate_seek")
+        val pitchPref = findPreference<androidx.preference.SeekBarPreference>("tts_pitch_seek")
+        val testBtn = findPreference<Preference>("tts_test_button")
+        
+        val prefs = requireContext().getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+
+        ttsManager.onInitializedListener = {
+            activity?.runOnUiThread {
+                updateLanguagesList(ttsManager, langPref, voicePref, ratePref, pitchPref)
+            }
+        }
+
+        if (enginePref != null) {
+            val engines = ttsManager.getAvailableEngines()
+            val entries = mutableListOf("Sistema (Predeterminado)")
+            val entryValues = mutableListOf("system_default")
+            engines.forEach { entries.add(it.label); entryValues.add(it.name) }
+            enginePref.entries = entries.toTypedArray(); enginePref.entryValues = entryValues.toTypedArray()
+            enginePref.entry?.let { enginePref.summary = it }
+            
+            enginePref.setOnPreferenceChangeListener { _, newValue ->
+                val index = enginePref.findIndexOfValue(newValue as String)
+                if (index >= 0) enginePref.summary = enginePref.entries[index]
+                langPref?.isEnabled = false; voicePref?.isEnabled = false
+                langPref?.summary = "Cargando idiomas..."; voicePref?.summary = "Cargando voces..."
+                true
+            }
+        }
+        
+        updateLanguagesList(ttsManager, langPref, voicePref, ratePref, pitchPref)
+
+        langPref?.setOnPreferenceChangeListener { _, newValue ->
+            val engine = prefs.getString("tts_engine", "system_default") ?: "system_default"
+            prefs.edit().putString("tts_language_$engine", newValue as String).apply()
+            
+            val index = langPref.findIndexOfValue(newValue)
+            if (index >= 0) langPref.summary = langPref.entries[index]
+            updateVoicesList(ttsManager, voicePref, newValue)
+            true
+        }
+
+        voicePref?.setOnPreferenceChangeListener { _, newValue ->
+            val engine = prefs.getString("tts_engine", "system_default") ?: "system_default"
+            prefs.edit().putString("tts_voice_$engine", newValue as String).apply()
+            
+            val index = voicePref.findIndexOfValue(newValue)
+            if (index >= 0) voicePref.summary = voicePref.entries[index]
+            true
+        }
+
+        ratePref?.setOnPreferenceChangeListener { _, newValue ->
+            val engine = prefs.getString("tts_engine", "system_default") ?: "system_default"
+            val rate = (newValue as Int) / 10.0f
+            prefs.edit().putFloat("tts_rate_$engine", rate).apply()
+            true
+        }
+
+        pitchPref?.setOnPreferenceChangeListener { _, newValue ->
+            val engine = prefs.getString("tts_engine", "system_default") ?: "system_default"
+            val pitch = (newValue as Int) / 10.0f
+            prefs.edit().putFloat("tts_pitch_$engine", pitch).apply()
+            true
+        }
+        
+        testBtn?.setOnPreferenceClickListener {
+            ttsManager.speak("Probando configuración independiente.", interrupt = true)
+            true
+        }
+    }
+
+    private fun updateLanguagesList(ttsManager: com.johang.audiocinemateca.util.TtsManager, langPref: ListPreference?, voicePref: ListPreference?, ratePref: androidx.preference.SeekBarPreference?, pitchPref: androidx.preference.SeekBarPreference?) {
+        if (langPref == null) return
+        val voices = ttsManager.getVoicesForCurrentEngine()
+        val prefs = requireContext().getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val engine = prefs.getString("tts_engine", "system_default") ?: "system_default"
+
+        if (voices.isEmpty()) {
+            langPref.isEnabled = false; langPref.summary = "No se detectaron idiomas."
+            return
+        }
+
+        // Cargar Rate y Pitch guardados para este motor específico
+        ratePref?.value = (prefs.getFloat("tts_rate_$engine", 1.0f) * 10).toInt()
+        pitchPref?.value = (prefs.getFloat("tts_pitch_$engine", 1.0f) * 10).toInt()
+
+        val languages = voices.map { it.locale }.distinctBy { it.language }.sortedBy { it.displayName }
+        val entries = mutableListOf<String>(); val entryValues = mutableListOf<String>()
+        languages.forEach { entries.add(it.displayName.replaceFirstChar { c -> c.uppercase() }); entryValues.add(it.language) }
+        
+        langPref.entries = entries.toTypedArray(); langPref.entryValues = entryValues.toTypedArray(); langPref.isEnabled = true
+        
+        var currentLang = prefs.getString("tts_language_$engine", "")
+        if (currentLang.isNullOrBlank() || !entryValues.contains(currentLang)) {
+            // Default a español si existe, si no al primero
+            currentLang = if (entryValues.contains("es")) "es" else entryValues.first()
+            prefs.edit().putString("tts_language_$engine", currentLang).apply()
+        }
+        
+        langPref.value = currentLang
+        val activeLang = languages.find { it.language == currentLang }
+        langPref.summary = activeLang?.displayName?.replaceFirstChar { c -> c.uppercase() } ?: "Idioma"
+        
+        updateVoicesList(ttsManager, voicePref, currentLang)
+    }
+
+    private fun updateVoicesList(ttsManager: com.johang.audiocinemateca.util.TtsManager, voicePref: ListPreference?, language: String) {
+        if (voicePref == null) return
+        val voices = ttsManager.getVoicesForCurrentEngine()
+        val prefs = requireContext().getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val engine = prefs.getString("tts_engine", "system_default") ?: "system_default"
+        val currentVoiceName = prefs.getString("tts_voice_$engine", "")
+
+        val filteredVoices = voices.filter { it.locale.language == language }.sortedBy { it.name }
+
+        if (filteredVoices.isEmpty()) {
+            voicePref.isEnabled = false; voicePref.summary = "No hay voces para este idioma."
+        } else {
+            voicePref.isEnabled = true
+            val entries = mutableListOf<String>(); val entryValues = mutableListOf<String>()
+            filteredVoices.forEach { entries.add("${it.locale.displayName} (${it.name})"); entryValues.add(it.name) }
+            voicePref.entries = entries.toTypedArray(); voicePref.entryValues = entryValues.toTypedArray()
+            
+            var selectedVoice = currentVoiceName
+            if (selectedVoice.isNullOrBlank() || !entryValues.contains(selectedVoice)) {
+                selectedVoice = entryValues.first()
+                prefs.edit().putString("tts_voice_$engine", selectedVoice).apply()
+            }
+            
+            voicePref.value = selectedVoice
+            val activeVoice = filteredVoices.find { it.name == selectedVoice }
+            voicePref.summary = activeVoice?.let { "${it.locale.displayName} (${it.name})" } ?: "Voz"
         }
     }
 
@@ -136,9 +284,10 @@ class CategorySettingsFragment : PreferenceFragmentCompat() {
     private fun checkGeminiApiStatus(repository: GeminiRepository) {
         lifecycleScope.launch {
             if (repository.initialize()) {
-                val result = repository.generateContent("Di 'OK' para verificar la API")
+                val result = repository.generateContent("[DIRECTIVA: SILENT_MODE] Responde únicamente 'OK' si me escuchas. Sin planes ni análisis.")
                 if (result.isSuccess) {
-                    Toast.makeText(requireContext(), "API Válida (${result.getOrNull()})", Toast.LENGTH_SHORT).show()
+                    val cleanResponse = result.getOrNull()?.trim() ?: ""
+                    Toast.makeText(requireContext(), "API Válida: $cleanResponse", Toast.LENGTH_SHORT).show()
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Error desconocido"
                     Toast.makeText(requireContext(), "Error de API: $error", Toast.LENGTH_LONG).show()
@@ -189,6 +338,7 @@ class CategorySettingsFragment : PreferenceFragmentCompat() {
             "playback" -> "Ajustes de Reproducción"
             "search" -> "Ajustes de Búsqueda"
             "ai" -> "Inteligencia Artificial"
+            "tts" -> "Ajustes de Texto a Voz"
             "downloads" -> "Ajustes de Descargas"
             "community" -> "Comunidad"
             else -> "Ajustes"

@@ -16,14 +16,17 @@ import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.johang.audiocinemateca.MainNavGraphDirections
+import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.databinding.FragmentAiChatBinding
 import com.johang.audiocinemateca.presentation.aichat.adapter.ChatAdapter
 import dagger.hilt.android.AndroidEntryPoint
@@ -71,6 +74,12 @@ class AIChatFragment : Fragment() {
     }
 
     private fun setupHeader() {
+        // Botón Configuración IA → navega directo a la categoría IA
+        binding.buttonAiSettings.setOnClickListener {
+            navigateToAiSettings()
+        }
+
+        // Botón Reiniciar conversación
         binding.buttonRestartChat.setOnClickListener {
             com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Reiniciar Chat")
@@ -78,6 +87,23 @@ class AIChatFragment : Fragment() {
                 .setPositiveButton("Sí, borrar") { _, _ -> viewModel.restartChat() }
                 .setNegativeButton("No", null)
                 .show()
+        }
+    }
+
+    /**
+     * Navega directamente a la configuración de IA (sin pasar por la pantalla de ajustes general).
+     */
+    private fun navigateToAiSettings() {
+        try {
+            findNavController().navigate(
+                R.id.action_global_categorySettingsFragment,
+                bundleOf("category" to "ai")
+            )
+        } catch (e: Exception) {
+            Log.e("AIChatFragment", "Error navegando a ajustes IA", e)
+            // Fallback: navegar a ajustes generales
+            val action = MainNavGraphDirections.actionGlobalSettingsFragment()
+            findNavController().navigate(action)
         }
     }
 
@@ -91,12 +117,9 @@ class AIChatFragment : Fragment() {
                 }
             },
             onRetryClick = {
-                val lastUserMsg = viewModel.messages.value.lastOrNull { it.isUser }
-                lastUserMsg?.let { viewModel.sendMessage(it.text) }
-            },
-            onSettingsClick = {
-                val action = MainNavGraphDirections.actionGlobalSettingsFragment()
-                androidx.navigation.fragment.NavHostFragment.findNavController(this).navigate(action)
+                // Al reintentar: reinicializar el modelo (por si cambió en ajustes),
+                // luego reenviar el último mensaje del usuario
+                viewModel.reinitializeAndRetry()
             }
         )
 
@@ -229,20 +252,11 @@ class AIChatFragment : Fragment() {
                     viewModel.auraStatus.collect { status ->
                         binding.textAuraStatus.text = status
                         val color = when {
-                            status.contains("Escribiendo") || status.contains("pensando") || status.contains("consultando") || status.contains("redactando") -> android.graphics.Color.parseColor("#FBC02D")
+                            status.contains("Escribiendo") || status.contains("pensando") || status.contains("consultando") || status.contains("redactando") || status.contains("formulando") -> android.graphics.Color.parseColor("#FBC02D")
                             status.contains("En línea") -> android.graphics.Color.parseColor("#4CAF50")
                             else -> android.graphics.Color.parseColor("#F44336")
                         }
                         binding.viewStatusIndicator.backgroundTintList = android.content.res.ColorStateList.valueOf(color)
-                    }
-                }
-
-                launch {
-                    viewModel.accessibilityAnnouncement.collect { announcement ->
-                        announcement?.let {
-                            binding.recyclerChat.announceForAccessibility(it)
-                            viewModel.clearAnnouncement()
-                        }
                     }
                 }
             }
@@ -266,6 +280,6 @@ class AIChatFragment : Fragment() {
 
     private fun navigateToDetail(linked: LinkedContent) {
         val action = MainNavGraphDirections.actionGlobalContentDetailFragment(itemId = linked.id, itemType = linked.type)
-        androidx.navigation.fragment.NavHostFragment.findNavController(this).navigate(action)
+        findNavController().navigate(action)
     }
 }

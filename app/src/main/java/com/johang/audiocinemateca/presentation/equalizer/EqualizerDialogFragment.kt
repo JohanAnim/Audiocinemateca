@@ -10,6 +10,7 @@ import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.DialogFragment
+import androidx.media3.common.util.UnstableApi
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
@@ -35,6 +36,7 @@ class EqualizerDialogFragment : DialogFragment() {
         return inflater.inflate(R.layout.dialog_equalizer, container, false)
     }
 
+    @OptIn(UnstableApi::class)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 

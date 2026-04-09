@@ -136,6 +136,10 @@
         android:id="@+id/action_global_settingsFragment"
         app:destination="@id/settingsFragment" />
 
+    <action
+        android:id="@+id/action_global_categorySettingsFragment"
+        app:destination="@id/categorySettingsFragment" />
+
     <fragment
         android:id="@+id/playerFragment"
         android:name="com.johang.audiocinemateca.presentation.player.PlayerFragment"

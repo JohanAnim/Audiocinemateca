@@ -1,5 +1,5 @@
 [versions]
-agp = "9.0.0"
+agp = "9.0.1"
 kotlin = "2.3.20"
 compileSdk = "36"
 targetSdk = "36"
@@ -31,9 +31,9 @@ navigationSafeArgs = "2.9.7"
 googleServices = "4.4.4"
 firebaseBom = "34.11.0"
 playServicesAuth = "21.5.1"
-credentials = "1.5.0"
-generativeai = "0.9.0"
+credentials = "1.6.0"
 googleid = "1.2.0"
+mediarouter = "1.8.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -81,7 +81,7 @@ play-services-auth = { group = "com.google.android.gms", name = "play-services-a
 androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentials" }
 androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentials" }
 googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
-google-generativeai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }
+androidx-mediarouter = { group = "androidx.mediarouter", name = "mediarouter", version.ref = "mediarouter" }
 markwon = { group = "io.noties.markwon", name = "core", version = "4.6.2" }
 
 [plugins]

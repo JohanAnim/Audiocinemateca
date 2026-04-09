@@ -188,7 +188,7 @@ class DownloadsAdapter(
                 val inflater = LayoutInflater.from(itemView.context)
                 item.episodes.forEach { episode ->
                     val episodeView = inflater.inflate(R.layout.item_download_episode, episodesContainer, false)
-                    val episodeTitle: TextView = episodeView.findViewById(R.id.episode_title_text) ?: episodeView.findViewById(R.id.episode_item_title)
+                    val episodeTitle: TextView = episodeView.findViewById(R.id.episode_item_title)
                     val episodeMore: ImageButton = episodeView.findViewById(R.id.episode_item_more_button)
 
                     episodeTitle.text = episode.title

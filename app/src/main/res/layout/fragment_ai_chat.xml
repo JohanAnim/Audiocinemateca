@@ -16,6 +16,18 @@
         android:elevation="4dp"
         app:layout_constraintTop_toTopOf="parent">
 
+        <!-- Botón Configuración IA (izquierda) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_ai_settings"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="Configuración de IA"
+            app:icon="@drawable/ic_account"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_status"
             android:layout_width="wrap_content"
@@ -55,6 +67,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Botón Reiniciar conversación (derecha) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_restart_chat"
             style="@style/Widget.Material3.Button.IconButton"
@@ -127,7 +140,6 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- El botón Enviar ahora tiene TEXTO y empieza OCULTO -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_send"
             style="@style/Widget.Material3.Button.TonalButton"
@@ -142,7 +154,6 @@
             app:iconGravity="textStart"
             tools:visibility="visible"/>
 
-        <!-- El botón Voz empieza VISIBLE -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_voice"
             style="@style/Widget.Material3.Button.IconButton.Filled"

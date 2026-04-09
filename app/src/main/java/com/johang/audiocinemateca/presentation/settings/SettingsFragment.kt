@@ -18,6 +18,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         setupCategoryNavigation("pref_playback", "playback")
         setupCategoryNavigation("pref_community", "community")
         setupCategoryNavigation("pref_ai", "ai")
+        setupCategoryNavigation("pref_tts", "tts")
         setupCategoryNavigation("pref_downloads", "downloads")
 
         // Lógica para Información Legal
@@ -51,5 +52,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
     @dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
     interface GeminiEntryPoint {
         fun geminiRepository(): GeminiRepository
+        fun ttsManager(): com.johang.audiocinemateca.util.TtsManager
     }
 }

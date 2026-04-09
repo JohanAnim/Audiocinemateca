@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="gemini_model_entries">
-        <item>Gemini 3 Flash (Más rápido y moderno)</item>
-        <item>Gemini 3 Pro (Más inteligente y creativo)</item>
-        <item>Gemini 1.5 Flash (Equilibrado)</item>
-        <item>Gemini 1.5 Pro (Avanzado)</item>
+        <item>Gemma 4 27B (El más potente, pensamiento profundo)</item>
+        <item>Gemini 2.5 Flash (Veloz y estable)</item>
+        <item>Gemini 3 Flash (Rápido y moderno)</item>
+        <item>Gemini 3 Pro (Inteligente y creativo)</item>
     </string-array>
     
     <string-array name="gemini_model_values">
+        <item>gemma-4-27b-it</item>
+        <item>gemini-2.5-flash</item>
         <item>gemini-3-flash-preview</item>
         <item>gemini-3-pro-preview</item>
-        <item>gemini-1.5-flash</item>
-        <item>gemini-1.5-pro</item>
     </string-array>
 </resources>

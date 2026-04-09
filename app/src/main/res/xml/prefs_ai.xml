@@ -16,7 +16,13 @@
         android:summary="%s"
         android:entries="@array/gemini_model_entries"
         android:entryValues="@array/gemini_model_values"
-        android:defaultValue="gemini-3-flash-preview" />
+        android:defaultValue="gemma-4-27b-it" />
+
+    <SwitchPreferenceCompat
+        android:key="gemini_deep_thinking"
+        android:title="Pensamiento profundo"
+        android:summary="Permite que la IA razone internamente antes de responder. Mejora la calidad pero aumenta el tiempo de respuesta. Solo disponible en modelos potentes como Gemma 4 y Gemini 2.5+."
+        android:defaultValue="false" />
 
     <Preference
         android:key="check_api_status"

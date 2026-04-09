@@ -58,6 +58,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.media3.common.util.UnstableApi
 
 @AndroidEntryPoint
 class PlayerFragment : Fragment() {
@@ -124,6 +125,7 @@ class PlayerFragment : Fragment() {
         return binding.root
     }
 
+    @OptIn(UnstableApi::class)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 

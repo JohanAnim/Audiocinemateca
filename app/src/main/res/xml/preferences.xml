@@ -35,6 +35,13 @@
             app:layout="@layout/item_preference_large" />
 
         <Preference
+            app:key="pref_tts"
+            app:title="Ajustes de Texto a Voz"
+            app:summary="Motores de voz, tono y velocidad."
+            app:icon="@drawable/ic_account"
+            app:layout="@layout/item_preference_large" />
+
+        <Preference
             app:key="pref_downloads"
             app:title="Descargas"
             app:summary="Ubicación de archivos y modo offline."

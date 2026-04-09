@@ -1,10 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.navigation.safe.args)
     alias(libs.plugins.ksp)
-    id("kotlin-parcelize")
+    // Parcelize ahora se aplica así, AGP 9.0 se encarga de enlazarlo con su Kotlin interno
+    id("org.jetbrains.kotlin.plugin.parcelize")
     alias(libs.plugins.google.services)
 }
 
@@ -33,15 +33,13 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
-        }
-    }
+    // En AGP 9.0, para configurar el jvmTarget de Kotlin sin el plugin externo, 
+    // se recomienda usar esta nueva vía o dejar que herede de compileOptions.
+    // Si persiste el error, AGP 9.0 autogestiona esto al detectar Java 17.
 
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
@@ -68,12 +66,12 @@ android {
             excludes += "META-INF/LICENSE-W3C-TEST"
         }
     }
+}
 
-    // --- Personalizar nombre del APK en Kotlin DSL ---
-    applicationVariants.all {
-        outputs.all {
-            val apkOutput = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
-            apkOutput.outputFileName = "audiocinemateca_${this@all.name}.apk"
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            output.versionName.set(libs.versions.targetSdk.get())
         }
     }
 }
@@ -87,6 +85,7 @@ dependencies {
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.preference)
+    implementation(libs.androidx.mediarouter)
 
     // Retrofit & OkHttp
     implementation(libs.retrofit)
@@ -137,10 +136,6 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.messaging)
-    // Firebase
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.analytics)
-    implementation(libs.firebase.messaging)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     
@@ -149,7 +144,4 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
-
-    // Google AI (Gemini)
-    implementation(libs.google.generativeai)
 }

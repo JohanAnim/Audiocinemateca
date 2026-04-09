@@ -1,227 +1,43 @@
-15 issues were found when checking AAR metadata:
+Aura dice: The user wants to listen to something in the horror genre.
+I have a list of horror titles from the catalog:
+- Obras maestras del terror (Anthology based on Poe)
+- Planet Terror (Zombies, action/comedy)
+- Camino hacia el terror 2: Final mortal (Slasher/Cannibals)
+- La cabaña del terror (Meta-horror, students in a cabin)
+- Martes de terror extremo (audesc latino) (Thai anthology series)
+- Drácula (Classic vampire)
+- El exorcista (Supernatural/Possession - Cult classic)
+- Tiburón (Animal/Shark - Cult classic)
+- Piraña 2 (Animal/Flying fish)
+- Jabalí: los colmillos del infierno (Animal/Boar)
+- Poltergeist II: El otro lado (Ghosts/Supernatural)
 
-  1.  Dependency 'androidx.media3:media3-exoplayer:1.10.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
+I should categorize these to give Johan-a-g better options based on the *type* of horror he likes (supernatural, slashers, animals, or classics).
 
-      :app is currently compiled against android-35.
+Tone: Friendly, cinephile, warm, familiar.
+Constraint: Address as Johan-a-g, no "Cinéfilo", use Title, end with the specific TalkBack instruction.
 
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
+Plan:
+1. Enthusiastic response.
+2. Group recommendations:
+    - Classics/Supernatural: El exorcista, Drácula, Poltergeist II: El otro lado.
+    - Monsters/Animals: Tiburón, Piraña 2, Jabalí: los colmillos del infierno.
+    - Modern/Original/Zombies: Planet Terror, La cabaña del terror.
+    - Anthologies (good for short bursts): Obras maestras del terror, Martes de terror extremo (audesc latino).
+3. Ask him what vibe he's in the mood for.
+4. Final required phrase.
+¡Uff, Johan-a-g, me encanta! El terror es perfecto para dejarse llevar por la atmósfera. Tenemos de todo en el catálogo, así que depende de qué tan fuerte quieras el susto hoy. 
 
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
+Mira, te doy algunas opciones según el "estilo" de miedo que busques:
 
-  2.  Dependency 'androidx.media3:media3-ui:1.10.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
+Si tienes ganas de clásicos legendarios que nunca fallan, tienes que ir directo a El exorcista o al mítico Drácula. Son piezas fundamentales que te ponen los pelos de punta.
 
-      :app is currently compiled against android-35.
+Si prefieres algo de monstruos o animales fuera de control, te recomiendo Tiburón (un maestro absoluto del suspenso) o, si quieres algo más movido y visceral, Piraña 2 o Jabalí: los colmillos del infierno.
 
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
+Para algo más moderno, original o con un toque de acción, Planet Terror es genial si te gustan los zombis, o La cabaña del terror si buscas algo que juegue con los clichés del género.
 
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
+Y si no te decides por una sola historia, tenemos antologías (varios relatos cortos), que son ideales para ir picando miedos: Obras maestras del terror (basada en Poe) o la serie Martes de terror extremo (audesc latino).
 
-  3.  Dependency 'androidx.media3:media3-datasource-okhttp:1.10.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
+¿Cómo lo ves, Johan-a-g? ¿Te apetece algo más sobrenatural, algo de monstruos o prefieres empezar con los relatos cortos? ¡Tú dime y te ayudo a elegir!
 
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-
-  4.  Dependency 'androidx.media3:media3-extractor:1.10.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
-
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-
-  5.  Dependency 'androidx.media3:media3-container:1.10.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
-
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-
-  6.  Dependency 'androidx.media3:media3-datasource:1.10.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
-
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-
-  7.  Dependency 'androidx.media3:media3-decoder:1.10.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
-
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-
-  8.  Dependency 'androidx.media3:media3-database:1.10.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
-
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-
-  9.  Dependency 'androidx.media3:media3-common:1.10.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
-
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-
- 10.  Dependency 'androidx.media3:media3-session:1.10.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
-
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-
- 11.  Dependency 'androidx.core:core:1.18.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
-
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-
- 12.  Dependency 'androidx.navigationevent:navigationevent-android:1.0.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
-
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-
- 13.  Dependency 'androidx.activity:activity-ktx:1.13.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
-
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-
- 14.  Dependency 'androidx.activity:activity:1.13.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
-
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-
- 15.  Dependency 'androidx.core:core-ktx:1.18.0' requires libraries and applications that
-      depend on it to compile against version 36 or later of the
-      Android APIs.
-
-      :app is currently compiled against android-35.
-
-      Recommended action: Update this project to use a newer compileSdk
-      of at least 36, for example 36.
-
-      Note that updating a library or application's compileSdk (which
-      allows newer APIs to be used) can be done separately from updating
-      targetSdk (which opts the app in to new runtime behavior) and
-      minSdk (which determines which devices the app can be installed
-      on).
-Update minCompileSdk in modules with dependencies that require a higher minCompileSdk.
+Pulsa sobre este mensaje para ver las fichas técnicas de mis recomendaciones.

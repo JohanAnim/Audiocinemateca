@@ -2,12 +2,12 @@ package com.johang.audiocinemateca.data.repository
 
 import android.content.Context
 import android.util.Log
-import com.google.ai.client.generativeai.Chat
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.*
-import com.google.ai.client.generativeai.type.content
+import com.google.gson.GsonBuilder
+import com.johang.audiocinemateca.data.remote.ai.*
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -17,41 +17,322 @@ import javax.inject.Singleton
 
 @Singleton
 class GeminiRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val googleAiApiService: GoogleAiApiService
 ) {
+    companion object {
+        private const val TAG = "GeminiRepository"
+    }
 
-    private var generativeModel: GenerativeModel? = null
-    private var chatSession: Chat? = null
-    private var lastSystemInstruction: Content? = null
+    private var selectedModel: String = "gemma-4-27b-it"
+    private var apiKey: String = ""
+    private var chatHistory = mutableListOf<Content>()
+    private var systemInstruction: Content? = null
+    private var systemInstructionText: String? = null
     private val client = OkHttpClient()
+    private val gson = GsonBuilder().create()
+
+    // Gemma 3 y anteriores NO soportan systemInstruction, tools ni thinkingConfig.
+    // Gemma 4 y todos los Gemini SÍ.
+    private fun isGemmaModel(): Boolean = selectedModel.lowercase().contains("gemma")
+    private fun isGemma4(): Boolean = selectedModel.lowercase().contains("gemma-4")
+    private fun supportsAdvancedFeatures(): Boolean = !isGemmaModel() || isGemma4()
+    private fun getSystemInstructionForRequest(): Content? = if (supportsAdvancedFeatures()) systemInstruction else null
+    private fun getToolsForRequest(): List<Tool>? = if (supportsAdvancedFeatures()) listOf(catalogSearchTool) else null
 
     private val catalogSearchTool = Tool(
         functionDeclarations = listOf(
             FunctionDeclaration(
                 name = "search_catalog",
-                description = "Busca películas, series, documentales o cortometrajes en el catálogo local por título, género, reparto o sinopsis.",
-                parameters = listOf(
-                    Schema(
-                        name = "query",
-                        type = FunctionType.STRING,
-                        description = "Término de búsqueda (ej: 'terror', 'Christopher Nolan', 'El Padrino')",
-                        nullable = false
-                    )
-                ),
-                requiredParameters = listOf("query")
+                description = "Busca películas, series, documentales o cortometrajes en el catálogo local por título, género, reparto o sinopsis. Usa esta herramienta SIEMPRE que el usuario pida recomendaciones, busque algo, o mencione interés en un género, director o actor.",
+                parameters = Parameters(
+                    type = "object",
+                    properties = mapOf("query" to Property("string", "Término de búsqueda: puede ser un título, género, director, actor o tema")),
+                    required = listOf("query")
+                )
             )
         )
     )
 
+    fun initialize(instructionText: String? = null): Boolean {
+        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        apiKey = prefs.getString("gemini_api_key", "") ?: ""
+        selectedModel = prefs.getString("gemini_model", "gemma-4-27b-it") ?: "gemma-4-27b-it"
+        if (selectedModel.startsWith("models/")) selectedModel = selectedModel.replace("models/", "")
+
+        if (apiKey.isBlank()) return false
+        instructionText?.let {
+            systemInstructionText = it
+            // systemInstruction NO lleva role según la API oficial de Gemini
+            systemInstruction = Content(role = null, parts = listOf(Part(text = it)))
+        }
+        Log.d(TAG, "Inicializado con modelo: $selectedModel")
+        return true
+    }
+
+    fun startChat() { chatHistory.clear() }
+
+    /**
+     * Lee la preferencia del usuario para pensamiento profundo.
+     */
+    private fun isDeepThinkingEnabled(): Boolean {
+        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        return prefs.getBoolean("gemini_deep_thinking", false)
+    }
+
+    private fun buildThinkingConfig(): ThinkingConfig? {
+        if (!supportsAdvancedFeatures()) return null
+        
+        val model = selectedModel.lowercase()
+        val deepThinking = isDeepThinkingEnabled()
+
+        return when {
+            model.contains("gemma-4") || model.contains("gemma-3") || model.contains("gemini-3") -> {
+                if (deepThinking) ThinkingConfig(thinkingLevel = "high") 
+                else ThinkingConfig(thinkingLevel = "minimal")
+            }
+            model.contains("gemini-2.5") && model.contains("pro") -> {
+                if (deepThinking) ThinkingConfig(thinkingBudget = 8192)
+                else ThinkingConfig(thinkingBudget = 1024)
+            }
+            model.contains("gemini-2.5") -> {
+                if (deepThinking) ThinkingConfig(thinkingBudget = 4096)
+                else ThinkingConfig(thinkingBudget = 512) // Un pequeño budget es más seguro que 0
+            }
+            else -> null
+        }
+    }
+
+    /**
+     * Envía un mensaje con streaming. Filtra los parts de pensamiento del output visible
+     * pero los preserva en el historial (incluyendo thoughtSignature) para que Gemini 3/Gemma 4
+     * pueda mantener el contexto entre turnos.
+     */
+    fun sendMessageStream(message: String): Flow<StreamEvent> = flow {
+        if (apiKey.isBlank()) initialize()
+
+        // Para Gemma 3: inyectar system instruction en el primer mensaje (no soporta systemInstruction)
+        val actualMessage = if (!supportsAdvancedFeatures() && chatHistory.isEmpty() && systemInstructionText != null) {
+            "[CONTEXTO]\n${systemInstructionText}\n\n[MENSAJE]\n$message"
+        } else {
+            message
+        }
+
+        chatHistory.add(Content(role = "user", parts = listOf(Part(text = actualMessage))))
+
+        val request = GoogleAiRequest(
+            contents = chatHistory,
+            systemInstruction = getSystemInstructionForRequest(),
+            tools = getToolsForRequest(),
+            generationConfig = GenerationConfig(
+                temperature = 0.7f,
+                thinkingConfig = buildThinkingConfig()
+            )
+        )
+
+        Log.d(TAG, "sendMessageStream → modelo=$selectedModel, historial=${chatHistory.size} turnos")
+
+        try {
+            val response = googleAiApiService.streamGenerateContent(selectedModel, apiKey, request)
+            if (response.isSuccessful && response.body() != null) {
+                val source = response.body()!!.source()
+                val modelParts = mutableListOf<Part>()
+
+                while (!source.exhausted()) {
+                    val line = withContext(Dispatchers.IO) { source.readUtf8Line() } ?: break
+                    if (line.startsWith("data: ")) {
+                        val json = line.substring(6).trim()
+                        if (json.isEmpty() || json == "[DONE]") continue
+                        try {
+                            val chunk = gson.fromJson(json, GoogleAiResponse::class.java)
+                            chunk.error?.let {
+                                Log.e(TAG, "Error en stream: ${it.code} - ${it.message}")
+                                emit(StreamEvent.Error(it.message))
+                                return@flow
+                            }
+
+                            val parts = chunk.candidates?.firstOrNull()?.content?.parts ?: emptyList()
+                            if (parts.isNotEmpty()) {
+                                // Guardar TODOS los parts (incluyendo thought y thoughtSignature)
+                                modelParts.addAll(parts)
+                                for (part in parts) {
+                                    // Función call NUNCA se salta, incluso en thought parts
+                                    part.functionCall?.let { emit(StreamEvent.FunctionCallEvent(it)) }
+                                    // Solo filtrar TEXTO de pensamientos, no funciones
+                                    if (part.thought == true) continue
+                                    part.text?.let { emit(StreamEvent.TextDelta(it)) }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Error parseando chunk SSE: ${e.message}")
+                            emit(StreamEvent.Error("Fallo de Parseo JSON desde API: ${e.message}"))
+                            return@flow
+                        }
+                    }
+                }
+                if (modelParts.isNotEmpty()) {
+                    // Preservar todos los parts (incluido thoughtSignature)
+                    chatHistory.add(Content(role = "model", parts = modelParts.toList()))
+                    Log.d(TAG, "Stream completado: ${modelParts.size} parts guardados")
+                } else {
+                    rollbackLastUserMessage()
+                    Log.w(TAG, "Stream completado sin parts del modelo (Se quitó el turno del usuario)")
+                }
+            } else {
+                rollbackLastUserMessage()
+                val errorBody = withContext(Dispatchers.IO) {
+                    response.errorBody()?.string() ?: "Sin detalle"
+                }
+                Log.e(TAG, "Error API stream ${response.code()}: $errorBody")
+                emit(StreamEvent.Error("Error de API: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            rollbackLastUserMessage()
+            Log.e(TAG, "Error de conexión en sendMessageStream", e)
+            emit(StreamEvent.Error("Error de conexión."))
+        }
+    }
+
+    private fun rollbackLastUserMessage() {
+        if (chatHistory.isNotEmpty() && chatHistory.last().role == "user") {
+            chatHistory.removeAt(chatHistory.size - 1)
+        }
+    }
+
+    fun rollbackLastTurn() {
+        if (chatHistory.isNotEmpty() && chatHistory.last().role == "model") {
+            chatHistory.removeAt(chatHistory.size - 1)
+        }
+    }
+
+    /**
+     * Envía la respuesta de una función al modelo. Usa role = "user" con functionResponse
+     * según la especificación oficial de la API (NO usar role "function").
+     * Incluye el ID del functionCall para mapeo correcto (requerido en Gemma 4 / Gemini 3).
+     */
+    suspend fun sendFunctionResponse(
+        functionName: String, 
+        functionCallId: String?,
+        responseMap: Map<String, Any>
+    ): Result<GoogleAiResponse> = withContext(Dispatchers.IO) {
+        // Role DEBE ser "user" con functionResponse. ID debe coincidir con el del functionCall.
+        chatHistory.add(Content(
+            role = "user",
+            parts = listOf(Part(functionResponse = FunctionResponse(
+                name = functionName,
+                id = functionCallId,
+                response = responseMap
+            )))
+        ))
+
+        Log.d(TAG, "sendFunctionResponse: name=$functionName, id=$functionCallId, historial=${chatHistory.size}")
+
+        val request = GoogleAiRequest(
+            contents = chatHistory,
+            systemInstruction = getSystemInstructionForRequest(),
+            tools = getToolsForRequest(),
+            generationConfig = GenerationConfig(
+                temperature = 0.7f,
+                thinkingConfig = buildThinkingConfig()
+            )
+        )
+        try {
+            val res = googleAiApiService.generateContent(selectedModel, apiKey, request)
+            if (res.isSuccessful && res.body() != null) {
+                val aiResponse = res.body()!!
+                // Guardamos la respuesta del modelo en el historial (preservando thoughtSignature)
+                aiResponse.candidates?.firstOrNull()?.content?.let { 
+                    chatHistory.add(it)
+                    Log.d(TAG, "Respuesta de función guardada: ${it.parts.size} parts")
+                }
+                Result.success(aiResponse)
+            } else {
+                val errorBody = res.errorBody()?.string() ?: "Sin detalle"
+                Log.e(TAG, "Error en sendFunctionResponse ${res.code()}: $errorBody")
+                // Rollback: quitar el functionResponse que no fue procesado
+                if (chatHistory.isNotEmpty() && chatHistory.last().role == "user") {
+                    chatHistory.removeAt(chatHistory.size - 1)
+                }
+                Result.failure(Exception("Error ${res.code()}: $errorBody"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Excepción en sendFunctionResponse", e)
+            if (chatHistory.isNotEmpty() && chatHistory.last().role == "user") {
+                chatHistory.removeAt(chatHistory.size - 1)
+            }
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Genera una respuesta final manteniendo el historial sincronizado.
+     * Útil como fallback cuando el modelo no genera texto después de un function call.
+     */
+    suspend fun generateFinalResponse(prompt: String): Result<String> = withContext(Dispatchers.IO) {
+        chatHistory.add(Content(role = "user", parts = listOf(Part(text = prompt))))
+        val request = GoogleAiRequest(
+            contents = chatHistory,
+            systemInstruction = getSystemInstructionForRequest(),
+            tools = getToolsForRequest(),
+            generationConfig = GenerationConfig(
+                temperature = 0.7f,
+                thinkingConfig = buildThinkingConfig()
+            )
+        )
+        try {
+            val response = googleAiApiService.generateContent(selectedModel, apiKey, request)
+            if (response.isSuccessful) {
+                val content = response.body()?.candidates?.firstOrNull()?.content
+                val text = content?.parts?.firstOrNull { it.text != null && it.thought != true }?.text
+                if (text != null) {
+                    chatHistory.add(content)
+                    Result.success(text)
+                } else {
+                    rollbackLastUserMessage()
+                    Result.failure(Exception("Respuesta vacía"))
+                }
+            } else {
+                rollbackLastUserMessage()
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "generateFinalResponse error ${response.code()}: $errorBody")
+                Result.failure(Exception("Error ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            rollbackLastUserMessage()
+            Log.e(TAG, "Excepción en generateFinalResponse", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Genera contenido sin historial (one-shot).
+     */
+    suspend fun generateContent(prompt: String): Result<String> = withContext(Dispatchers.IO) {
+        val request = GoogleAiRequest(
+            contents = listOf(Content(role = "user", parts = listOf(Part(text = prompt)))),
+            systemInstruction = getSystemInstructionForRequest(),
+            generationConfig = GenerationConfig(
+                temperature = 0.0f,
+                thinkingConfig = buildThinkingConfig()
+            )
+        )
+        try {
+            val response = googleAiApiService.generateContent(selectedModel, apiKey, request)
+            val text = response.body()?.candidates?.firstOrNull()?.content?.parts
+                ?.firstOrNull { it.text != null && it.thought != true }?.text
+            if (text != null) Result.success(text)
+            else Result.failure(Exception("Error de respuesta vacía"))
+        } catch (e: Exception) {
+            Log.e(TAG, "Excepción en generateContent", e)
+            Result.failure(e)
+        }
+    }
+
     suspend fun fetchAvailableModels(): List<Pair<String, String>> = withContext(Dispatchers.IO) {
         val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        val apiKey = prefs.getString("gemini_api_key", "") ?: ""
-        if (apiKey.isBlank()) return@withContext emptyList()
-
-        val request = Request.Builder()
-            .url("https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey")
-            .build()
-
+        val key = prefs.getString("gemini_api_key", "") ?: ""
+        if (key.isBlank()) return@withContext emptyList()
+        val request = Request.Builder().url("https://generativelanguage.googleapis.com/v1beta/models?key=$key").build()
         try {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@withContext emptyList()
@@ -64,136 +345,22 @@ class GeminiRepository @Inject constructor(
                     val displayName = model.getString("displayName")
                     val methods = model.getJSONArray("supportedGenerationMethods")
                     var supportsGenerate = false
-                    for (j in 0 until methods.length()) {
-                        if (methods.getString(j) == "generateContent") {
-                            supportsGenerate = true
-                            break
-                        }
-                    }
-                    if (supportsGenerate && (name.contains("gemini", ignoreCase = true) || name.contains("gemma", ignoreCase = true))) {
+                    for (j in 0 until methods.length()) { if (methods.getString(j) == "generateContent") { supportsGenerate = true; break } }
+                    if (supportsGenerate && (name.contains("gemini", true) || name.contains("gemma", true))) {
                         result.add(name to displayName)
                     }
                 }
                 result.sortedByDescending { it.first }
             }
-        } catch (e: Exception) { emptyList() }
-    }
-
-    fun initialize(systemInstruction: Content? = null): Boolean {
-        val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        val apiKey = prefs.getString("gemini_api_key", "")
-        val selectedModel = prefs.getString("gemini_model", "gemini-1.5-flash") ?: "gemini-1.5-flash"
-
-        if (apiKey.isNullOrEmpty()) return false
-
-        // Guardamos la instrucción para re-usarla si es necesario
-        if (systemInstruction != null) {
-            lastSystemInstruction = systemInstruction
-        }
-
-        // Determinar capacidades según el modelo basándose en la documentación oficial
-        val isGemini = selectedModel.contains("gemini", ignoreCase = true)
-        val isGemma4 = selectedModel.contains("gemma-4", ignoreCase = true)
-        val isGemma3 = selectedModel.contains("gemma-3", ignoreCase = true)
-        val isOldGemma = selectedModel.contains("gemma-1", ignoreCase = true) || selectedModel.contains("gemma-2", ignoreCase = true)
-        
-        // Según la doc: Gemma 1, 2 y 3 NO soportan system_instruction nativo ni tools (salvo variantes function)
-        // Gemma 4 y Gemini SI soportan las características avanzadas nativas
-        val supportsNativeSystem = isGemini || isGemma4
-        val supportsTools = isGemini || isGemma4 || selectedModel.contains("function", ignoreCase = true)
-
-        val tools = if (supportsTools) listOf(catalogSearchTool) else null
-        val sysInst = if (supportsNativeSystem) lastSystemInstruction else null
-
-        return try {
-            generativeModel = GenerativeModel(
-                modelName = selectedModel,
-                apiKey = apiKey,
-                generationConfig = generationConfig {
-                    temperature = 0.7f
-                    topK = 40
-                    topP = 0.95f
-                    maxOutputTokens = 2048
-                    // Nota: Si el SDK soporta thinking_config para Gemma 4, se podría añadir aquí
-                },
-                safetySettings = listOf(
-                    SafetySetting(HarmCategory.HARASSMENT, BlockThreshold.MEDIUM_AND_ABOVE),
-                    SafetySetting(HarmCategory.HATE_SPEECH, BlockThreshold.MEDIUM_AND_ABOVE),
-                    SafetySetting(HarmCategory.SEXUALLY_EXPLICIT, BlockThreshold.MEDIUM_AND_ABOVE),
-                    SafetySetting(HarmCategory.DANGEROUS_CONTENT, BlockThreshold.MEDIUM_AND_ABOVE),
-                ),
-                systemInstruction = sysInst,
-                tools = tools
-            )
-            true
         } catch (e: Exception) {
-            Log.e("GeminiRepo", "Error inicializando modelo $selectedModel", e)
-            false
+            Log.e(TAG, "Error fetchAvailableModels", e)
+            emptyList()
         }
     }
+}
 
-    fun startChat(history: List<Content> = emptyList()) {
-        if (generativeModel == null) initialize()
-        chatSession = generativeModel?.startChat(history)
-    }
-
-    suspend fun sendMessage(message: String): Result<GenerateContentResponse> = withContext(Dispatchers.IO) {
-        if (chatSession == null) {
-            if (!initialize()) return@withContext Result.failure(IllegalStateException("API Key no configurada."))
-            startChat()
-        }
-
-        val chat = chatSession ?: return@withContext Result.failure(IllegalStateException("Error iniciando sesión."))
-
-        // Para modelos que no soportan systemInstruction nativo (Gemma 1, 2, 3), 
-        // inyectamos la personalidad en el primer mensaje.
-        val needsManualInjection = generativeModel?.systemInstruction == null && lastSystemInstruction != null
-        val finalMessage = if (needsManualInjection && chat.history.isEmpty()) {
-            val instructionText = lastSystemInstruction?.parts?.filterIsInstance<TextPart>()?.joinToString(" ") { it.text } ?: ""
-            "INSTRUCCIÓN DE SISTEMA: $instructionText\n\nMENSAJE DEL USUARIO: $message"
-        } else {
-            message
-        }
-
-        try {
-            val response: GenerateContentResponse = chat.sendMessage(finalMessage)
-            Result.success(response)
-        } catch (e: Exception) {
-            Log.e("GeminiRepo", "Error en sendMessage", e)
-            Result.failure(e)
-        }
-    }
-
-    suspend fun sendFunctionResponse(
-        functionName: String,
-        response: JSONObject
-    ): Result<GenerateContentResponse> = withContext(Dispatchers.IO) {
-        val chat = chatSession ?: return@withContext Result.failure(IllegalStateException("Chat no iniciado"))
-        try {
-            val content = content("function") {
-                part(FunctionResponsePart(functionName, response))
-            }
-            val res = chat.sendMessage(content)
-            Result.success(res)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Generación de contenido puntual (usado para validar API)
-     */
-    suspend fun generateContent(prompt: String): Result<String> = withContext(Dispatchers.IO) {
-        if (generativeModel == null) {
-            if (!initialize()) return@withContext Result.failure(IllegalStateException("No inicializado."))
-        }
-        val model = generativeModel ?: return@withContext Result.failure(IllegalStateException("Error modelo."))
-        try {
-            val response = model.generateContent(prompt)
-            val text = response.text
-            if (text != null) Result.success(text) else Result.failure(Exception("Sin respuesta."))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+sealed class StreamEvent {
+    data class TextDelta(val text: String) : StreamEvent()
+    data class FunctionCallEvent(val call: FunctionCall) : StreamEvent()
+    data class Error(val message: String) : StreamEvent()
 }

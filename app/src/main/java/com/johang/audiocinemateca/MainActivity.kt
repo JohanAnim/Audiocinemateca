@@ -47,9 +47,11 @@ import androidx.navigation.ui.navigateUp
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
 import com.google.firebase.auth.FirebaseAuth
+import androidx.media3.common.util.UnstableApi
+import android.view.GestureDetector
+import android.view.MotionEvent
 
 @AndroidEntryPoint
-@OptIn(androidx.media3.common.util.UnstableApi::class)
 class MainActivity : AppCompatActivity() {
 
     @Inject lateinit var searchRepository: SearchRepository
@@ -61,6 +63,7 @@ class MainActivity : AppCompatActivity() {
     @Inject lateinit var globalChatRepository: com.johang.audiocinemateca.data.repository.GlobalChatRepository
     @Inject lateinit var soundEffectsManager: com.johang.audiocinemateca.util.SoundEffectsManager
     @Inject lateinit var notificationDao: com.johang.audiocinemateca.data.local.dao.NotificationDao
+    @Inject lateinit var ttsManager: com.johang.audiocinemateca.util.TtsManager
 
     private val accountViewModel: AccountViewModel by viewModels()
     private lateinit var navController: NavController
@@ -71,6 +74,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var miniPlayerSubtitle: TextView
     private lateinit var miniPlayerPlayPauseButton: Button
     private lateinit var miniPlayerCloseButton: Button
+    private lateinit var gestureDetector: GestureDetector
     
     private var currentPlayingItemId: String? = null
     private var currentPlayingItemType: String? = null
@@ -147,6 +151,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val miniPlayerUpdateReceiver = object : BroadcastReceiver() {
+        @OptIn(UnstableApi::class)
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 ACTION_SHOW_MINI_PLAYER, ACTION_UPDATE_MINI_PLAYER_METADATA -> {
@@ -178,6 +183,49 @@ class MainActivity : AppCompatActivity() {
 
         appBarConfiguration = AppBarConfiguration(setOf(R.id.catalogFragment, R.id.myListsFragment, R.id.aiChatFragment, R.id.accountFragment, R.id.communityFragment, R.id.notificationsFragment), drawerLayout)
         setupActionBarWithNavController(navController, appBarConfiguration)
+        navView.setupWithNavController(navController)
+        
+        // Forzar sincronización del menú con el destino actual al arrancar
+        navController.currentDestination?.let { dest -> navView.setCheckedItem(dest.id) }
+
+        drawerLayout.addDrawerListener(object : DrawerLayout.DrawerListener {
+            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {}
+            override fun onDrawerOpened(drawerView: View) {
+                // Forzar la marca visual correcta según el fragmento actual
+                val currentId = navController.currentDestination?.id
+                if (currentId != null) {
+                    navView.setCheckedItem(currentId)
+                }
+
+                val currentScreen = when(currentId) {
+                    R.id.catalogFragment -> "Catálogo de inicio"
+                    R.id.myListsFragment -> "Mis listas"
+                    R.id.aiChatFragment -> "Chat con Aura"
+                    R.id.accountFragment -> "Mi cuenta"
+                    R.id.communityFragment -> "Comunidad"
+                    R.id.notificationsFragment -> "Notificaciones"
+                    else -> "Pantalla actual"
+                }
+                ttsManager.speak("Menú lateral abierto. Estás en $currentScreen", interrupt = true) 
+            }
+            override fun onDrawerClosed(drawerView: View) { 
+                ttsManager.speak("Menú lateral cerrado", interrupt = true) 
+            }
+            override fun onDrawerStateChanged(newState: Int) {}
+        })
+
+        // Manejar botón atrás con OnBackPressedCallback para cerrar el menú
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    drawerLayout.closeDrawer(GravityCompat.START)
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    isEnabled = true
+                }
+            }
+        })
 
         FirebaseAuth.getInstance().addAuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
@@ -206,15 +254,27 @@ class MainActivity : AppCompatActivity() {
         }
 
         navView.setNavigationItemSelectedListener { item ->
-            val handled = when (item.itemId) {
-                R.id.catalogFragment -> { navController.navigate(R.id.catalogFragment); true }
-                R.id.communityFragment -> { if (FirebaseAuth.getInstance().currentUser != null) { navController.navigate(R.id.communityFragment); true } else false }
-                R.id.notificationsFragment -> { navController.navigate(R.id.notificationsFragment); true }
-                R.id.aiChatFragment -> { navController.navigate(R.id.aiChatFragment); true }
-                else -> androidx.navigation.ui.NavigationUI.onNavDestinationSelected(item, navController)
+            // Primero cerramos el menú
+            drawerLayout.closeDrawer(GravityCompat.START)
+            
+            // Si el ítem ya está seleccionado, no hacemos nada (evita recargar la misma pantalla)
+            if (item.itemId == navController.currentDestination?.id) return@setNavigationItemSelectedListener true
+
+            when (item.itemId) {
+                R.id.communityFragment -> {
+                    if (FirebaseAuth.getInstance().currentUser != null) {
+                        navController.navigate(R.id.communityFragment)
+                        true
+                    } else {
+                        Toast.makeText(this, "Inicia sesión para acceder a la comunidad", Toast.LENGTH_SHORT).show()
+                        false
+                    }
+                }
+                else -> {
+                    // Para el resto de ítems, dejamos que NavigationUI maneje la navegación estándar
+                    androidx.navigation.ui.NavigationUI.onNavDestinationSelected(item, navController)
+                }
             }
-            if (handled) drawerLayout.closeDrawer(GravityCompat.START)
-            handled
         }
 
         miniPlayerContainer = findViewById(R.id.mini_player_container)
@@ -249,7 +309,24 @@ class MainActivity : AppCompatActivity() {
 
         LocalBroadcastManager.getInstance(this).registerReceiver(miniPlayerUpdateReceiver, IntentFilter().apply { addAction(ACTION_SHOW_MINI_PLAYER); addAction(ACTION_HIDE_MINI_PLAYER); addAction(ACTION_UPDATE_PLAY_PAUSE_BUTTON); addAction(ACTION_UPDATE_MINI_PLAYER_METADATA) })
 
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+                if (e1 != null && e2.y - e1.y > 300 && Math.abs(velocityY) > 200) {
+                    Log.d("MainActivity", "Gesto deslizar abajo detectado. Deteniendo TTS.")
+                    ttsManager.stop()
+                    vibrateManually()
+                    return true
+                }
+                return false
+            }
+        })
+
         handleIntent(intent)
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        if (ev != null) gestureDetector.onTouchEvent(ev)
+        return super.dispatchTouchEvent(ev)
     }
 
     private fun startAnnouncementsWatcher() {

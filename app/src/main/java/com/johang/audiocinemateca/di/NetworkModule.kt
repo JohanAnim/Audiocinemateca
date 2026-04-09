@@ -134,6 +134,40 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @Named("GoogleAiClient")
+    fun provideGoogleAiOkHttpClient(): OkHttpClient {
+        return OkHttpClient.Builder()
+            .connectTimeout(120, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .writeTimeout(120, TimeUnit.SECONDS)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("GoogleAiRetrofit")
+    fun provideGoogleAiRetrofit(@Named("GoogleAiClient") okHttpClient: OkHttpClient): Retrofit {
+        // Gson dedicado para Google AI: NO serializa campos null.
+        // Esto es CRÍTICO porque la API de Gemini rechaza campos inesperados como
+        // "thought": null, "thought_signature": null, "thinking_config": null, etc.
+        val googleAiGson = GsonBuilder()
+            .setLenient()
+            .create() // Sin serializeNulls() = excluye nulls por defecto
+        return Retrofit.Builder()
+            .baseUrl("https://generativelanguage.googleapis.com/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(googleAiGson))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideGoogleAiApiService(@Named("GoogleAiRetrofit") retrofit: Retrofit): com.johang.audiocinemateca.data.remote.ai.GoogleAiApiService {
+        return retrofit.create(com.johang.audiocinemateca.data.remote.ai.GoogleAiApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
     fun provideAuthService(@Named("AudiocinematecaRetrofit") retrofit: Retrofit): AuthService {
         return retrofit.create(AuthService::class.java)
     }

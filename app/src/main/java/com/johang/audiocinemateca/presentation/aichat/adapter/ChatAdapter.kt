@@ -18,8 +18,7 @@ import io.noties.markwon.Markwon
 class ChatAdapter(
     private val markwon: Markwon,
     private val onMessageClick: (List<LinkedContent>) -> Unit,
-    private val onRetryClick: () -> Unit,
-    private val onSettingsClick: () -> Unit
+    private val onRetryClick: () -> Unit
 ) : ListAdapter<ChatMessage, RecyclerView.ViewHolder>(ChatMessageDiffCallback()) {
 
     override fun getItemViewType(position: Int): Int = if (getItem(position).isUser) 1 else 2
@@ -29,7 +28,7 @@ class ChatAdapter(
         return if (viewType == 1) {
             UserMessageViewHolder(inflater.inflate(R.layout.item_chat_user, parent, false))
         } else {
-            AiMessageViewHolder(inflater.inflate(R.layout.item_chat_ai, parent, false), markwon, onMessageClick, onRetryClick, onSettingsClick)
+            AiMessageViewHolder(inflater.inflate(R.layout.item_chat_ai, parent, false), markwon, onMessageClick, onRetryClick)
         }
     }
 
@@ -51,14 +50,12 @@ class ChatAdapter(
         itemView: View, 
         private val markwon: Markwon,
         private val onMessageClick: (List<LinkedContent>) -> Unit,
-        private val onRetryClick: () -> Unit,
-        private val onSettingsClick: () -> Unit
+        private val onRetryClick: () -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
         private val textBody: TextView = itemView.findViewById(R.id.text_message_body)
         private val cardContainer: MaterialCardView = itemView.findViewById(R.id.card_message_container)
         private val buttonRetry: Button = itemView.findViewById(R.id.button_retry)
         private val buttonRecs: View = itemView.findViewById(R.id.button_view_recommendations)
-        private val buttonSettings: Button = itemView.findViewById(R.id.button_settings_error)
 
         fun bind(message: ChatMessage) {
             markwon.setMarkdown(textBody, message.text)
@@ -70,25 +67,21 @@ class ChatAdapter(
             cardContainer.setOnClickListener(null)
             buttonRetry.setOnClickListener(null)
             buttonRecs.setOnClickListener(null)
-            buttonSettings.setOnClickListener(null)
             
-            // ACCESIBILIDAD: El itemView no debe ser foco para evitar lectura doble
+            // ACCESIBILIDAD
             itemView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             itemView.isClickable = false
             itemView.isFocusable = false
 
             if (message.isError) {
                 buttonRetry.visibility = View.VISIBLE
-                buttonSettings.visibility = View.VISIBLE
                 buttonRecs.visibility = View.GONE
                 buttonRetry.setOnClickListener { onRetryClick() }
-                buttonSettings.setOnClickListener { onSettingsClick() }
                 cardContainer.strokeWidth = 2
                 cardContainer.strokeColor = itemView.context.getColor(android.R.color.holo_red_dark)
                 cardContainer.isClickable = false
             } else {
                 buttonRetry.visibility = View.GONE
-                buttonSettings.visibility = View.GONE
                 buttonRecs.visibility = if (hasLinks) View.VISIBLE else View.GONE
                 cardContainer.strokeWidth = if (hasLinks) 8 else 0
                 if (hasLinks) cardContainer.strokeColor = itemView.context.getColor(androidx.appcompat.R.color.material_deep_teal_500)
