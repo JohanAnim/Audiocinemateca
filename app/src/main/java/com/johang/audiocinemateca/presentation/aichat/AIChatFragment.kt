@@ -60,6 +60,20 @@ class AIChatFragment : Fragment() {
         return binding.root
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Forzar sincronización de la barra superior, el icono y el título
+        (activity as? androidx.appcompat.app.AppCompatActivity)?.let { act ->
+            act.supportActionBar?.setDisplayHomeAsUpEnabled(true)
+            act.supportActionBar?.title = "Asistente IA"
+        }
+        
+        // Asegurar que el chat esté al final
+        if (::chatAdapter.isInitialized && chatAdapter.itemCount > 0) {
+            binding.recyclerChat.scrollToPosition(chatAdapter.itemCount - 1)
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         (activity as? androidx.appcompat.app.AppCompatActivity)?.supportActionBar?.title = "Asistente IA"
@@ -179,7 +193,13 @@ class AIChatFragment : Fragment() {
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {}
                 override fun onError(error: Int) {
-                    if (error != SpeechRecognizer.ERROR_NO_MATCH) {
+                    // Filtrar códigos que no son errores reales para el usuario:
+                    // 7: No match, 6: Timeout, 5: Client error (a veces al cancelar), 8: Busy
+                    val isIgnoreable = error == SpeechRecognizer.ERROR_NO_MATCH || 
+                                     error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ||
+                                     error == 5 || error == 8
+                    
+                    if (!isIgnoreable) {
                         Toast.makeText(context, "Error al capturar voz.", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -252,16 +272,46 @@ class AIChatFragment : Fragment() {
                     viewModel.auraStatus.collect { status ->
                         binding.textAuraStatus.text = status
                         val color = when {
-                            status.contains("Escribiendo") || status.contains("pensando") || status.contains("consultando") || status.contains("redactando") || status.contains("formulando") -> android.graphics.Color.parseColor("#FBC02D")
+                            status.contains("Escribiendo") || status.contains("pensando") || status.contains("consultando") || status.contains("redactando") || status.contains("formulando") || status.contains("preparando") -> android.graphics.Color.parseColor("#FBC02D")
                             status.contains("En línea") -> android.graphics.Color.parseColor("#4CAF50")
                             else -> android.graphics.Color.parseColor("#F44336")
                         }
                         binding.viewStatusIndicator.backgroundTintList = android.content.res.ColorStateList.valueOf(color)
                     }
                 }
+
+                launch {
+                    viewModel.navigationEvent.collect { event ->
+                        if (event is AIChatViewModel.ChatNavigationEvent.PlayContent) {
+                            navigateToPlayer(event.item, event.seasonIndex, event.episodeIndex, event.startPosition)
+                            viewModel.clearNavigationEvent()
+                        }
+                    }
+                }
             }
         }
     }
+
+    private fun navigateToPlayer(item: com.johang.audiocinemateca.domain.model.CatalogItem, seasonIndex: Int, episodeIndex: Int, startPosition: Long) {
+        // Primero vamos al detalle (opcional, pero ayuda a cargar contexto)
+        val type = when(item) {
+            is com.johang.audiocinemateca.data.model.Serie -> "series"
+            is com.johang.audiocinemateca.data.model.Documentary -> "documentales"
+            is com.johang.audiocinemateca.data.model.ShortFilm -> "cortometraje"
+            else -> "peliculas"
+        }
+
+        findNavController().navigate(MainNavGraphDirections.actionGlobalContentDetailFragment(item.id, type))
+
+        // Y luego al player directamente
+        findNavController().navigate(R.id.action_global_playerFragment, bundleOf(
+            "catalogItem" to item,
+            "partIndex" to seasonIndex,
+            "episodeIndex" to episodeIndex,
+            "startPosition" to startPosition
+        ))
+    }
+
 
     override fun onDestroyView() {
         super.onDestroyView()

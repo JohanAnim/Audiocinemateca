@@ -149,7 +149,7 @@ class TtsManager @Inject constructor(
         }
     }
 
-    fun speak(text: String, interrupt: Boolean = true) {
+    fun speak(text: String, interrupt: Boolean = true, utteranceId: String? = null) {
         if (!isInitialized || tts == null) {
             Log.w("TtsManager", "Cannot speak, TTS not initialized yet. Re-initializing...")
             recreateTts()
@@ -159,11 +159,11 @@ class TtsManager @Inject constructor(
         val cleanText = text.replace("[[", "").replace("]]", "")
         val queueMode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         
-        // Parámetros extras para asegurar que se use el stream de música (opcional)
         val params = Bundle()
         params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, android.media.AudioManager.STREAM_MUSIC)
         
-        tts?.speak(cleanText, queueMode, params, "TTS_REQUEST_${System.currentTimeMillis()}")
+        val finalUtteranceId = utteranceId ?: "TTS_REQUEST_${System.currentTimeMillis()}"
+        tts?.speak(cleanText, queueMode, params, finalUtteranceId)
     }
 
     fun stop() {

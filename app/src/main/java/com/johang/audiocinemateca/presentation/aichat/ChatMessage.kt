@@ -16,5 +16,6 @@ data class ChatMessage(
     val isUser: Boolean,
     val timestamp: Long = System.currentTimeMillis(),
     val isError: Boolean = false,
+    val isSilent: Boolean = false,
     val linkedItems: List<LinkedContent> = emptyList()
 )

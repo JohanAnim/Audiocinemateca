@@ -38,7 +38,26 @@ class GeminiRepository @Inject constructor(
     private fun isGemma4(): Boolean = selectedModel.lowercase().contains("gemma-4")
     private fun supportsAdvancedFeatures(): Boolean = !isGemmaModel() || isGemma4()
     private fun getSystemInstructionForRequest(): Content? = if (supportsAdvancedFeatures()) systemInstruction else null
-    private fun getToolsForRequest(): List<Tool>? = if (supportsAdvancedFeatures()) listOf(catalogSearchTool) else null
+    private val playContentTool = Tool(
+        functionDeclarations = listOf(
+            FunctionDeclaration(
+                name = "play_content",
+                description = "Reproduce inmediatamente un título del catálogo. Úsalo cuando el usuario diga 'reprodúcelo', 'dale play', 'ponme...', etc. Si es una serie, puedes especificar temporada y capítulo.",
+                parameters = Parameters(
+                    type = "object",
+                    properties = mapOf(
+                        "contentId" to Property("string", "ID del contenido"),
+                        "type" to Property("string", "Tipo: pelicula, serie, documental o cortometraje"),
+                        "seasonIndex" to Property("integer", "Índice de la temporada (empezando en 0, opcional)"),
+                        "episodeIndex" to Property("integer", "Índice del episodio (empezando en 0, opcional)")
+                    ),
+                    required = listOf("contentId", "type")
+                )
+            )
+        )
+    )
+
+    private fun getToolsForRequest(): List<Tool>? = if (supportsAdvancedFeatures()) listOf(catalogSearchTool, playContentTool) else null
 
     private val catalogSearchTool = Tool(
         functionDeclarations = listOf(
@@ -71,6 +90,8 @@ class GeminiRepository @Inject constructor(
     }
 
     fun startChat() { chatHistory.clear() }
+
+    fun getHistory(): List<Content> = chatHistory.toList()
 
     /**
      * Lee la preferencia del usuario para pensamiento profundo.
