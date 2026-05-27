@@ -50,6 +50,14 @@ import com.google.firebase.auth.FirebaseAuth
 import androidx.media3.common.util.UnstableApi
 import android.view.GestureDetector
 import android.view.MotionEvent
+import androidx.preference.PreferenceManager
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.ExistingPeriodicWorkPolicy
+import com.johang.audiocinemateca.service.CatalogUpdateWorker
+import java.util.concurrent.TimeUnit
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
@@ -138,10 +146,7 @@ class MainActivity : AppCompatActivity() {
         finalMsg?.let {
             soundEffectsManager.playSound("receive_message")
             vibrateManually()
-            if (am.isEnabled) {
-                val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_ANNOUNCEMENT)
-                event.text.add(it); am.sendAccessibilityEvent(event)
-            }
+            ttsManager.speak(it, interrupt = false)
         }
     }
 
@@ -197,18 +202,8 @@ class MainActivity : AppCompatActivity() {
                     navView.setCheckedItem(currentId)
                 }
 
-                val currentScreen = when(currentId) {
-                    R.id.catalogFragment -> "Catálogo de inicio"
-                    R.id.myListsFragment -> "Mis listas"
-                    R.id.aiChatFragment -> "Chat con Aura"
-                    R.id.accountFragment -> "Mi cuenta"
-                    R.id.communityFragment -> "Comunidad"
-                    R.id.notificationsFragment -> "Notificaciones"
-                    else -> "Pantalla actual"
-                }
-                ttsManager.speak("Menú lateral abierto. Estás en $currentScreen", interrupt = true) 
-            }
-            override fun onDrawerClosed(drawerView: View) { 
+                ttsManager.speak("Menú lateral abierto.", interrupt = true)
+                }            override fun onDrawerClosed(drawerView: View) { 
                 ttsManager.speak("Menú lateral cerrado", interrupt = true) 
             }
             override fun onDrawerStateChanged(newState: Int) {}
@@ -246,6 +241,8 @@ class MainActivity : AppCompatActivity() {
                 startGlobalChatWatcher()
                 startRealtimeSync()
                 startAnnouncementsWatcher()
+                checkCatalogUpdateAutomatically()
+                setupCatalogUpdateWorker()
             } else {
                 stopGlobalChatWatcher()
                 stopRealtimeSync()
@@ -324,6 +321,45 @@ class MainActivity : AppCompatActivity() {
         handleIntent(intent)
     }
 
+    private fun checkCatalogUpdateAutomatically() {
+        val autoUpdate = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("auto_check_catalog", true)
+        if (!autoUpdate) return
+
+        lifecycleScope.launch {
+            authCatalogRepository.loadCatalog().collect { result ->
+                when (result) {
+                    is AuthCatalogRepository.LoadCatalogResultWithProgress.UpdateAvailable -> {
+                        Log.d("MainActivity", "Automatic catalog update available, starting download...")
+                        Toast.makeText(this@MainActivity, "Actualizando catálogo automáticamente...", Toast.LENGTH_SHORT).show()
+                        authCatalogRepository.downloadAndSaveCatalog(result.serverVersion).collect { downloadResult ->
+                            if (downloadResult is AuthCatalogRepository.LoadCatalogResultWithProgress.Success) {
+                                Toast.makeText(this@MainActivity, "Catálogo actualizado.", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    private fun setupCatalogUpdateWorker() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val workRequest = PeriodicWorkRequestBuilder<CatalogUpdateWorker>(6, TimeUnit.HOURS)
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "CatalogUpdateWork",
+            ExistingPeriodicWorkPolicy.KEEP,
+            workRequest
+        )
+        Log.d("MainActivity", "CatalogUpdateWorker scheduled every 6 hours")
+    }
+
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
         if (ev != null) gestureDetector.onTouchEvent(ev)
         return super.dispatchTouchEvent(ev)
@@ -398,6 +434,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateMiniPlayerContent(t: String?, s: String?, isP: Boolean) { miniPlayerTitle.text = "Reproduciendo: ${t ?: ""}"; miniPlayerSubtitle.text = s; updateMiniPlayerPlayPauseButton(isP) }
     private fun updateMiniPlayerPlayPauseButton(isP: Boolean) { miniPlayerPlayPauseButton.text = if (isP) "Pausar" else "Reproducir" }
+
+    override fun onStart() {
+        super.onStart()
+        // Registrar presencia online
+        FirebaseAuth.getInstance().currentUser?.uid?.let { uid ->
+            globalChatRepository.setUserPresence(uid, true)
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Registrar presencia offline
+        FirebaseAuth.getInstance().currentUser?.uid?.let { uid ->
+            globalChatRepository.setUserPresence(uid, false)
+        }
+    }
 
     override fun onDestroy() { super.onDestroy(); try { LocalBroadcastManager.getInstance(this).unregisterReceiver(miniPlayerUpdateReceiver) } catch (e: Exception) {} }
 

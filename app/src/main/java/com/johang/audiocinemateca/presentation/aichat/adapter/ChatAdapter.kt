@@ -12,13 +12,15 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.presentation.aichat.ChatMessage
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import com.johang.audiocinemateca.presentation.aichat.LinkedContent
 import io.noties.markwon.Markwon
 
 class ChatAdapter(
     private val markwon: Markwon,
     private val onMessageClick: (List<LinkedContent>) -> Unit,
-    private val onRetryClick: () -> Unit
+    private val onRetryClick: () -> Unit,
+    private val onLinkedContentClick: (LinkedContent) -> Unit = {}
 ) : ListAdapter<ChatMessage, RecyclerView.ViewHolder>(ChatMessageDiffCallback()) {
 
     override fun getItemViewType(position: Int): Int = if (getItem(position).isUser) 1 else 2
@@ -28,7 +30,7 @@ class ChatAdapter(
         return if (viewType == 1) {
             UserMessageViewHolder(inflater.inflate(R.layout.item_chat_user, parent, false))
         } else {
-            AiMessageViewHolder(inflater.inflate(R.layout.item_chat_ai, parent, false), markwon, onMessageClick, onRetryClick)
+            AiMessageViewHolder(inflater.inflate(R.layout.item_chat_ai, parent, false), markwon, onMessageClick, onRetryClick, onLinkedContentClick)
         }
     }
 
@@ -50,7 +52,8 @@ class ChatAdapter(
         itemView: View, 
         private val markwon: Markwon,
         private val onMessageClick: (List<LinkedContent>) -> Unit,
-        private val onRetryClick: () -> Unit
+        private val onRetryClick: () -> Unit,
+        private val onLinkedContentClick: (LinkedContent) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
         private val textBody: TextView = itemView.findViewById(R.id.text_message_body)
         private val cardContainer: MaterialCardView = itemView.findViewById(R.id.card_message_container)
@@ -83,7 +86,7 @@ class ChatAdapter(
             } else {
                 buttonRetry.visibility = View.GONE
                 buttonRecs.visibility = if (hasLinks) View.VISIBLE else View.GONE
-                cardContainer.strokeWidth = if (hasLinks) 8 else 0
+                cardContainer.strokeWidth = if (hasLinks) 2 else 0 // Más sutil
                 if (hasLinks) cardContainer.strokeColor = itemView.context.getColor(androidx.appcompat.R.color.material_deep_teal_500)
             }
             
@@ -101,13 +104,42 @@ class ChatAdapter(
                 cardContainer.isFocusable = true
                 cardContainer.contentDescription = baseDesc
                 
-                buttonRecs.contentDescription = "Ver recomendaciones de este mensaje"
+                buttonRecs.contentDescription = "Ver todas las recomendaciones"
                 ViewCompat.setScreenReaderFocusable(cardContainer, true)
+
+                // IMPLEMENTAR ACCIONES DE ACCESIBILIDAD
+                ViewCompat.setAccessibilityDelegate(cardContainer, object : androidx.core.view.AccessibilityDelegateCompat() {
+                    override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfoCompat) {
+                        super.onInitializeAccessibilityNodeInfo(host, info)
+                        
+                        // Acción principal (opcional, ya es el click)
+                        info.addAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat(
+                            AccessibilityNodeInfoCompat.ACTION_CLICK, "Abrir lista de recomendaciones"
+                        ))
+
+                        // Acciones personalizadas para cada título
+                        message.linkedItems.forEachIndexed { index, linked ->
+                            val actionLabel = "Ver detalles de [[${linked.title}]]"
+                            val actionId = 1000 + index // IDs únicos para las acciones
+                            info.addAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat(actionId, actionLabel))
+                        }
+                    }
+
+                    override fun performAccessibilityAction(host: View, action: Int, args: android.os.Bundle?): Boolean {
+                        if (action >= 1000 && action < 1000 + message.linkedItems.size) {
+                            val linked = message.linkedItems[action - 1000]
+                            onLinkedContentClick(linked)
+                            return true
+                        }
+                        return super.performAccessibilityAction(host, action, args)
+                    }
+                })
             } else {
                 cardContainer.isClickable = false
                 cardContainer.isFocusable = true
                 cardContainer.contentDescription = baseDesc
                 buttonRecs.visibility = View.GONE
+                ViewCompat.setAccessibilityDelegate(cardContainer, null)
             }
             
             textBody.isClickable = false

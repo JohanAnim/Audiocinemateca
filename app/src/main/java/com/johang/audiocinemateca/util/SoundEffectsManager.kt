@@ -19,25 +19,22 @@ class SoundEffectsManager @Inject constructor(
 
     init {
         val audioAttributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
 
         soundPool = SoundPool.Builder()
-            .setMaxStreams(5)
+            .setMaxStreams(10)
             .setAudioAttributes(audioAttributes)
             .build()
 
-        soundPool.setOnLoadCompleteListener { _, sampleId, status ->
-            if (status == 0) {
-                Log.d("SoundEffectsManager", "Sonido cargado con éxito. ID: $sampleId")
-            } else {
-                Log.e("SoundEffectsManager", "Error al cargar sonido. Status: $status")
-            }
-        }
-
-        // Cargar sonidos
-        loadSound("receive_message", "sonidos/efectos/resibir_mensajje.wav")
+        // Cargar sonidos de Aura (ahora estándar de la app)
+        loadSound("aura_send", "sonidos/efectos/aura/enviar_mensaje.ogg")
+        loadSound("aura_receive", "sonidos/efectos/aura/resivir_mensaje.ogg")
+        loadSound("aura_wait", "sonidos/efectos/aura/esperar.ogg")
+        loadSound("aura_error", "sonidos/efectos/aura/alerta_error.ogg")
+        loadSound("aura_voice_start", "sonidos/efectos/aura/voz_start.ogg")
+        loadSound("aura_voice_end", "sonidos/efectos/aura/voz_end.ogg")
     }
 
     private fun loadSound(key: String, assetPath: String) {

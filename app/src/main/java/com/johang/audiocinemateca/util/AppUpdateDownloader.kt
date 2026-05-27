@@ -68,7 +68,7 @@ class AppUpdateDownloader @Inject constructor(@ApplicationContext private val co
                         val localUriString = cursor.getString(localUriIndex)
                         if (localUriString != null) {
                             val apkFile = File(Uri.parse(localUriString).path!!)
-                            val authority = "${context.packageName}.provider"
+                            val authority = "${context.packageName}.fileprovider"
                             val contentUri = FileProvider.getUriForFile(context, authority, apkFile)
                             _downloadProgress.value = DownloadProgress.Success(contentUri)
                         } else {

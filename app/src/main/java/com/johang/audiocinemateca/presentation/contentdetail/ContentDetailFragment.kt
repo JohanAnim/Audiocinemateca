@@ -612,8 +612,17 @@ class ContentDetailFragment : Fragment() {
             is ShortFilm -> "cortometraje"
             else -> "contenido"
         }
-        val message = "¡Oye! Estoy escuchando esta increíble $type llamada '${item.title}' en la Audiocinemateca. ¡Seguro que a ti también te podría gustar! Da clic en este enlace para que lo escuches en la app."
-        val url = "https://audiocinemateca.com/$type?id=${item.id}"
+        val article = when (type) {
+            "película", "serie" -> "esta increíble $type"
+            else -> "este increíble $type"
+        }
+        val callWord = when (type) {
+            "película", "serie" -> "llamada"
+            else -> "llamado"
+        }
+        val message = "¡Oye! Estoy escuchando $article $callWord '${item.title}' en la Audiocinemateca. ¡Seguro que a ti también te podría gustar! Da clic en este enlace para que lo escuches en la app."
+        val typeSlug = when (item) { is Movie -> "pelicula"; is Serie -> "serie"; is Documentary -> "documental"; is ShortFilm -> "cortometraje"; else -> "contenido" }
+        val url = "https://audiocinemateca.com/$typeSlug?id=${item.id}"
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             this.type = "text/plain"
             putExtra(Intent.EXTRA_TEXT, "$message\n\n$url")

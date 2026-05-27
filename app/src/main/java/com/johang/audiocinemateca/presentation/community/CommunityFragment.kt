@@ -28,9 +28,12 @@ class CommunityFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         (activity as? AppCompatActivity)?.supportActionBar?.title = "Comunidad"
 
-        val tabLayout = view.findViewById<TabLayout>(R.id.community_tab_layout)
-        val viewPager = view.findViewById<ViewPager2>(R.id.community_view_pager)
+        val tabLayout = view.findViewById<TabLayout>(R.id.tab_layout)
+        val viewPager = view.findViewById<ViewPager2>(R.id.view_pager)
 
+        // Deshabilitar la navegación por gestos laterales entre pestañas
+        viewPager.isUserInputEnabled = false
+        
         viewPager.adapter = CommunityPagerAdapter(this)
 
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
@@ -42,11 +45,9 @@ class CommunityFragment : Fragment() {
             }
         }.attach()
 
-        // Si venimos de una notificación de anuncios, seleccionamos la pestaña 1 (Anuncios)
         val navigateTo = arguments?.getString("select_tab") ?: activity?.intent?.getStringExtra("navigate_to")
         if (navigateTo == "announcements") {
             viewPager.setCurrentItem(1, false)
-            // Limpiamos tanto el intent como los argumentos para evitar repeticiones
             activity?.intent?.removeExtra("navigate_to")
             arguments?.remove("select_tab")
         }

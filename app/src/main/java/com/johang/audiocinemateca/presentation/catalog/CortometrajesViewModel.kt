@@ -18,6 +18,7 @@ import com.johang.audiocinemateca.domain.usecase.RemoveFavoriteUseCase
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import android.util.Log
 
 @HiltViewModel
 class CortometrajesViewModel @Inject constructor(
@@ -52,6 +53,7 @@ class CortometrajesViewModel @Inject constructor(
 
     init {
         observeFilterChanges()
+        observeCatalogUpdates()
     }
 
     private fun observeFilterChanges() {
@@ -64,6 +66,19 @@ class CortometrajesViewModel @Inject constructor(
             }
         }
     }
+
+    private fun observeCatalogUpdates() {
+        viewModelScope.launch {
+            catalogRepository.catalogUpdated.collect {
+                Log.d("CortometrajesViewModel", "Catalog updated, refreshing short films list")
+                currentPage = 0
+                isLastPage = false
+                _cortometrajes.value = emptyList()
+                loadCortometrajes()
+            }
+        }
+    }
+
 
     fun loadCortometrajes() {
         if (_isLoading.value || isLastPage) return
@@ -95,12 +110,12 @@ class CortometrajesViewModel @Inject constructor(
         }
     }
 
-    fun toggleFavorite(corto: com.johang.audiocinemateca.data.model.ShortFilm, isFavorite: Boolean) {
+    fun toggleFavorite(shortFilm: com.johang.audiocinemateca.data.model.ShortFilm, isFavorite: Boolean) {
         viewModelScope.launch {
             if (isFavorite) {
-                addFavoriteUseCase(corto.id, corto.title, "shortfilm")
+                addFavoriteUseCase(shortFilm.id, shortFilm.title, "short_film")
             } else {
-                removeFavoriteUseCase(corto.id)
+                removeFavoriteUseCase(shortFilm.id)
             }
         }
     }

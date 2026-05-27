@@ -132,7 +132,16 @@ class AccountFragment : Fragment() {
             headerUsername.text = displayUsername
             headerUsername.contentDescription = "$displayUsername, toca para ver tu perfil"
 
-            if (username == "Johan-a-g") {
+            val currentUser = firebaseAuth.currentUser
+            if (currentUser?.email == "gutierrezjohanantonio@gmail.com") {
+                // Forzar una comprobación silenciosa para obtener estadísticas
+                try {
+                    val pInfo = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0)
+                    viewModel.checkForUpdates(pInfo.versionName ?: "3.0.0")
+                } catch (e: Exception) {
+                    Log.e("AccountFragment", "Error iniciando check automático para admin", e)
+                }
+
                 viewModel.updateState.collect {
                     val currentUpdateInfo = when (it) {
                         is UpdateCheckResult.UpdateAvailable -> it.updateInfo
@@ -143,14 +152,19 @@ class AccountFragment : Fragment() {
                     if (currentUpdateInfo != null) {
                         val downloads = currentUpdateInfo.downloadCount
                         val downloadsText = if (downloads == 1) {
-                            "Esta versión de la app tiene 1 descarga."
+                            "Esta versión de la app tiene 1 descarga oficial."
                         } else {
-                            "Esta versión de la app tiene $downloads descargas."
+                            "Esta versión de la app tiene $downloads descargas oficiales."
                         }
                         downloadCountText.text = downloadsText
                         downloadCountText.visibility = View.VISIBLE
+                        downloadCountText.contentDescription = downloadsText
+                    } else {
+                        downloadCountText.visibility = View.GONE
                     }
                 }
+            } else {
+                downloadCountText.visibility = View.GONE
             }
         }
 

@@ -52,11 +52,24 @@ class DocumentalesViewModel @Inject constructor(
 
     init {
         observeFilterChanges()
+        observeCatalogUpdates()
     }
 
     private fun observeFilterChanges() {
         viewModelScope.launch {
             filterRepository.getFilterOptionsFlow("documentales").collect {
+                currentPage = 0
+                isLastPage = false
+                _documentales.value = emptyList()
+                loadDocumentales()
+            }
+        }
+    }
+
+    private fun observeCatalogUpdates() {
+        viewModelScope.launch {
+            catalogRepository.catalogUpdated.collect {
+                android.util.Log.d("DocumentalesViewModel", "Catalog updated, refreshing documentaries list")
                 currentPage = 0
                 isLastPage = false
                 _documentales.value = emptyList()

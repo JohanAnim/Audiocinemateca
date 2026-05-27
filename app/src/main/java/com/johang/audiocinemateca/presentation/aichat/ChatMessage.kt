@@ -5,15 +5,15 @@ import kotlinx.parcelize.Parcelize
 
 @Parcelize
 data class LinkedContent(
-    val id: String,
-    val title: String,
-    val type: String
+    val id: String = "",
+    val title: String = "",
+    val type: String = ""
 ) : Parcelable
 
 data class ChatMessage(
-    val id: String,
-    val text: String,
-    val isUser: Boolean,
+    val id: String = "",
+    val text: String = "",
+    val isUser: Boolean = false,
     val timestamp: Long = System.currentTimeMillis(),
     val isError: Boolean = false,
     val isSilent: Boolean = false,

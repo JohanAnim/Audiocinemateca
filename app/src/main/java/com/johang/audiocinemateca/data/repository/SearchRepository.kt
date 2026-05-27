@@ -35,22 +35,27 @@ class SearchRepository @Inject constructor(
             val repartoLower = item.reparto.lowercase()
             val sinopsisLower = item.sinopsis.lowercase()
             val generoLower = item.genero.lowercase()
+            val narracionLower = item.narracion.lowercase()
 
             var score = 0
-            if (titleLower == lowerCaseQuery) score += 10
-            if (titleLower.startsWith(lowerCaseQuery)) score += 5
             
-            // Búsqueda por palabras clave en sinopsis y otros campos
+            // PRIORIDAD MÁXIMA: Título
+            if (titleLower == lowerCaseQuery) score += 20
+            if (titleLower.startsWith(lowerCaseQuery)) score += 10
+            if (titleLower.contains(lowerCaseQuery)) score += 5
+            
+            // PRIORIDAD ALTA: Sinopsis completa
+            if (sinopsisLower.contains(lowerCaseQuery)) score += 8
+            
+            // Búsqueda por palabras clave individuales
             for (word in queryWords) {
-                if (titleLower.contains(word)) score += 3
-                if (generoLower.contains(word)) score += 3
+                if (titleLower.contains(word)) score += 5
+                if (generoLower.contains(word)) score += 4
+                if (narracionLower.contains(word)) score += 3
                 if (sinopsisLower.contains(word)) score += 2
                 if (directorLower.contains(word)) score += 1
                 if (repartoLower.contains(word)) score += 1
             }
-
-            // Si la consulta original (frase completa) está en la sinopsis, bono extra
-            if (sinopsisLower.contains(lowerCaseQuery)) score += 4
 
             if (score > 0) item to score else null
         }

@@ -28,8 +28,13 @@ service cloud.firestore {
       allow read: if request.auth != null;
       // Solo logueados pueden escribir sus propios mensajes
       allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid;
-      // NADIE puede borrar o editar mensajes excepto los Admins
-      allow update, delete: if isAdmin();
+      // Los Admins pueden editar todo. Los usuarios normales SOLO pueden actualizar reacciones.
+      allow update: if isAdmin() || (
+        request.auth != null && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+      );
+      // Solo los Admins pueden borrar mensajes
+      allow delete: if isAdmin();
     }
 
     match /config/chat_global {
@@ -76,6 +81,14 @@ service cloud.firestore {
     match /content_stats/{document=**} {
       allow read: if true;
       allow write: if request.auth != null;
+    }
+
+    // --- 10. PRESENCIA DE USUARIOS ---
+    match /presence/{userId} {
+      // Todos los logueados pueden leer quién está en línea
+      allow read: if request.auth != null;
+      // Cada usuario solo puede escribir su propio estado
+      allow write: if isOwner(userId);
     }
 
     // --- 9. RED DE SEGURIDAD ---

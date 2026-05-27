@@ -702,7 +702,14 @@ class PlayerFragment : Fragment() {
 
     private fun shareContent() {
         val item = currentContentItem ?: return
-        val message = "¡Oye! Estoy escuchando '${item.title}' en la Audiocinemateca. ¡Seguro que a ti también te podría gustar! Da clic en este enlace para que lo escuches en la app."
+        val typeName = when (item) { is Movie -> "película"; is Serie -> "serie"; is Documentary -> "documental"; is ShortFilm -> "cortometraje"; else -> "contenido" }
+        
+        val article = when (typeName) {
+            "película", "serie" -> "esta increíble $typeName"
+            else -> "este increíble $typeName"
+        }
+        
+        val message = "¡Oye! Estoy escuchando $article '${item.title}' en la Audiocinemateca. ¡Seguro que a ti también te podría gustar! Da clic en este enlace para que lo escuches en la app."
         val typeSlug = when (item) { is Movie -> "pelicula"; is Serie -> "serie"; is Documentary -> "documental"; is ShortFilm -> "cortometraje"; else -> "contenido" }
         val url = "https://audiocinemateca.com/$typeSlug?id=${item.id}"
         val shareIntent = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "$message\n\n$url") }

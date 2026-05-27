@@ -18,6 +18,7 @@ import com.johang.audiocinemateca.domain.usecase.RemoveFavoriteUseCase
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import android.util.Log
 
 @HiltViewModel
 class SeriesViewModel @Inject constructor(
@@ -52,11 +53,24 @@ class SeriesViewModel @Inject constructor(
 
     init {
         observeFilterChanges()
+        observeCatalogUpdates()
     }
 
     private fun observeFilterChanges() {
         viewModelScope.launch {
             filterRepository.getFilterOptionsFlow("series").collect {
+                currentPage = 0
+                isLastPage = false
+                _series.value = emptyList()
+                loadSeries()
+            }
+        }
+    }
+
+    private fun observeCatalogUpdates() {
+        viewModelScope.launch {
+            catalogRepository.catalogUpdated.collect {
+                Log.d("SeriesViewModel", "Catalog updated, refreshing series list")
                 currentPage = 0
                 isLastPage = false
                 _series.value = emptyList()

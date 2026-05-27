@@ -41,10 +41,9 @@ class CrashLogger(private val context: Context) : Thread.UncaughtExceptionHandle
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
             val filename = "ERROR_AUDIOCINEMATECA_$timestamp.log"
 
-            // RUTA SOLICITADA: Música/Audiocinemateca/logs_audiocinemateca
-            val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
-            val appDir = File(musicDir, "Audiocinemateca")
-            val logDir = File(appDir, "logs_audiocinemateca")
+            // Usar almacenamiento específico de la app (interno o externo emulado)
+            // Esto es mucho más fiable en Android 10+
+            val logDir = File(context.getExternalFilesDir(null), "crash_logs")
             
             if (!logDir.exists()) logDir.mkdirs()
 
@@ -67,6 +66,16 @@ class CrashLogger(private val context: Context) : Thread.UncaughtExceptionHandle
             Log.e("CrashLogger", "Log de error guardado en: ${logFile.absolutePath}")
         } catch (e: Exception) {
             Log.e("CrashLogger", "No se pudo guardar el log de error", e)
+        }
+    }
+
+    companion object {
+        fun getLatestLogFile(context: Context): File? {
+            val logDir = File(context.getExternalFilesDir(null), "crash_logs")
+            if (!logDir.exists()) return null
+            
+            return logDir.listFiles()?.filter { it.extension == "log" }
+                ?.maxByOrNull { it.lastModified() }
         }
     }
 }

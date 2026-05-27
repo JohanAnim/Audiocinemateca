@@ -134,6 +134,9 @@ class AIChatFragment : Fragment() {
                 // Al reintentar: reinicializar el modelo (por si cambió en ajustes),
                 // luego reenviar el último mensaje del usuario
                 viewModel.reinitializeAndRetry()
+            },
+            onLinkedContentClick = { linked ->
+                navigateToDetail(linked)
             }
         )
 
@@ -200,6 +203,7 @@ class AIChatFragment : Fragment() {
                                      error == 5 || error == 8
                     
                     if (!isIgnoreable) {
+                        viewModel.onVoiceError()
                         Toast.makeText(context, "Error al capturar voz.", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -226,7 +230,7 @@ class AIChatFragment : Fragment() {
     }
 
     private fun startListening() {
-        viewModel.vibrateShort()
+        viewModel.onVoiceStart()
         binding.buttonVoice.animate().scaleX(1.2f).scaleY(1.2f).setDuration(100).start()
         binding.editTextMessage.hint = "Escuchando..."
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -237,6 +241,7 @@ class AIChatFragment : Fragment() {
     }
 
     private fun stopListening() {
+        viewModel.onVoiceEnd()
         binding.buttonVoice.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
         binding.editTextMessage.hint = "Escribe un mensaje..."
         speechRecognizer?.stopListening()

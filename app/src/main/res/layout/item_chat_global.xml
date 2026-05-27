@@ -24,6 +24,36 @@
             android:orientation="vertical"
             android:padding="10dp">
 
+            <LinearLayout
+                android:id="@+id/layout_reply"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:background="?attr/colorSurfaceVariant"
+                android:orientation="vertical"
+                android:padding="6dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tv_reply_sender"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Respondiendo a..."
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_reply_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="Mensaje citado"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
             <TextView
                 android:id="@+id/tv_sender_name"
                 android:layout_width="wrap_content"
@@ -52,6 +82,16 @@
                 android:text="12:00"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="10sp" />
+
+            <!-- Contenedor de Reacciones -->
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/cg_reactions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                app:chipSpacingHorizontal="4dp"
+                app:chipSpacingVertical="0dp"
+                app:singleLine="false" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
