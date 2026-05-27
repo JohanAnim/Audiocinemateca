@@ -26,6 +26,14 @@
         android:entryValues="@array/default_content_tab_values"
         android:defaultValue="peliculas" />
 
+    <ListPreference
+        android:key="default_filter"
+        android:title="Orden de visualización predeterminado"
+        android:summary="%s"
+        android:entries="@array/default_filter_entries"
+        android:entryValues="@array/default_filter_values"
+        android:defaultValue="date_desc" />
+
     <SwitchPreferenceCompat
         android:key="auto_check_catalog"
         android:title="Comprobación automática del catálogo"
@@ -39,13 +47,31 @@
         android:defaultValue="true" />
 
     <PreferenceCategory
+        app:title="Permisos y Enlaces"
+        app:key="cat_permissions">
+        <Preference
+            android:key="pref_battery_optimization"
+            android:title="Optimización de batería"
+            android:summary="Permite que la app funcione mejor en segundo plano (Recomendado)." />
+        <Preference
+            android:key="pref_deep_links"
+            android:title="Abrir enlaces de Audiocinemateca"
+            android:summary="Configura la app para abrir automáticamente los enlaces de audiocinemateca.com" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
         app:title="Diagnóstico"
         app:key="cat_diag">
         <SwitchPreferenceCompat
             android:key="create_crash_log"
             android:title="Generar archivo de registro de errores (.log)"
-            android:summary="Si la app falla, se guardará un reporte en tu carpeta de descargas para compartirlo con el desarrollador."
+            android:summary="Si la app falla, se guardará un reporte interno para compartirlo con el desarrollador."
             android:defaultValue="true" />
+        <Preference
+            android:key="share_latest_log"
+            android:title="Compartir último reporte de error"
+            android:summary="Envía el último archivo de registro generado por Telegram, WhatsApp u otra aplicación."
+            app:dependency="create_crash_log" />
     </PreferenceCategory>
 
 </PreferenceScreen>

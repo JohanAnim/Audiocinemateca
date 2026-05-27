@@ -42,12 +42,12 @@ class GeminiRepository @Inject constructor(
         functionDeclarations = listOf(
             FunctionDeclaration(
                 name = "play_content",
-                description = "Reproduce inmediatamente un título del catálogo. Úsalo cuando el usuario diga 'reprodúcelo', 'dale play', 'ponme...', etc. Si es una serie, puedes especificar temporada y capítulo.",
+                description = "Reproduce inmediatamente un título del catálogo. Úsalo cuando el usuario diga 'reprodúcelo', 'dale play', 'ponme...', etc. IMPORTANTE: Debes haber usado search_catalog antes para obtener el 'id' exacto del contenido. Si es una serie, puedes especificar temporada y capítulo.",
                 parameters = Parameters(
                     type = "object",
                     properties = mapOf(
-                        "contentId" to Property("string", "ID del contenido"),
-                        "type" to Property("string", "Tipo: pelicula, serie, documental o cortometraje"),
+                        "contentId" to Property("string", "El valor EXACTO del campo 'id' devuelto por search_catalog. NO uses el título."),
+                        "type" to Property("string", "El valor EXACTO del campo 'tipo' devuelto por search_catalog: pelicula, serie, documental o cortometraje"),
                         "seasonIndex" to Property("integer", "Índice de la temporada (empezando en 0, opcional)"),
                         "episodeIndex" to Property("integer", "Índice del episodio (empezando en 0, opcional)")
                     ),

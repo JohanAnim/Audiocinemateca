@@ -14,13 +14,13 @@ import android.util.Log
 class FilterRepository @Inject constructor(private val sharedPreferencesManager: SharedPreferencesManager) {
 
     private fun getDefaultFilterOptions(): FilterOptions {
-        val defaultFilterPref = sharedPreferencesManager.getString("default_filter_type", "alpha_asc")
+        val defaultFilterPref = sharedPreferencesManager.getString("default_filter", "date_desc")
         return when (defaultFilterPref) {
             "alpha_asc" -> FilterOptions("Alfabéticamente", "A-Z")
             "alpha_desc" -> FilterOptions("Alfabéticamente", "Z-A")
             "date_desc" -> FilterOptions("Fecha", "Más nuevo")
             "date_asc" -> FilterOptions("Fecha", "Más antiguo")
-            else -> FilterOptions()
+            else -> FilterOptions("Fecha", "Más nuevo")
         }
     }
 

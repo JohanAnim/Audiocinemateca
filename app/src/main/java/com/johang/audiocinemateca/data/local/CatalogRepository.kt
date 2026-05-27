@@ -7,6 +7,7 @@ import android.content.ClipboardManager
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.asSharedFlow
 import java.io.File
 import java.util.Date
 import com.johang.audiocinemateca.data.local.dao.CatalogDao
@@ -36,6 +37,9 @@ class CatalogRepository @Inject constructor(
 ) {
 
     private var cachedCatalog: CatalogResponse? = null
+
+    private val _catalogUpdated = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(replay = 0)
+    val catalogUpdated = _catalogUpdated.asSharedFlow()
 
     private val gson = GsonBuilder()
         .registerTypeAdapter(Movie::class.java, MovieTypeAdapter())
@@ -76,6 +80,9 @@ class CatalogRepository @Inject constructor(
             catalogDao.deleteCatalogData("mainCatalogFile") // Clear old entry
             catalogDao.insertCatalogData(CatalogDataEntity("mainCatalogFile", catalogFile.absolutePath))
             Log.d("CatalogRepository", "Saved catalog file path to DB: ${catalogFile.absolutePath}")
+            
+            // Notify observers
+            _catalogUpdated.emit(Unit)
         } catch (e: Exception) {
             Log.e("CatalogRepository", "Error saving catalog", e)
             throw e // Re-throw to propagate the error
@@ -87,7 +94,11 @@ class CatalogRepository @Inject constructor(
             Log.d("CatalogRepository", "Returning cached catalog")
             return@withContext cachedCatalog
         }
+        
+        loadCatalogFromFile()
+    }
 
+    private suspend fun loadCatalogFromFile(): CatalogResponse? = withContext(Dispatchers.IO) {
         Log.d("CatalogRepository", "Attempting to get catalog from file")
         try {
             val catalogEntity = catalogDao.getCatalogData("mainCatalogFile").firstOrNull()
@@ -106,17 +117,14 @@ class CatalogRepository @Inject constructor(
             }
             return@withContext null
         } catch (e: Exception) {
-            Log.e("CatalogRepository", "Error al cargar el catálogo desde el archivo", e) // Log the full stack trace
-            val errorMessage = "Error al cargar el catálogo desde el archivo: ${e.message ?: "Mensaje de error nulo"}"
-            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("Error", errorMessage)
-            clipboard.setPrimaryClip(clip)
-
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Error al cargar catálogo: ${e.localizedMessage ?: "Error desconocido"}", Toast.LENGTH_LONG).show()
-            }
+            Log.e("CatalogRepository", "Error al cargar el catálogo desde el archivo", e) 
             return@withContext null
         }
+    }
+
+    fun clearCache() {
+        cachedCatalog = null
+        Log.d("CatalogRepository", "Cache cleared")
     }
 
     suspend fun deleteCatalogData(idPattern: String) = withContext(Dispatchers.IO) {

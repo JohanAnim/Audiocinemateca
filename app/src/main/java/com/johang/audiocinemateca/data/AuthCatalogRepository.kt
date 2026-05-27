@@ -296,6 +296,7 @@ class AuthCatalogRepository @Inject constructor(
 
                 // Progreso de guardado en DB (90-100%)
                 send(LoadCatalogResultWithProgress.Progress(90))
+                catalogRepository.clearCache()
                 catalogRepository.saveCatalog(catalogResponse)
                 catalogRepository.saveCatalogVersion(newVersionDate)
                 send(LoadCatalogResultWithProgress.Progress(100))

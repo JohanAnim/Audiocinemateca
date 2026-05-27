@@ -6,6 +6,57 @@
     android:layout_height="match_parent"
     android:background="?attr/colorSurface">
 
+    <!-- Encabezado del Chat -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/chat_header"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorSurface"
+        android:elevation="4dp"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Chat global"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_online_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cargando..."
+                android:textColor="?attr/colorPrimary"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btn_chat_options"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Más opciones del chat"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:srcCompat="@drawable/ic_more_vert"
+            app:tint="?attr/colorOnSurface" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
     <!-- Indicador de Chat Cerrado -->
     <TextView
         android:id="@+id/tv_chat_status"
@@ -18,7 +69,7 @@
         android:textColor="@android:color/white"
         android:textStyle="bold"
         android:visibility="gone"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/chat_header" />
 
     <!-- RecyclerView para los mensajes -->
     <androidx.recyclerview.widget.RecyclerView
@@ -27,7 +78,7 @@
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:padding="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/input_container"
+        app:layout_constraintBottom_toTopOf="@+id/layout_reply_preview"
         app:layout_constraintTop_toBottomOf="@+id/tv_chat_status"
         tools:listitem="@layout/item_chat_global" />
 
@@ -40,11 +91,10 @@
         android:orientation="vertical"
         android:padding="32dp"
         android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@+id/input_container"
+        app:layout_constraintBottom_toTopOf="@+id/layout_reply_preview"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_chat_status"
-        tools:visibility="visible">
+        app:layout_constraintTop_toBottomOf="@+id/tv_chat_status">
 
         <ImageView
             android:layout_width="80dp"
@@ -71,6 +121,60 @@
             android:textAlignment="center"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- Contenedor de previsualización de respuesta -->
+    <LinearLayout
+        android:id="@+id/layout_reply_preview"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurfaceVariant"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/input_container">
+
+        <View
+            android:layout_width="4dp"
+            android:layout_height="match_parent"
+            android:background="?attr/colorPrimary" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_reply_preview_sender"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Respondiendo a..."
+                android:textColor="?attr/colorPrimary"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_reply_preview_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Mensaje citado"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btn_cancel_reply"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Cancelar"
+            app:srcCompat="@drawable/ic_close"
+            app:tint="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
 
     <!-- Contenedor de entrada de mensaje -->
@@ -112,7 +216,7 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Dictar mensaje por voz. Mantén pulsado para hablar."
+            android:contentDescription="Dictar mensaje por voz"
             app:srcCompat="@drawable/ic_mic"
             app:tint="?attr/colorOnSurfaceVariant" />
 

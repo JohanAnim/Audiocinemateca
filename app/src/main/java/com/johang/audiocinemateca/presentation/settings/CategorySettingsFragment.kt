@@ -22,6 +22,12 @@ import dagger.hilt.android.EntryPointAccessors
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.core.content.FileProvider
+import com.johang.audiocinemateca.util.CrashLogger
+
 class CategorySettingsFragment : PreferenceFragmentCompat() {
 
     private val searchViewModel: SearchViewModel by activityViewModels()
@@ -62,6 +68,18 @@ class CategorySettingsFragment : PreferenceFragmentCompat() {
             "general" -> {
                 findPreference<ListPreference>("theme")?.setOnPreferenceChangeListener { _, newValue ->
                     ThemeManager.applyTheme(newValue as String)
+                    true
+                }
+                findPreference<Preference>("share_latest_log")?.setOnPreferenceClickListener {
+                    shareLatestLog()
+                    true
+                }
+                findPreference<Preference>("pref_battery_optimization")?.setOnPreferenceClickListener {
+                    openBatteryOptimizationSettings()
+                    true
+                }
+                findPreference<Preference>("pref_deep_links")?.setOnPreferenceClickListener {
+                    openDeepLinkSettings()
                     true
                 }
             }
@@ -250,23 +268,29 @@ class CategorySettingsFragment : PreferenceFragmentCompat() {
     private fun updateGeminiModels(repository: GeminiRepository, pref: ListPreference?) {
         if (pref == null) return
 
-        // Actualizar título inicialmente con lo que ya tenga
-        pref.entry?.let {
-            pref.title = "Modelo de IA seleccionado: $it"
-        }
+        // Lista vacía al inicio
+        pref.entries = emptyArray()
+        pref.entryValues = emptyArray()
+        pref.isEnabled = false
 
         lifecycleScope.launch {
-            val models = repository.fetchAvailableModels()
-            if (models.isNotEmpty()) {
-                pref.entries = models.map { it.second }.toTypedArray()
-                pref.entryValues = models.map { it.first }.toTypedArray()
-                if (pref.value == null || pref.value !in pref.entryValues) {
-                    pref.value = pref.entryValues.firstOrNull()?.toString()
-                }
-                
-                // Actualizar título de nuevo tras cargar modelos
-                pref.entry?.let {
-                    pref.title = "Modelo de IA seleccionado: $it"
+            // Comprobación rápida para validar API
+            val isValid = repository.initialize()
+            if (isValid) {
+                val models = repository.fetchAvailableModels()
+                if (models.isNotEmpty()) {
+                    pref.entries = models.map { it.second }.toTypedArray()
+                    pref.entryValues = models.map { it.first }.toTypedArray()
+                    
+                    // Establecer predeterminado (Gemma 4 31B IT) si no hay uno seleccionado
+                    if (pref.value == null || pref.value !in pref.entryValues) {
+                        pref.value = "gemma-4-31b-it" 
+                    }
+                    
+                    pref.isEnabled = true
+                    pref.entry?.let {
+                        pref.title = "Modelo de IA seleccionado: $it"
+                    }
                 }
             }
         }
@@ -312,6 +336,59 @@ class CategorySettingsFragment : PreferenceFragmentCompat() {
             .setMessage("¿Estás seguro?")
             .setPositiveButton("Eliminar") { _, _ -> playbackHistoryViewModel.clearAllHistory() }
             .setNegativeButton("Cancelar", null).show()
+    }
+
+    private fun shareLatestLog() {
+        val latestLog = CrashLogger.getLatestLogFile(requireContext())
+        if (latestLog == null || !latestLog.exists()) {
+            Toast.makeText(requireContext(), "No hay reportes de error disponibles.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        try {
+            val uri = FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.fileprovider",
+                latestLog
+            )
+
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, "Reporte de Error - Audiocinemateca")
+                putExtra(Intent.EXTRA_TEXT, "Adjunto el reporte de error generado por la aplicación.")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+
+            startActivity(Intent.createChooser(intent, "Enviar reporte por..."))
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Error al compartir el archivo: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun openBatteryOptimizationSettings() {
+        try {
+            val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+            startActivity(intent)
+        } catch (e: Exception) {
+            val intent = Intent(Settings.ACTION_SETTINGS)
+            startActivity(intent)
+        }
+    }
+
+    private fun openDeepLinkSettings() {
+        try {
+            val intent = Intent(Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS).apply {
+                data = Uri.parse("package:${requireContext().packageName}")
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            // Si falla (en versiones antiguas), abrir la info de la app
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${requireContext().packageName}")
+            }
+            startActivity(intent)
+        }
     }
 
     private fun setupStorageLocationPreference() {

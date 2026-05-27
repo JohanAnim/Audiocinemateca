@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/colorSurface"
+    android:paddingBottom="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingTop="24dp">
+
+        <TextView
+            android:id="@+id/tv_options_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Opciones del mensaje"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="24dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Reaccionar"
+            android:layout_marginBottom="12dp"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_reactions_carousel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:minHeight="60dp"
+            android:layout_marginBottom="24dp"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="?attr/colorOutlineVariant"
+            android:layout_marginBottom="12dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_action_reply"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:gravity="center_vertical|start"
+            android:paddingHorizontal="16dp"
+            android:text="Responder"
+            android:textSize="16sp"
+            app:icon="@drawable/ic_share"
+            app:iconSize="24dp"
+            app:iconPadding="20dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_action_mention"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:gravity="center_vertical|start"
+            android:paddingHorizontal="16dp"
+            android:text="Mencionar"
+            android:textSize="16sp"
+            app:icon="@drawable/ic_account"
+            app:iconSize="24dp"
+            app:iconPadding="20dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_action_edit"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:gravity="center_vertical|start"
+            android:paddingHorizontal="16dp"
+            android:text="Editar mensaje"
+            android:textSize="16sp"
+            android:visibility="gone"
+            app:icon="@drawable/ic_catalog"
+            app:iconSize="24dp"
+            app:iconPadding="20dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_action_delete"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:gravity="center_vertical|start"
+            android:paddingHorizontal="16dp"
+            android:text="Eliminar mensaje"
+            android:textSize="16sp"
+            android:textColor="@android:color/holo_red_dark"
+            android:visibility="gone"
+            app:icon="@drawable/ic_close"
+            app:iconTint="@android:color/holo_red_dark"
+            app:iconSize="24dp"
+            app:iconPadding="20dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_action_report"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="56dp"
+            android:gravity="center_vertical|start"
+            android:paddingHorizontal="16dp"
+            android:text="Reportar mensaje"
+            android:textSize="16sp"
+            android:textColor="@android:color/holo_red_dark"
+            app:icon="@drawable/ic_close"
+            app:iconTint="@android:color/holo_red_dark"
+            app:iconSize="24dp"
+            app:iconPadding="20dp" />
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

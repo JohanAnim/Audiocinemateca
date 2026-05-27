@@ -11,13 +11,19 @@ plugins {
 android {
     namespace = "com.johang.audiocinemateca"
     compileSdk = libs.versions.compileSdk.get().toInt()
+}
 
+base {
+    archivesName.set("Audiocinemateca")
+}
+
+android {
     defaultConfig {
         applicationId = "com.johang.audiocinemateca"
         minSdk = 25
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 16
-        versionName = "3.0.0"
+        versionCode = 4
+        versionName = "3.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -68,14 +74,6 @@ android {
     }
 }
 
-androidComponents {
-    onVariants { variant ->
-        variant.outputs.forEach { output ->
-            output.versionName.set(libs.versions.targetSdk.get())
-        }
-    }
-}
-
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -86,6 +84,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.preference)
     implementation(libs.androidx.mediarouter)
+    implementation(libs.androidx.work.runtime.ktx)
 
     // Retrofit & OkHttp
     implementation(libs.retrofit)

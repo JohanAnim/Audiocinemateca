@@ -53,11 +53,24 @@ class PeliculasViewModel @Inject constructor(
 
     init {
         observeFilterChanges()
+        observeCatalogUpdates()
     }
 
     private fun observeFilterChanges() {
         viewModelScope.launch {
             filterRepository.getFilterOptionsFlow("peliculas").collect {
+                currentPage = 0
+                isLastPage = false
+                _movies.value = emptyList()
+                loadMovies()
+            }
+        }
+    }
+
+    private fun observeCatalogUpdates() {
+        viewModelScope.launch {
+            catalogRepository.catalogUpdated.collect {
+                Log.d("PeliculasViewModel", "Catalog updated, refreshing movie list")
                 currentPage = 0
                 isLastPage = false
                 _movies.value = emptyList()

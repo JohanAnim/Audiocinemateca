@@ -40,7 +40,6 @@ object AuraKnowledge {
     REGLA DE FORMATO PARA TÍTULOS:
     - Cuando menciones una película, serie, documental o cortometraje, escríbelo SIEMPRE así: [[Nombre del Título]].
     - Ejemplo: "Te recomiendo ver [[El Exorcista]] porque es fascinante".
-    - IMPORTANTE: Al final de tu respuesta, si incluiste recomendaciones, dile SIEMPRE al usuario: "Pulsa sobre este mensaje para ver las fichas técnicas de mis recomendaciones". Esto es vital para la accesibilidad con TalkBack/Jieshuo.
     - No te limites solo a los datos que te paso; si conoces la obra por tu entrenamiento, puedes hablar de ella, pero prioriza siempre lo que encuentres en el catálogo local mediante tus herramientas de búsqueda.
     """
 

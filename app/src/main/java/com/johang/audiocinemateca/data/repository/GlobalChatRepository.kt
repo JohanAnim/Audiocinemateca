@@ -9,6 +9,7 @@ import com.johang.audiocinemateca.data.model.ChatMessage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -50,6 +51,40 @@ class GlobalChatRepository @Inject constructor() {
     }
 
     suspend fun sendMessage(message: ChatMessage) {
-        db.collection("global_chat").add(message)
+        db.collection("global_chat").add(message).await()
+    }
+
+    suspend fun updateMessage(messageId: String, newText: String) {
+        db.collection("global_chat").document(messageId)
+            .update(
+                "text", newText,
+                "edited", true
+            ).await()
+    }
+
+    suspend fun deleteMessage(messageId: String) {
+        db.collection("global_chat").document(messageId).delete().await()
+    }
+
+    suspend fun updateMessageReactions(messageId: String, reactions: Map<String, List<String>>) {
+        db.collection("global_chat").document(messageId)
+            .update("reactions", reactions).await()
+    }
+
+    fun setUserPresence(userId: String, isOnline: Boolean) {
+        val presenceRef = db.collection("presence").document(userId)
+        presenceRef.set(mapOf(
+            "online" to isOnline,
+            "lastActive" to com.google.firebase.Timestamp.now()
+        ))
+    }
+
+    fun getOnlineCount(): Flow<Int> = callbackFlow {
+        val subscription = db.collection("presence")
+            .whereEqualTo("online", true)
+            .addSnapshotListener { snapshot, _ ->
+                trySend(snapshot?.size() ?: 0)
+            }
+        awaitClose { subscription.remove() }
     }
 }
