@@ -185,7 +185,8 @@ class AIChatFragment : Fragment() {
     }
 
     private fun setupSpeechRecognizer() {
-        if (SpeechRecognizer.isRecognitionAvailable(requireContext())) {
+        val isAvailable = SpeechRecognizer.isRecognitionAvailable(requireContext())
+        if (isAvailable) {
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(requireContext())
             speechRecognizer?.setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {}
@@ -204,7 +205,7 @@ class AIChatFragment : Fragment() {
                     
                     if (!isIgnoreable) {
                         viewModel.onVoiceError()
-                        Toast.makeText(context, "Error al capturar voz.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Error al capturar voz ($error).", Toast.LENGTH_SHORT).show()
                     }
                 }
                 override fun onResults(results: Bundle?) {
@@ -218,6 +219,12 @@ class AIChatFragment : Fragment() {
                 override fun onPartialResults(partialResults: Bundle?) {}
                 override fun onEvent(eventType: Int, params: Bundle?) {}
             })
+        } else {
+            binding.buttonVoice.alpha = 0.5f
+            binding.buttonVoice.setOnTouchListener(null) // Remove touch listener
+            binding.buttonVoice.setOnClickListener {
+                Toast.makeText(requireContext(), "El dictado por voz no está disponible en este dispositivo. Asegúrate de tener instalada la aplicación de Google.", Toast.LENGTH_LONG).show()
+            }
         }
     }
 

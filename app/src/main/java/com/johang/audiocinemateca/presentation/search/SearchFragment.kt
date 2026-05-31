@@ -95,7 +95,9 @@ class SearchFragment : Fragment() {
         }
 
         (activity as? AppCompatActivity)?.findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)?.setNavigationOnClickListener {
-            findNavController().popBackStack()
+            if (isAdded) {
+                findNavController().popBackStack()
+            }
         }
 
         searchEditText = view.findViewById(R.id.search_edit_text)
@@ -208,6 +210,7 @@ class SearchFragment : Fragment() {
             setDisplayHomeAsUpEnabled(false)
             show()
         }
+        (activity as? AppCompatActivity)?.findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)?.setNavigationOnClickListener(null)
         searchEditText.setOnEditorActionListener(null)
     }
 

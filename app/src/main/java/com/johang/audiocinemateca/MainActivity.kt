@@ -233,6 +233,31 @@ class MainActivity : AppCompatActivity() {
                     try {
                         val pInfo = packageManager.getPackageInfo(packageName, 0)
                         it.findViewById<TextView>(R.id.tv_app_version)?.text = "Versión ${pInfo.versionName}"
+                        
+                        // COMPROBAR NOVEDADES DESPUÉS DE ACTUALIZAR
+                        val currentVersionCode = android.os.Build.VERSION.SDK_INT // O mejor usar longVersionCode si está disponible
+                        val lastSeenVersion = sharedPreferencesManager.getInt(LAST_SEEN_VERSION_CODE_KEY, -1)
+                        
+                        // Como el versionCode es difícil de obtener consistentemente entre APIs, usaremos el versionName para el disparador
+                        val currentVersionName = pInfo.versionName ?: "3.0.0"
+                        val lastSeenVersionName = sharedPreferencesManager.getString("last_seen_version_name", "") ?: ""
+
+                        if (currentVersionName != lastSeenVersionName && lastSeenVersionName.isNotEmpty()) {
+                            // Si el nombre de versión cambió, es una actualización. Comprobamos silenciosamente para mostrar el diálogo.
+                            lifecycleScope.launch {
+                                val result = accountViewModel.manualCheckForUpdates(currentVersionName)
+                                if (result is UpdateCheckResult.NoUpdateAvailable) {
+                                    // Significa que estamos en la última (la acabamos de instalar)
+                                    WhatsNewDialogFragment.newInstance(result.updateInfo.changelog)
+                                        .show(supportFragmentManager, WhatsNewDialogFragment.TAG)
+                                    sharedPreferencesManager.saveString("last_seen_version_name", currentVersionName)
+                                }
+                            }
+                        } else if (lastSeenVersionName.isEmpty()) {
+                            // Primera vez que se abre esta versión del sistema de noticias, guardamos la actual
+                            sharedPreferencesManager.saveString("last_seen_version_name", currentVersionName)
+                        }
+
                     } catch (e: Exception) { it.findViewById<TextView>(R.id.tv_app_version)?.text = "Versión 3.0.0" }
                 }
             } catch (e: Exception) { Log.e("MainActivity", "Error actualizando UI", e) }

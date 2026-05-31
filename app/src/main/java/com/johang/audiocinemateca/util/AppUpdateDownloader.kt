@@ -102,12 +102,35 @@ class AppUpdateDownloader @Inject constructor(@ApplicationContext private val co
     }
 
     fun installPackage(uri: Uri) {
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        // En Android 8.0 (API 26) o superior, debemos verificar si tenemos el permiso de instalar fuentes desconocidas
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            if (!context.packageManager.canRequestPackageInstalls()) {
+                val intent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+                // Informar al usuario que debe otorgar el permiso y volver a intentar
+                kotlinx.coroutines.MainScope().launch {
+                    android.widget.Toast.makeText(context, "Por favor, otorga el permiso para instalar la actualización y vuelve a pulsar instalar.", android.widget.Toast.LENGTH_LONG).show()
+                }
+                return
+            }
         }
-        context.startActivity(intent)
+
+        try {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            kotlinx.coroutines.MainScope().launch {
+                android.widget.Toast.makeText(context, "Error al abrir el instalador: ${e.localizedMessage}", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
     }
 }
 

@@ -226,7 +226,11 @@ class PlayerFragment : Fragment() {
     }
 
     private fun setupToolbar() {
-        binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
+        binding.toolbar.setNavigationOnClickListener { 
+            if (isAdded) {
+                findNavController().popBackStack() 
+            }
+        }
         binding.toolbar.navigationContentDescription = getString(R.string.close_button_description)
         binding.toolbar.inflateMenu(R.menu.player_toolbar_menu)
 

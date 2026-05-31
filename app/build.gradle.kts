@@ -22,8 +22,8 @@ android {
         applicationId = "com.johang.audiocinemateca"
         minSdk = 25
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 4
-        versionName = "3.1.0"
+        versionCode = 5
+        versionName = "3.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -36,7 +36,7 @@ android {
                 "proguard-rules.pro"
             )
         }
-    }
+        }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

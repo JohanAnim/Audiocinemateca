@@ -349,9 +349,9 @@ class GeminiRepository @Inject constructor(
         }
     }
 
-    suspend fun fetchAvailableModels(): List<Pair<String, String>> = withContext(Dispatchers.IO) {
+    suspend fun fetchAvailableModels(providedApiKey: String? = null): List<Pair<String, String>> = withContext(Dispatchers.IO) {
         val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        val key = prefs.getString("gemini_api_key", "") ?: ""
+        val key = providedApiKey ?: prefs.getString("gemini_api_key", "") ?: ""
         if (key.isBlank()) return@withContext emptyList()
         val request = Request.Builder().url("https://generativelanguage.googleapis.com/v1beta/models?key=$key").build()
         try {

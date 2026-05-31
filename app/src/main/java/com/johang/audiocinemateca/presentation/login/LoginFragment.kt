@@ -47,7 +47,6 @@ class LoginFragment : Fragment() {
     private lateinit var loginButton: Button
     private lateinit var createAccountLink: TextView
     private lateinit var loginFormScrollView: ScrollView
-    private lateinit var betaConsentCheckbox: CheckBox
 
     private var loadingDialog: androidx.appcompat.app.AlertDialog? = null
     private var progressBar: ProgressBar? = null
@@ -90,11 +89,10 @@ class LoginFragment : Fragment() {
 
         loginButton = view.findViewById(R.id.login_button)
         createAccountLink = view.findViewById(R.id.create_account_link)
-        betaConsentCheckbox = view.findViewById(R.id.beta_consent_checkbox)
 
         loginFormScrollView = view.findViewById<ScrollView>(R.id.login_form_scroll_view)
 
-        loginButton.isEnabled = false
+        loginButton.isEnabled = true
 
         gestureDetector = GestureDetector(requireContext(), object : GestureDetector.SimpleOnGestureListener() {
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
@@ -142,10 +140,6 @@ class LoginFragment : Fragment() {
 
         createAccountLink.setOnClickListener { 
             AppUtil.openUrlInBrowser(requireContext(), "https://audiocinemateca.com/")
-        }
-
-        betaConsentCheckbox.setOnCheckedChangeListener { _, isChecked ->
-            loginButton.isEnabled = isChecked
         }
     }
 

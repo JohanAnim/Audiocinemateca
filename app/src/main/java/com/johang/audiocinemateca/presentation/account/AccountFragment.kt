@@ -35,6 +35,8 @@ import javax.inject.Inject
 
 import androidx.appcompat.app.AppCompatActivity
 
+import com.johang.audiocinemateca.presentation.DonationDialogFragment
+import com.johang.audiocinemateca.presentation.WhatsNewDialogFragment
 import com.google.firebase.auth.FirebaseAuth
 
 @AndroidEntryPoint
@@ -131,41 +133,14 @@ class AccountFragment : Fragment() {
             val displayUsername = username ?: "Invitado"
             headerUsername.text = displayUsername
             headerUsername.contentDescription = "$displayUsername, toca para ver tu perfil"
+        }
 
-            val currentUser = firebaseAuth.currentUser
-            if (currentUser?.email == "gutierrezjohanantonio@gmail.com") {
-                // Forzar una comprobación silenciosa para obtener estadísticas
-                try {
-                    val pInfo = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0)
-                    viewModel.checkForUpdates(pInfo.versionName ?: "3.0.0")
-                } catch (e: Exception) {
-                    Log.e("AccountFragment", "Error iniciando check automático para admin", e)
-                }
-
-                viewModel.updateState.collect {
-                    val currentUpdateInfo = when (it) {
-                        is UpdateCheckResult.UpdateAvailable -> it.updateInfo
-                        is UpdateCheckResult.NoUpdateAvailable -> it.updateInfo
-                        else -> null
-                    }
-
-                    if (currentUpdateInfo != null) {
-                        val downloads = currentUpdateInfo.downloadCount
-                        val downloadsText = if (downloads == 1) {
-                            "Esta versión de la app tiene 1 descarga oficial."
-                        } else {
-                            "Esta versión de la app tiene $downloads descargas oficiales."
-                        }
-                        downloadCountText.text = downloadsText
-                        downloadCountText.visibility = View.VISIBLE
-                        downloadCountText.contentDescription = downloadsText
-                    } else {
-                        downloadCountText.visibility = View.GONE
-                    }
-                }
-            } else {
-                downloadCountText.visibility = View.GONE
-            }
+        // Trigger update check for everyone to populate updateInfo (changelog) and stats
+        try {
+            val pInfo = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0)
+            viewModel.checkForUpdates(pInfo.versionName ?: "3.0.0")
+        } catch (e: Exception) {
+            Log.e("AccountFragment", "Error iniciando check automático", e)
         }
 
         updateCatalogVersionText(catalogVersionText)
@@ -218,30 +193,25 @@ class AccountFragment : Fragment() {
         }
 
         donateButton.setOnClickListener {
-            val options = arrayOf("Invítame un refresco por el desarrollo de la app", "Dona directamente a la página de la audiocinemateca.com")
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Apoya el proyecto")
-                .setItems(options) { dialog, which ->
-                    val url = when (which) {
-                        0 -> "https://www.paypal.com/donate/?hosted_button_id=T4H2LCSZDRV8J"
-                        1 -> "https://audiocinemateca.com/donaciones"
-                        else -> null
-                    }
-                    url?.let {
-                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(it))
-                        startActivity(intent)
-                    }
-                    dialog.dismiss()
-                }
-                .setNegativeButton("Cancelar", null)
-                .show()
+            DonationDialogFragment().show(childFragmentManager, DonationDialogFragment.TAG)
         }
 
         novedadesButton.setOnClickListener {
-            if (updateInfo != null) {
-                showNovedadesDialog(updateInfo!!)
+            val info = updateInfo
+            if (info != null) {
+                showNovedadesDialog(info)
             } else {
-                Toast.makeText(requireContext(), "No hay novedades disponibles en este momento.", Toast.LENGTH_SHORT).show()
+                val state = viewModel.updateState.value
+                if (state is UpdateCheckResult.Loading) {
+                    Toast.makeText(requireContext(), "Comprobando novedades, por favor espera...", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(requireContext(), "No se pudieron cargar las novedades. Revisa tu conexión.", Toast.LENGTH_SHORT).show()
+                    // Re-intentar check
+                    try {
+                        val pInfo = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0)
+                        viewModel.checkForUpdates(pInfo.versionName ?: "3.0.0")
+                    } catch (e: Exception) {}
+                }
             }
         }
 
@@ -338,17 +308,39 @@ class AccountFragment : Fragment() {
     private fun observeUpdateState() {
         lifecycleScope.launch {
             viewModel.updateState.collect { result ->
+                val info = when (result) {
+                    is UpdateCheckResult.UpdateAvailable -> result.updateInfo
+                    is UpdateCheckResult.NoUpdateAvailable -> result.updateInfo
+                    else -> null
+                }
+                this@AccountFragment.updateInfo = info
+
+                // Admin counter
+                val downloadCountText = view?.findViewById<TextView>(R.id.download_count_text)
+                val isAdmin = firebaseAuth.currentUser?.email?.lowercase() == "gutierrezjohanantonio@gmail.com"
+
+                if (isAdmin && info != null) {
+                    val downloads = info.downloadCount
+                    val downloadsText = if (downloads == 1) {
+                        "Esta versión de la app tiene 1 descarga oficial."
+                    } else {
+                        "Esta versión de la app tiene $downloads descargas oficiales."
+                    }
+                    downloadCountText?.text = downloadsText
+                    downloadCountText?.visibility = View.VISIBLE
+                    downloadCountText?.contentDescription = downloadsText
+                } else {
+                    downloadCountText?.visibility = View.GONE
+                }
+
                 when (result) {
                     is UpdateCheckResult.UpdateAvailable -> {
-                        this@AccountFragment.updateInfo = result.updateInfo
                         sendUpdateIndicatorBroadcast(true)
                     }
                     is UpdateCheckResult.NoUpdateAvailable -> {
-                        this@AccountFragment.updateInfo = result.updateInfo
                         sendUpdateIndicatorBroadcast(false)
                     }
                     is UpdateCheckResult.Error -> {
-                        this@AccountFragment.updateInfo = null
                         Log.e("AccountFragment", "Error checking for app update: ${result.message}")
                         sendUpdateIndicatorBroadcast(false)
                     }

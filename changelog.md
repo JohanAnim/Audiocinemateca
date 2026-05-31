@@ -1,4 +1,17 @@
-# Audiocinemateca para Android - Versión 3.1.0
+# Versión 3.1.1
+
+¡Hoola a todos! Esta nueva actualización trae importantes mejoras de estabilidad, accesibilidad y fluidez para que sigas disfrutando del mejor cine accesible.
+
+## 🌟 Novedades y Mejoras en v3.1.1
+*   **🔊 Ecualizador Restaurado:** Se ha corregido el acceso al ecualizador en el reproductor. ¡Ya puedes personalizar el sonido de tus películas y series favoritas!
+*   **🎤 Dictado por Voz Mejorado:** El dictado por voz ahora es compatible con Android 11 y versiones superiores, incluyendo dispositivos Samsung.
+*   **🛡️ Estabilidad en Android 15:** Corregido un fallo crítico que cerraba la app al salir de la pantalla de búsqueda en dispositivos con Android 15.
+*   **🚀 Mejoras en Actualizaciones:** El proceso de actualización de la app es ahora más inteligente y te guiará paso a paso, incluso si necesitas activar permisos del sistema.
+*   **🤖 IA Más Viva:** Ahora puedes configurar y validar tu clave de Gemini al instante desde los ajustes, con carga dinámica de modelos.
+*   **🔐 Inicio de Sesión Moderno:** Hemos eliminado las referencias a la fase beta y añadido instrucciones claras para validar cuentas nuevas.
+*   **💖 Nuevas Formas de Apoyar:** Hemos renovado la sección de donaciones con opciones más directas para que puedas ayudarnos a mantener vivo este proyecto.
+
+# Versión 3.1.0
 
 ¡Hoola a todos! Estoy muy emocionado de presentarte la **versión 3** de Audiocinemateca. Esta actualización no es solo una mejora, es una evolución total de cómo se vive el cine accesible.
 

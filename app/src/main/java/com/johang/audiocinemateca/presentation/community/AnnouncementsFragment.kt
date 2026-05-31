@@ -61,7 +61,7 @@ class AnnouncementsFragment : Fragment() {
 
         // Lógica de permisos para el botón FAB (Crear anuncio)
         lifecycleScope.launch {
-            val isSuperAdmin = currentUser?.email == "gutierrezjohanantonio@gmail.com"
+            val isSuperAdmin = currentUser?.email?.lowercase() == "gutierrezjohanantonio@gmail.com"
             var isAdminRole = false
             try {
                 val userDoc = com.google.firebase.firestore.FirebaseFirestore.getInstance()
@@ -85,7 +85,7 @@ class AnnouncementsFragment : Fragment() {
 
     private fun checkAdminAndShowDetails(announcement: com.johang.audiocinemateca.data.model.Announcement, currentUserId: String) {
         lifecycleScope.launch {
-            val isSuperAdmin = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.email == "gutierrezjohanantonio@gmail.com"
+            val isSuperAdmin = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.email?.lowercase() == "gutierrezjohanantonio@gmail.com"
             var isAdminRole = false
             try {
                 val userDoc = com.google.firebase.firestore.FirebaseFirestore.getInstance()

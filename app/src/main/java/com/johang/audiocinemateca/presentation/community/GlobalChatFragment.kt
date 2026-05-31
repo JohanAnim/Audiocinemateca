@@ -203,8 +203,12 @@ class GlobalChatFragment : Fragment() {
     }
 
     private fun setupVoiceToText() {
-        if (!SpeechRecognizer.isRecognitionAvailable(requireContext())) {
-            binding.btnVoice.visibility = View.GONE
+        val isAvailable = SpeechRecognizer.isRecognitionAvailable(requireContext())
+        if (!isAvailable) {
+            binding.btnVoice.alpha = 0.5f
+            binding.btnVoice.setOnClickListener {
+                Toast.makeText(requireContext(), "El dictado por voz no está disponible en este dispositivo. Asegúrate de tener instalada la aplicación de Google.", Toast.LENGTH_LONG).show()
+            }
             return
         }
 

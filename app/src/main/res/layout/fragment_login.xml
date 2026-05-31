@@ -92,7 +92,7 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <LinearLayout
-            android:id="@+id/beta_notice_layout"
+            android:id="@+id/account_validation_notice_layout"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -103,19 +103,15 @@
             app:layout_constraintBottom_toTopOf="@+id/login_button">
 
             <TextView
-                android:id="@+id/beta_notice_text"
+                android:id="@+id/account_validation_notice_text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Aviso: Esta aplicación está en fase beta. Al iniciar sesión, te conviertes en un beta tester. Agradecemos tus comentarios para mejorar la app, puedes dejarlos en la pantalla 'Acerca de'."
+                android:text="IMPORTANTE: Si acabas de crear tu cuenta, debes iniciar sesión por primera vez en audiocinemateca.com para validar tu perfil antes de poder acceder desde esta aplicación."
                 android:textAlignment="center"
+                android:textColor="?attr/colorPrimary"
+                android:textStyle="bold"
                 android:layout_marginBottom="8dp"/>
 
-            <CheckBox
-                android:id="@+id/beta_consent_checkbox"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:text="Entiendo y acepto ser un beta tester."/>
         </LinearLayout>
 
         <Button
@@ -124,7 +120,7 @@
             android:layout_height="56dp"
             android:text="Iniciar Sesión"
             android:layout_marginBottom="32dp"
-            app:layout_constraintTop_toBottomOf="@+id/beta_notice_layout"
+            app:layout_constraintTop_toBottomOf="@+id/account_validation_notice_layout"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintBottom_toTopOf="@+id/create_account_text"/>

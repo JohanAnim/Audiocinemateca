@@ -152,18 +152,21 @@ class PlayerService : MediaSessionService() {
     }
 
     private var hapticGenerator: android.media.audiofx.HapticGenerator? = null
-    private var equalizer: Equalizer? = null
 
     private fun setupEqualizer(audioSessionId: Int) {
         if (equalizer == null) {
-            equalizer = Equalizer(0, audioSessionId)
-            val enabled = sharedPreferencesManager.getBoolean("equalizer_enabled", false)
-            equalizer?.enabled = enabled
-            if (enabled) {
-                for (i in 0 until equalizer!!.numberOfBands) {
-                    val level = sharedPreferencesManager.getInt("equalizer_band_${i}", 0)
-                    equalizer?.setBandLevel(i.toShort(), level.toShort())
+            try {
+                equalizer = Equalizer(0, audioSessionId)
+                val enabled = sharedPreferencesManager.getBoolean("equalizer_enabled", false)
+                equalizer?.enabled = enabled
+                if (enabled) {
+                    for (i in 0 until equalizer!!.numberOfBands) {
+                        val level = sharedPreferencesManager.getInt("equalizer_band_${i}", 0)
+                        equalizer?.setBandLevel(i.toShort(), level.toShort())
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e("PlayerService", "Error al inicializar el ecualizador", e)
             }
         }
     }
@@ -236,6 +239,8 @@ class PlayerService : MediaSessionService() {
             release(); mediaSession = null
         }
         LocalBroadcastManager.getInstance(this).unregisterReceiver(playerActionReceiver)
+        equalizer?.release()
+        equalizer = null
         super.onDestroy()
     }
 

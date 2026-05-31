@@ -107,8 +107,27 @@ class CategorySettingsFragment : PreferenceFragmentCompat() {
             }
             "ai" -> {
                 geminiRepository?.let { repo ->
+                    val apiKeyPref = findPreference<androidx.preference.EditTextPreference>("gemini_api_key")
                     val modelPref = findPreference<ListPreference>("gemini_model")
+                    
                     updateGeminiModels(repo, modelPref)
+
+                    apiKeyPref?.setOnPreferenceChangeListener { _, newValue ->
+                        val newKey = newValue as String
+                        if (newKey.isNotBlank()) {
+                            lifecycleScope.launch {
+                                val models = repo.fetchAvailableModels(newKey)
+                                if (models.isNotEmpty()) {
+                                    Toast.makeText(requireContext(), "¡Conexión establecida! API Válida.", Toast.LENGTH_SHORT).show()
+                                    updateGeminiModels(repo, modelPref, newKey)
+                                } else {
+                                    Toast.makeText(requireContext(), "No se pudo validar la clave API. Revisa tu conexión o la clave.", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                        true
+                    }
+
                     findPreference<Preference>("check_api_status")?.setOnPreferenceClickListener {
                         checkGeminiApiStatus(repo)
                         true
@@ -265,32 +284,33 @@ class CategorySettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
-    private fun updateGeminiModels(repository: GeminiRepository, pref: ListPreference?) {
+    private fun updateGeminiModels(repository: GeminiRepository, pref: ListPreference?, providedApiKey: String? = null) {
         if (pref == null) return
 
-        // Lista vacía al inicio
-        pref.entries = emptyArray()
-        pref.entryValues = emptyArray()
-        pref.isEnabled = false
+        // No vaciar si ya hay algo y estamos re-validando, para evitar parpadeo
+        if (pref.entries.isNullOrEmpty()) {
+            pref.entries = emptyArray()
+            pref.entryValues = emptyArray()
+            pref.isEnabled = false
+        }
 
         lifecycleScope.launch {
-            // Comprobación rápida para validar API
+            // Comprobación rápida para validar API (usando la nueva o la guardada)
             val isValid = repository.initialize()
-            if (isValid) {
-                val models = repository.fetchAvailableModels()
+            if (isValid || providedApiKey != null) {
+                val models = repository.fetchAvailableModels(providedApiKey)
                 if (models.isNotEmpty()) {
                     pref.entries = models.map { it.second }.toTypedArray()
                     pref.entryValues = models.map { it.first }.toTypedArray()
                     
-                    // Establecer predeterminado (Gemma 4 31B IT) si no hay uno seleccionado
+                    // Establecer predeterminado si no hay uno seleccionado o el actual ya no existe
                     if (pref.value == null || pref.value !in pref.entryValues) {
                         pref.value = "gemma-4-31b-it" 
                     }
                     
                     pref.isEnabled = true
-                    pref.entry?.let {
-                        pref.title = "Modelo de IA seleccionado: $it"
-                    }
+                    val currentEntry = pref.entry ?: pref.value
+                    pref.title = "Modelo de IA seleccionado: $currentEntry"
                 }
             }
         }

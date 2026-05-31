@@ -1,43 +1,705 @@
-Aura dice: The user wants to listen to something in the horror genre.
-I have a list of horror titles from the catalog:
-- Obras maestras del terror (Anthology based on Poe)
-- Planet Terror (Zombies, action/comedy)
-- Camino hacia el terror 2: Final mortal (Slasher/Cannibals)
-- La cabaña del terror (Meta-horror, students in a cabin)
-- Martes de terror extremo (audesc latino) (Thai anthology series)
-- Drácula (Classic vampire)
-- El exorcista (Supernatural/Possession - Cult classic)
-- Tiburón (Animal/Shark - Cult classic)
-- Piraña 2 (Animal/Flying fish)
-- Jabalí: los colmillos del infierno (Animal/Boar)
-- Poltergeist II: El otro lado (Ghosts/Supernatural)
-
-I should categorize these to give Johan-a-g better options based on the *type* of horror he likes (supernatural, slashers, animals, or classics).
-
-Tone: Friendly, cinephile, warm, familiar.
-Constraint: Address as Johan-a-g, no "Cinéfilo", use Title, end with the specific TalkBack instruction.
-
-Plan:
-1. Enthusiastic response.
-2. Group recommendations:
-    - Classics/Supernatural: El exorcista, Drácula, Poltergeist II: El otro lado.
-    - Monsters/Animals: Tiburón, Piraña 2, Jabalí: los colmillos del infierno.
-    - Modern/Original/Zombies: Planet Terror, La cabaña del terror.
-    - Anthologies (good for short bursts): Obras maestras del terror, Martes de terror extremo (audesc latino).
-3. Ask him what vibe he's in the mood for.
-4. Final required phrase.
-¡Uff, Johan-a-g, me encanta! El terror es perfecto para dejarse llevar por la atmósfera. Tenemos de todo en el catálogo, así que depende de qué tan fuerte quieras el susto hoy. 
-
-Mira, te doy algunas opciones según el "estilo" de miedo que busques:
-
-Si tienes ganas de clásicos legendarios que nunca fallan, tienes que ir directo a El exorcista o al mítico Drácula. Son piezas fundamentales que te ponen los pelos de punta.
-
-Si prefieres algo de monstruos o animales fuera de control, te recomiendo Tiburón (un maestro absoluto del suspenso) o, si quieres algo más movido y visceral, Piraña 2 o Jabalí: los colmillos del infierno.
-
-Para algo más moderno, original o con un toque de acción, Planet Terror es genial si te gustan los zombis, o La cabaña del terror si buscas algo que juegue con los clichés del género.
-
-Y si no te decides por una sola historia, tenemos antologías (varios relatos cortos), que son ideales para ir picando miedos: Obras maestras del terror (basada en Poe) o la serie Martes de terror extremo (audesc latino).
-
-¿Cómo lo ves, Johan-a-g? ¿Te apetece algo más sobrenatural, algo de monstruos o prefieres empezar con los relatos cortos? ¡Tú dime y te ayudo a elegir!
-
-Pulsa sobre este mensaje para ver las fichas técnicas de mis recomendaciones.
+---------------------------- PROCESS STARTED (24608) for package com.johang.audiocinemateca ----------------------------
+2026-04-20 02:11:13.149 24608-24608 ApplicationLoaders      com.johang.audiocinemateca           D  Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+2026-04-20 02:11:13.149 24608-24608 ApplicationLoaders      com.johang.audiocinemateca           D  Returning zygote-cached class loader: /system_ext/framework/androidx.window.sidecar.jar
+2026-04-20 02:11:13.558 24608-24608 nativeloader            com.johang.audiocinemateca           D  Configuring clns-7 for other apk /data/app/~~sqO9GmCPE9zCDpVrZztq1A==/com.johang.audiocinemateca-NWzu8HsLBC09qWThMcqjGw==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~sqO9GmCPE9zCDpVrZztq1A==/com.johang.audiocinemateca-NWzu8HsLBC09qWThMcqjGw==/lib/arm64:/data/app/~~sqO9GmCPE9zCDpVrZztq1A==/com.johang.audiocinemateca-NWzu8HsLBC09qWThMcqjGw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.johang.audiocinemateca
+2026-04-20 02:11:13.570 24608-24608 GraphicsEnvironment     com.johang.audiocinemateca           V  Currently set values for:
+2026-04-20 02:11:13.570 24608-24608 GraphicsEnvironment     com.johang.audiocinemateca           V    angle_gl_driver_selection_pkgs=[]
+2026-04-20 02:11:13.570 24608-24608 GraphicsEnvironment     com.johang.audiocinemateca           V    angle_gl_driver_selection_values=[]
+2026-04-20 02:11:13.570 24608-24608 GraphicsEnvironment     com.johang.audiocinemateca           V  Global.Settings values are invalid: number of packages: 0, number of values: 0
+2026-04-20 02:11:13.570 24608-24608 GraphicsEnvironment     com.johang.audiocinemateca           V  Neither updatable production driver nor prerelease driver is supported.
+2026-04-20 02:11:13.615 24608-24608 FirebaseApp             com.johang.audiocinemateca           I  Device unlocked: initializing all Firebase APIs for app [DEFAULT]
+2026-04-20 02:11:13.645 24608-24608 FirebaseInitProvider    com.johang.audiocinemateca           I  FirebaseApp initialization successful
+2026-04-20 02:11:13.693 24608-24627 audiocinemateca         com.johang.audiocinemateca           W  ClassLoaderContext classpath size mismatch. expected=1, found=0 (DLC[];PCL[base.apk*3395480911]{PCL[/system/framework/org.apache.http.legacy.jar*437079508]#PCL[/system/framework/com.android.location.provider.jar*3414091812]#PCL[/system/framework/com.android.media.remotedisplay.jar*2042759013]#PCL[/system_ext/framework/androidx.window.extensions.jar*402613946]#PCL[/system_ext/framework/androidx.window.sidecar.jar*3501034208]} | DLC[];PCL[])
+2026-04-20 02:11:13.696 24608-24627 DynamiteModule          com.johang.audiocinemateca           I  Considering local module com.google.android.gms.measurement.dynamite:185 and remote module com.google.android.gms.measurement.dynamite:185
+2026-04-20 02:11:13.696 24608-24627 DynamiteModule          com.johang.audiocinemateca           I  Selected local version of com.google.android.gms.measurement.dynamite
+2026-04-20 02:11:13.706 24608-24608 Typeface                com.johang.audiocinemateca           I  updateThemeFont new=Rookery-Regular;old=sans-serif;new=Rookery-Stacked;old=
+2026-04-20 02:11:13.753 24608-24608 AppCompatDelegate       com.johang.audiocinemateca           D  Checking for metadata for AppLocalesMetadataHolderService : Service not found
+2026-04-20 02:11:13.876 24608-24643 audiocinemateca         com.johang.audiocinemateca           I  hiddenapi: Accessing hidden method Ldalvik/system/VMStack;->getStackClass2()Ljava/lang/Class; (runtime_flags=0, domain=core-platform, api=unsupported) from Lcom/google/android/gms/internal/measurement/zzaaj; (domain=app, TargetSdkVersion=36) using reflection: allowed
+2026-04-20 02:11:13.910 24608-24608 audiocinemateca         com.johang.audiocinemateca           I  hiddenapi: Accessing hidden method Landroid/view/ViewGroup;->makeOptionalFitsSystemWindows()V (runtime_flags=0, domain=platform, api=unsupported) from Landroidx/appcompat/widget/ViewUtils; (domain=app, TargetSdkVersion=36) using reflection: allowed
+2026-04-20 02:11:13.937 24608-24608 HWUI                    com.johang.audiocinemateca           W  Unknown dataspace 0
+2026-04-20 02:11:13.941 24608-24639 FA                      com.johang.audiocinemateca           I  App measurement initialized, version: 161000
+2026-04-20 02:11:13.941 24608-24639 FA                      com.johang.audiocinemateca           I  To enable debug logging run: adb shell setprop log.tag.FA VERBOSE
+2026-04-20 02:11:13.942 24608-24639 FA                      com.johang.audiocinemateca           I  To enable faster debug mode event logging run:
+                                                                                                      adb shell setprop debug.firebase.analytics.app com.johang.audiocinemateca
+2026-04-20 02:11:13.959 24608-24608 Choreographer           com.johang.audiocinemateca           I  Skipped 31 frames!  The application may be doing too much work on its main thread.
+2026-04-20 02:11:13.996 24608-24608 libc                    com.johang.audiocinemateca           W  Access denied finding property "vendor.display.enable_optimal_refresh_rate"
+2026-04-20 02:11:13.994 24608-24608 audiocinemateca         com.johang.audiocinemateca           W  type=1400 audit(0.0:323482): avc:  denied  { read } for  name="u:object_r:vendor_display_prop:s0" dev="tmpfs" ino=3017 scontext=u:r:untrusted_app:s0:c231,c258,c512,c768 tcontext=u:object_r:vendor_display_prop:s0 tclass=file permissive=0 app=com.johang.audiocinemateca
+2026-04-20 02:11:13.999 24608-24635 AdrenoGLES-0            com.johang.audiocinemateca           I  QUALCOMM build                   : 923a446bf8, I23d7d7df15
+                                                                                                    Build Date                       : 09/05/24
+                                                                                                    OpenGL ES Shader Compiler Version: EV031.35.01.12
+                                                                                                    Local Branch                     : 
+                                                                                                    Remote Branch                    : refs/tags/AU_LINUX_ANDROID_LA.UM.9.14.11.00.00.571.148
+                                                                                                    Remote Branch                    : NONE
+                                                                                                    Reconstruct Branch               : NOTHING
+2026-04-20 02:11:13.999 24608-24635 AdrenoGLES-0            com.johang.audiocinemateca           I  Build Config                     : S P 10.0.7 AArch64
+2026-04-20 02:11:13.999 24608-24635 AdrenoGLES-0            com.johang.audiocinemateca           I  Driver Path                      : /vendor/lib64/egl/libGLESv2_adreno.so
+2026-04-20 02:11:14.007 24608-24635 AdrenoGLES-0            com.johang.audiocinemateca           I  PFP: 0x016ee201, ME: 0x00000000
+2026-04-20 02:11:14.024 24608-24635 HWUI                    com.johang.audiocinemateca           I  setGrContext nullptr-->validptr
+2026-04-20 02:11:14.068 24608-24639 FA                      com.johang.audiocinemateca           I  Tag Manager is not found and thus will not be used
+2026-04-20 02:11:14.519 24608-24608 FirebaseAuth            com.johang.audiocinemateca           D  Notifying id token listeners about user ( vu4Kf0aMSleDPblSgwKVxuw9TpI2 ).
+2026-04-20 02:11:14.535 24608-24608 SoundEffectsManager     com.johang.audiocinemateca           D  Intentando cargar: sonidos/efectos/aura/enviar_mensaje.ogg
+2026-04-20 02:11:14.536 24608-24608 SoundEffectsManager     com.johang.audiocinemateca           D  Intentando cargar: sonidos/efectos/aura/resivir_mensaje.ogg
+2026-04-20 02:11:14.536 24608-24608 SoundEffectsManager     com.johang.audiocinemateca           D  Intentando cargar: sonidos/efectos/aura/esperar.ogg
+2026-04-20 02:11:14.536 24608-24608 SoundEffectsManager     com.johang.audiocinemateca           D  Intentando cargar: sonidos/efectos/aura/alerta_error.ogg
+2026-04-20 02:11:14.537 24608-24608 SoundEffectsManager     com.johang.audiocinemateca           D  Intentando cargar: sonidos/efectos/aura/voz_start.ogg
+2026-04-20 02:11:14.537 24608-24608 SoundEffectsManager     com.johang.audiocinemateca           D  Intentando cargar: sonidos/efectos/aura/voz_end.ogg
+2026-04-20 02:11:14.538 24608-24608 TtsManager              com.johang.audiocinemateca           D  Initializing TTS with engine: system_default
+2026-04-20 02:11:14.545 24608-24608 TextToSpeech            com.johang.audiocinemateca           I  Sucessfully bound to es.codefactory.eloquencetts
+2026-04-20 02:11:14.548 24608-24619 TextToSpeech            com.johang.audiocinemateca           I  Connected to TTS engine
+2026-04-20 02:11:14.553 24608-24663 TextToSpeech            com.johang.audiocinemateca           I  Setting up the connection to TTS engine...
+2026-04-20 02:11:14.554 24608-24661 MediaCodecList          com.johang.audiocinemateca           D  codecHandlesFormat: no format, so no extra checks
+2026-04-20 02:11:14.554 24608-24662 MediaCodecList          com.johang.audiocinemateca           D  codecHandlesFormat: no format, so no extra checks
+2026-04-20 02:11:14.557 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) init name(c2.android.vorbis.decoder)
+2026-04-20 02:11:14.559 24608-24665 CCodec                  com.johang.audiocinemateca           D  allocate(c2.android.vorbis.decoder)
+2026-04-20 02:11:14.562 24608-24665 Codec2Client            com.johang.audiocinemateca           I  Available Codec2 services: "default" "default9" "software"
+2026-04-20 02:11:14.566 24608-24665 CCodec                  com.johang.audiocinemateca           I  setting up 'default' as default (vendor) store
+2026-04-20 02:11:14.572 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) init name(c2.android.vorbis.decoder)
+2026-04-20 02:11:14.573 24608-24664 CCodec                  com.johang.audiocinemateca           D  allocate(c2.android.vorbis.decoder)
+2026-04-20 02:11:14.576 24608-24664 CCodec                  com.johang.audiocinemateca           I  setting up 'default' as default (vendor) store
+2026-04-20 02:11:14.582 24608-24665 CCodec                  com.johang.audiocinemateca           I  Created component [c2.android.vorbis.decoder]
+2026-04-20 02:11:14.582 24608-24665 CCodecConfig            com.johang.audiocinemateca           D  read media type: audio/vorbis
+2026-04-20 02:11:14.584 24608-24664 CCodec                  com.johang.audiocinemateca           I  Created component [c2.android.vorbis.decoder]
+2026-04-20 02:11:14.585 24608-24664 CCodecConfig            com.johang.audiocinemateca           D  read media type: audio/vorbis
+2026-04-20 02:11:14.586 24608-24665 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.max-count.values
+2026-04-20 02:11:14.587 24608-24665 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.subscribed-indices.values
+2026-04-20 02:11:14.587 24608-24665 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: input.buffers.allocator-ids.values
+2026-04-20 02:11:14.588 24608-24665 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.buffers.allocator-ids.values
+2026-04-20 02:11:14.588 24608-24665 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.allocator-ids.values
+2026-04-20 02:11:14.588 24608-24665 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.buffers.pool-ids.values
+2026-04-20 02:11:14.589 24608-24665 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.pool-ids.values
+2026-04-20 02:11:14.590 24608-24664 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.max-count.values
+2026-04-20 02:11:14.591 24608-24664 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.subscribed-indices.values
+2026-04-20 02:11:14.591 24608-24664 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: input.buffers.allocator-ids.values
+2026-04-20 02:11:14.591 24608-24665 CCodecConfig            com.johang.audiocinemateca           I  query failed after returning 8 values (BAD_INDEX)
+2026-04-20 02:11:14.591 24608-24665 CCodecConfig            com.johang.audiocinemateca           D  c2 config diff is Dict {
+                                                                                                      c2::u32 coded.bitrate.value = 64000
+                                                                                                      c2::u32 input.buffers.max-size.value = 32768
+                                                                                                      c2::u32 input.delay.value = 0
+                                                                                                      string input.media-type.value = "audio/vorbis"
+                                                                                                      c2::u32 output.large-frame.max-size = 0
+                                                                                                      c2::u32 output.large-frame.threshold-size = 0
+                                                                                                      string output.media-type.value = "audio/raw"
+                                                                                                      c2::u32 raw.channel-count.value = 1
+                                                                                                      c2::u32 raw.sample-rate.value = 48000
+                                                                                                    }
+2026-04-20 02:11:14.591 24608-24664 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.buffers.allocator-ids.values
+2026-04-20 02:11:14.592 24608-24664 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.allocator-ids.values
+2026-04-20 02:11:14.592 24608-24664 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.buffers.pool-ids.values
+2026-04-20 02:11:14.592 24608-24665 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) Component Allocated (c2.android.vorbis.decoder)
+2026-04-20 02:11:14.592 24608-24664 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.pool-ids.values
+2026-04-20 02:11:14.594 24608-24664 CCodecConfig            com.johang.audiocinemateca           I  query failed after returning 8 values (BAD_INDEX)
+2026-04-20 02:11:14.594 24608-24664 CCodecConfig            com.johang.audiocinemateca           D  c2 config diff is Dict {
+                                                                                                      c2::u32 coded.bitrate.value = 64000
+                                                                                                      c2::u32 input.buffers.max-size.value = 32768
+                                                                                                      c2::u32 input.delay.value = 0
+                                                                                                      string input.media-type.value = "audio/vorbis"
+                                                                                                      c2::u32 output.large-frame.max-size = 0
+                                                                                                      c2::u32 output.large-frame.threshold-size = 0
+                                                                                                      string output.media-type.value = "audio/raw"
+                                                                                                      c2::u32 raw.channel-count.value = 1
+                                                                                                      c2::u32 raw.sample-rate.value = 48000
+                                                                                                    }
+2026-04-20 02:11:14.594 24608-24664 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) Component Allocated (c2.android.vorbis.decoder)
+2026-04-20 02:11:14.595 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) configure surface(0x0) crypto(0x0) flags(0)
+2026-04-20 02:11:14.595 24608-24661 MediaCodec              com.johang.audiocinemateca           D  (0xb400007897fe5800) configure format: AMessage(what = 0x00000000) = {
+                                                                                                          string mime = "audio/vorbis"
+                                                                                                          int64_t durationUs = 175166
+                                                                                                          int32_t track-id = 1
+                                                                                                          Buffer csd-0 = {
+                                                                                                            00000000:  01 76 6f 72 62 69 73 00  00 00 00 02 80 bb 00 00  .vorbis.........
+                                                                                                            00000010:  00 00 00 00 6d a0 07 00  00 00 00 00 b8 01        ....m.........
+                                                                                                          }
+                                                                                                          Buffer *csd-1 = 0xb400007897fc5380
+                                                                                                          int32_t bitrate = 499821
+                                                                                                          int32_t channel-count = 2
+                                                                                                          int32_t sample-rate = 48000
+                                                                                                          int32_t channel-mask = 3
+                                                                                                        }
+2026-04-20 02:11:14.596 24608-24665 CCodec                  com.johang.audiocinemateca           D  [c2.android.vorbis.decoder] buffers are bound to CCodec for this session
+2026-04-20 02:11:14.596 24608-24665 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for durationUs
+2026-04-20 02:11:14.596 24608-24665 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for track-id
+2026-04-20 02:11:14.596 24608-24665 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for csd-1
+2026-04-20 02:11:14.596 24608-24665 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for flags
+2026-04-20 02:11:14.596 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) configure surface(0x0) crypto(0x0) flags(0)
+2026-04-20 02:11:14.597 24608-24662 MediaCodec              com.johang.audiocinemateca           D  (0xb400007897fe4000) configure format: AMessage(what = 0x00000000) = {
+                                                                                                          string mime = "audio/vorbis"
+                                                                                                          int64_t durationUs = 705623
+                                                                                                          int32_t track-id = 1
+                                                                                                          Buffer csd-0 = {
+                                                                                                            00000000:  01 76 6f 72 62 69 73 00  00 00 00 02 44 ac 00 00  .vorbis.....D...
+                                                                                                            00000010:  ff ff ff ff 00 f4 01 00  ff ff ff ff b8 01        ..............
+                                                                                                          }
+                                                                                                          Buffer *csd-1 = 0xb400007897fc51c0
+                                                                                                          int32_t bitrate = 128000
+                                                                                                          int32_t channel-count = 2
+                                                                                                          int32_t sample-rate = 44100
+                                                                                                          int32_t channel-mask = 3
+                                                                                                        }
+2026-04-20 02:11:14.597 24608-24665 CCodecConfig            com.johang.audiocinemateca           D  c2 config diff is   c2::u32 coded.bitrate.value = 499821
+                                                                                                      c2::u32 raw.channel-count.value = 2
+2026-04-20 02:11:14.597 24608-24664 CCodec                  com.johang.audiocinemateca           D  [c2.android.vorbis.decoder] buffers are bound to CCodec for this session
+2026-04-20 02:11:14.597 24608-24665 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 1107298332.
+2026-04-20 02:11:14.597 24608-24665 CCodec                  com.johang.audiocinemateca           D  encoding statistics level = 0
+2026-04-20 02:11:14.597 24608-24665 CCodec                  com.johang.audiocinemateca           D  setup formats input: AMessage(what = 0x00000000) = {
+                                                                                                      int32_t bitrate = 499821
+                                                                                                      int32_t channel-count = 2
+                                                                                                      int32_t max-input-size = 32768
+                                                                                                      string mime = "audio/vorbis"
+                                                                                                      int32_t sample-rate = 48000
+                                                                                                    }
+2026-04-20 02:11:14.597 24608-24665 CCodec                  com.johang.audiocinemateca           D  setup formats output: AMessage(what = 0x00000000) = {
+                                                                                                      int32_t buffer-batch-max-output-size = 0
+                                                                                                      int32_t buffer-batch-threshold-output-size = 0
+                                                                                                      int32_t channel-count = 2
+                                                                                                      string mime = "audio/raw"
+                                                                                                      int32_t sample-rate = 48000
+                                                                                                      int32_t channel-mask = 3
+                                                                                                      int32_t android._config-pcm-encoding = 2
+                                                                                                    }
+2026-04-20 02:11:14.597 24608-24664 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for durationUs
+2026-04-20 02:11:14.597 24608-24664 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for track-id
+2026-04-20 02:11:14.597 24608-24665 CCodecConfig            com.johang.audiocinemateca           I  query failed after returning 8 values (BAD_INDEX)
+2026-04-20 02:11:14.598 24608-24664 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for csd-1
+2026-04-20 02:11:14.598 24608-24664 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for flags
+2026-04-20 02:11:14.598 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) start
+2026-04-20 02:11:14.598 24608-24665 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 1342179345.
+2026-04-20 02:11:14.598 24608-24665 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 2415921170.
+2026-04-20 02:11:14.598 24608-24665 C2Store                 com.johang.audiocinemateca           D  Using ION
+2026-04-20 02:11:14.599 24608-24665 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#570] Created input block pool with allocatorID 16 => poolID 17 - OK (0)
+2026-04-20 02:11:14.601 24608-24664 CCodecConfig            com.johang.audiocinemateca           D  c2 config diff is   c2::u32 coded.bitrate.value = 128000
+                                                                                                      c2::u32 raw.channel-count.value = 2
+                                                                                                      c2::u32 raw.sample-rate.value = 44100
+2026-04-20 02:11:14.602 24608-24664 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 1107298332.
+2026-04-20 02:11:14.602 24608-24664 CCodec                  com.johang.audiocinemateca           D  encoding statistics level = 0
+2026-04-20 02:11:14.602 24608-24665 CCodecBufferChannel     com.johang.audiocinemateca           I  [c2.android.vorbis.decoder#570] Created output block pool with allocatorID 16 => poolID 28907 - OK
+2026-04-20 02:11:14.602 24608-24664 CCodec                  com.johang.audiocinemateca           D  setup formats input: AMessage(what = 0x00000000) = {
+                                                                                                      int32_t bitrate = 128000
+                                                                                                      int32_t channel-count = 2
+                                                                                                      int32_t max-input-size = 32768
+                                                                                                      string mime = "audio/vorbis"
+                                                                                                      int32_t sample-rate = 44100
+                                                                                                    }
+2026-04-20 02:11:14.602 24608-24664 CCodec                  com.johang.audiocinemateca           D  setup formats output: AMessage(what = 0x00000000) = {
+                                                                                                      int32_t buffer-batch-max-output-size = 0
+                                                                                                      int32_t buffer-batch-threshold-output-size = 0
+                                                                                                      int32_t channel-count = 2
+                                                                                                      string mime = "audio/raw"
+                                                                                                      int32_t sample-rate = 44100
+                                                                                                      int32_t channel-mask = 3
+                                                                                                      int32_t android._config-pcm-encoding = 2
+                                                                                                    }
+2026-04-20 02:11:14.602 24608-24665 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#570] Configured output block pool ids 28907 => OK
+2026-04-20 02:11:14.602 24608-24664 CCodecConfig            com.johang.audiocinemateca           I  query failed after returning 8 values (BAD_INDEX)
+2026-04-20 02:11:14.603 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) start
+2026-04-20 02:11:14.603 24608-24665 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#570] start: updating output delay 0
+2026-04-20 02:11:14.604 24608-24664 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 1342179345.
+2026-04-20 02:11:14.604 24608-24664 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 2415921170.
+2026-04-20 02:11:14.604 24608-24665 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) kWhatStartCompleted
+2026-04-20 02:11:14.605 24608-24664 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#341] Created input block pool with allocatorID 16 => poolID 18 - OK (0)
+2026-04-20 02:11:14.608 24608-24664 CCodecBufferChannel     com.johang.audiocinemateca           I  [c2.android.vorbis.decoder#341] Created output block pool with allocatorID 16 => poolID 28908 - OK
+2026-04-20 02:11:14.609 24608-24664 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#341] Configured output block pool ids 28908 => OK
+2026-04-20 02:11:14.610 24608-24664 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#341] start: updating output delay 0
+2026-04-20 02:11:14.612 24608-24664 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) kWhatStartCompleted
+2026-04-20 02:11:14.681 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) stop
+2026-04-20 02:11:14.681 24608-24665 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#570] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.681 24608-24665 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#570] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.681 24608-24665 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#570] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.683 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) release
+2026-04-20 02:11:14.684 24608-24673 hw-BpHwBinder           com.johang.audiocinemateca           I  onLastStrongRef automatically unlinking death recipients
+2026-04-20 02:11:14.701 24608-24661 MediaCodecList          com.johang.audiocinemateca           D  codecHandlesFormat: no format, so no extra checks
+2026-04-20 02:11:14.702 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) init name(c2.android.vorbis.decoder)
+2026-04-20 02:11:14.704 24608-24675 CCodec                  com.johang.audiocinemateca           D  allocate(c2.android.vorbis.decoder)
+2026-04-20 02:11:14.706 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) stop
+2026-04-20 02:11:14.706 24608-24675 CCodec                  com.johang.audiocinemateca           I  setting up 'default' as default (vendor) store
+2026-04-20 02:11:14.706 24608-24664 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#341] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.706 24608-24664 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#341] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.708 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) release
+2026-04-20 02:11:14.709 24608-24664 hw-BpHwBinder           com.johang.audiocinemateca           I  onLastStrongRef automatically unlinking death recipients
+2026-04-20 02:11:14.711 24608-24675 CCodec                  com.johang.audiocinemateca           I  Created component [c2.android.vorbis.decoder]
+2026-04-20 02:11:14.712 24608-24675 CCodecConfig            com.johang.audiocinemateca           D  read media type: audio/vorbis
+2026-04-20 02:11:14.716 24608-24675 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.max-count.values
+2026-04-20 02:11:14.716 24608-24675 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.subscribed-indices.values
+2026-04-20 02:11:14.716 24608-24675 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: input.buffers.allocator-ids.values
+2026-04-20 02:11:14.716 24608-24675 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.buffers.allocator-ids.values
+2026-04-20 02:11:14.717 24608-24675 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.allocator-ids.values
+2026-04-20 02:11:14.717 24608-24675 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.buffers.pool-ids.values
+2026-04-20 02:11:14.717 24608-24675 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.pool-ids.values
+2026-04-20 02:11:14.719 24608-24675 CCodecConfig            com.johang.audiocinemateca           I  query failed after returning 8 values (BAD_INDEX)
+2026-04-20 02:11:14.719 24608-24675 CCodecConfig            com.johang.audiocinemateca           D  c2 config diff is Dict {
+                                                                                                      c2::u32 coded.bitrate.value = 64000
+                                                                                                      c2::u32 input.buffers.max-size.value = 32768
+                                                                                                      c2::u32 input.delay.value = 0
+                                                                                                      string input.media-type.value = "audio/vorbis"
+                                                                                                      c2::u32 output.large-frame.max-size = 0
+                                                                                                      c2::u32 output.large-frame.threshold-size = 0
+                                                                                                      string output.media-type.value = "audio/raw"
+                                                                                                      c2::u32 raw.channel-count.value = 1
+                                                                                                      c2::u32 raw.sample-rate.value = 48000
+                                                                                                    }
+2026-04-20 02:11:14.720 24608-24675 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) Component Allocated (c2.android.vorbis.decoder)
+2026-04-20 02:11:14.722 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) configure surface(0x0) crypto(0x0) flags(0)
+2026-04-20 02:11:14.722 24608-24661 MediaCodec              com.johang.audiocinemateca           D  (0xb400007897fe5800) configure format: AMessage(what = 0x00000000) = {
+                                                                                                          string mime = "audio/vorbis"
+                                                                                                          int64_t durationUs = 1000000
+                                                                                                          int32_t track-id = 1
+                                                                                                          Buffer csd-0 = {
+                                                                                                            00000000:  01 76 6f 72 62 69 73 00  00 00 00 02 44 ac 00 00  .vorbis.....D...
+                                                                                                            00000010:  ff ff ff ff 00 f4 01 00  ff ff ff ff b8 01        ..............
+                                                                                                          }
+                                                                                                          Buffer *csd-1 = 0xb400007897fd93c0
+                                                                                                          int32_t bitrate = 128000
+                                                                                                          int32_t channel-count = 2
+                                                                                                          int32_t sample-rate = 44100
+                                                                                                          int32_t channel-mask = 3
+                                                                                                        }
+2026-04-20 02:11:14.723 24608-24675 CCodec                  com.johang.audiocinemateca           D  [c2.android.vorbis.decoder] buffers are bound to CCodec for this session
+2026-04-20 02:11:14.723 24608-24675 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for durationUs
+2026-04-20 02:11:14.723 24608-24675 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for track-id
+2026-04-20 02:11:14.723 24608-24675 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for csd-1
+2026-04-20 02:11:14.723 24608-24675 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for flags
+2026-04-20 02:11:14.724 24608-24675 CCodecConfig            com.johang.audiocinemateca           D  c2 config diff is   c2::u32 coded.bitrate.value = 128000
+                                                                                                      c2::u32 raw.channel-count.value = 2
+                                                                                                      c2::u32 raw.sample-rate.value = 44100
+2026-04-20 02:11:14.725 24608-24675 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 1107298332.
+2026-04-20 02:11:14.725 24608-24675 CCodec                  com.johang.audiocinemateca           D  encoding statistics level = 0
+2026-04-20 02:11:14.725 24608-24675 CCodec                  com.johang.audiocinemateca           D  setup formats input: AMessage(what = 0x00000000) = {
+                                                                                                      int32_t bitrate = 128000
+                                                                                                      int32_t channel-count = 2
+                                                                                                      int32_t max-input-size = 32768
+                                                                                                      string mime = "audio/vorbis"
+                                                                                                      int32_t sample-rate = 44100
+                                                                                                    }
+2026-04-20 02:11:14.725 24608-24675 CCodec                  com.johang.audiocinemateca           D  setup formats output: AMessage(what = 0x00000000) = {
+                                                                                                      int32_t buffer-batch-max-output-size = 0
+                                                                                                      int32_t buffer-batch-threshold-output-size = 0
+                                                                                                      int32_t channel-count = 2
+                                                                                                      string mime = "audio/raw"
+                                                                                                      int32_t sample-rate = 44100
+                                                                                                      int32_t channel-mask = 3
+                                                                                                      int32_t android._config-pcm-encoding = 2
+                                                                                                    }
+2026-04-20 02:11:14.726 24608-24675 CCodecConfig            com.johang.audiocinemateca           I  query failed after returning 8 values (BAD_INDEX)
+2026-04-20 02:11:14.726 24608-24662 MediaCodecList          com.johang.audiocinemateca           D  codecHandlesFormat: no format, so no extra checks
+2026-04-20 02:11:14.726 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) start
+2026-04-20 02:11:14.727 24608-24675 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 1342179345.
+2026-04-20 02:11:14.727 24608-24675 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 2415921170.
+2026-04-20 02:11:14.727 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) init name(c2.android.vorbis.decoder)
+2026-04-20 02:11:14.728 24608-24675 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#80] Created input block pool with allocatorID 16 => poolID 19 - OK (0)
+2026-04-20 02:11:14.728 24608-24678 CCodec                  com.johang.audiocinemateca           D  allocate(c2.android.vorbis.decoder)
+2026-04-20 02:11:14.730 24608-24675 CCodecBufferChannel     com.johang.audiocinemateca           I  [c2.android.vorbis.decoder#80] Created output block pool with allocatorID 16 => poolID 28910 - OK
+2026-04-20 02:11:14.730 24608-24675 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#80] Configured output block pool ids 28910 => OK
+2026-04-20 02:11:14.731 24608-24678 CCodec                  com.johang.audiocinemateca           I  setting up 'default' as default (vendor) store
+2026-04-20 02:11:14.731 24608-24675 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#80] start: updating output delay 0
+2026-04-20 02:11:14.733 24608-24675 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) kWhatStartCompleted
+2026-04-20 02:11:14.735 24608-24678 CCodec                  com.johang.audiocinemateca           I  Created component [c2.android.vorbis.decoder]
+2026-04-20 02:11:14.736 24608-24678 CCodecConfig            com.johang.audiocinemateca           D  read media type: audio/vorbis
+2026-04-20 02:11:14.741 24608-24678 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.max-count.values
+2026-04-20 02:11:14.741 24608-24678 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.subscribed-indices.values
+2026-04-20 02:11:14.742 24608-24678 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: input.buffers.allocator-ids.values
+2026-04-20 02:11:14.742 24608-24678 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.buffers.allocator-ids.values
+2026-04-20 02:11:14.742 24608-24678 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.allocator-ids.values
+2026-04-20 02:11:14.742 24608-24678 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.buffers.pool-ids.values
+2026-04-20 02:11:14.742 24608-24678 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.pool-ids.values
+2026-04-20 02:11:14.744 24608-24678 CCodecConfig            com.johang.audiocinemateca           I  query failed after returning 8 values (BAD_INDEX)
+2026-04-20 02:11:14.744 24608-24678 CCodecConfig            com.johang.audiocinemateca           D  c2 config diff is Dict {
+                                                                                                      c2::u32 coded.bitrate.value = 64000
+                                                                                                      c2::u32 input.buffers.max-size.value = 32768
+                                                                                                      c2::u32 input.delay.value = 0
+                                                                                                      string input.media-type.value = "audio/vorbis"
+                                                                                                      c2::u32 output.large-frame.max-size = 0
+                                                                                                      c2::u32 output.large-frame.threshold-size = 0
+                                                                                                      string output.media-type.value = "audio/raw"
+                                                                                                      c2::u32 raw.channel-count.value = 1
+                                                                                                      c2::u32 raw.sample-rate.value = 48000
+                                                                                                    }
+2026-04-20 02:11:14.745 24608-24678 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) Component Allocated (c2.android.vorbis.decoder)
+2026-04-20 02:11:14.747 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) configure surface(0x0) crypto(0x0) flags(0)
+2026-04-20 02:11:14.747 24608-24662 MediaCodec              com.johang.audiocinemateca           D  (0xb400007897fe4000) configure format: AMessage(what = 0x00000000) = {
+                                                                                                          string mime = "audio/vorbis"
+                                                                                                          int64_t durationUs = 1000000
+                                                                                                          int32_t track-id = 1
+                                                                                                          Buffer csd-0 = {
+                                                                                                            00000000:  01 76 6f 72 62 69 73 00  00 00 00 02 44 ac 00 00  .vorbis.....D...
+                                                                                                            00000010:  ff ff ff ff 00 f4 01 00  ff ff ff ff b8 01        ..............
+                                                                                                          }
+                                                                                                          Buffer *csd-1 = 0xb400007897fc5300
+                                                                                                          int32_t bitrate = 128000
+                                                                                                          int32_t channel-count = 2
+                                                                                                          int32_t sample-rate = 44100
+                                                                                                          int32_t channel-mask = 3
+                                                                                                        }
+2026-04-20 02:11:14.748 24608-24678 CCodec                  com.johang.audiocinemateca           D  [c2.android.vorbis.decoder] buffers are bound to CCodec for this session
+2026-04-20 02:11:14.748 24608-24678 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for durationUs
+2026-04-20 02:11:14.748 24608-24678 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for track-id
+2026-04-20 02:11:14.748 24608-24678 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for csd-1
+2026-04-20 02:11:14.748 24608-24678 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for flags
+2026-04-20 02:11:14.749 24608-24678 CCodecConfig            com.johang.audiocinemateca           D  c2 config diff is   c2::u32 coded.bitrate.value = 128000
+                                                                                                      c2::u32 raw.channel-count.value = 2
+                                                                                                      c2::u32 raw.sample-rate.value = 44100
+2026-04-20 02:11:14.749 24608-24678 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 1107298332.
+2026-04-20 02:11:14.749 24608-24678 CCodec                  com.johang.audiocinemateca           D  encoding statistics level = 0
+2026-04-20 02:11:14.749 24608-24678 CCodec                  com.johang.audiocinemateca           D  setup formats input: AMessage(what = 0x00000000) = {
+                                                                                                      int32_t bitrate = 128000
+                                                                                                      int32_t channel-count = 2
+                                                                                                      int32_t max-input-size = 32768
+                                                                                                      string mime = "audio/vorbis"
+                                                                                                      int32_t sample-rate = 44100
+                                                                                                    }
+2026-04-20 02:11:14.749 24608-24678 CCodec                  com.johang.audiocinemateca           D  setup formats output: AMessage(what = 0x00000000) = {
+                                                                                                      int32_t buffer-batch-max-output-size = 0
+                                                                                                      int32_t buffer-batch-threshold-output-size = 0
+                                                                                                      int32_t channel-count = 2
+                                                                                                      string mime = "audio/raw"
+                                                                                                      int32_t sample-rate = 44100
+                                                                                                      int32_t channel-mask = 3
+                                                                                                      int32_t android._config-pcm-encoding = 2
+                                                                                                    }
+2026-04-20 02:11:14.750 24608-24678 CCodecConfig            com.johang.audiocinemateca           I  query failed after returning 8 values (BAD_INDEX)
+2026-04-20 02:11:14.750 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) start
+2026-04-20 02:11:14.751 24608-24678 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 1342179345.
+2026-04-20 02:11:14.751 24608-24678 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 2415921170.
+2026-04-20 02:11:14.752 24608-24678 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#279] Created input block pool with allocatorID 16 => poolID 20 - OK (0)
+2026-04-20 02:11:14.754 24608-24678 CCodecBufferChannel     com.johang.audiocinemateca           I  [c2.android.vorbis.decoder#279] Created output block pool with allocatorID 16 => poolID 28912 - OK
+2026-04-20 02:11:14.755 24608-24678 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#279] Configured output block pool ids 28912 => OK
+2026-04-20 02:11:14.756 24608-24678 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#279] start: updating output delay 0
+2026-04-20 02:11:14.757 24608-24678 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) kWhatStartCompleted
+2026-04-20 02:11:14.844 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) stop
+2026-04-20 02:11:14.844 24608-24675 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#80] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.844 24608-24675 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#80] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.844 24608-24675 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#80] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.846 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe5800) release
+2026-04-20 02:11:14.847 24608-24675 hw-BpHwBinder           com.johang.audiocinemateca           I  onLastStrongRef automatically unlinking death recipients
+2026-04-20 02:11:14.857 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) stop
+2026-04-20 02:11:14.857 24608-24678 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#279] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.857 24608-24678 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#279] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.859 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007897fe4000) release
+2026-04-20 02:11:14.860 24608-24678 hw-BpHwBinder           com.johang.audiocinemateca           I  onLastStrongRef automatically unlinking death recipients
+2026-04-20 02:11:14.862 24608-24608 CatalogFragment         com.johang.audiocinemateca           D  getCurrentCategoryName: Raw category is 'películas', Normalized category is 'peliculas'
+2026-04-20 02:11:14.868 24608-24661 MediaCodecList          com.johang.audiocinemateca           D  codecHandlesFormat: no format, so no extra checks
+2026-04-20 02:11:14.870 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898044000) init name(c2.android.vorbis.decoder)
+2026-04-20 02:11:14.870 24608-24608 FilterRepository        com.johang.audiocinemateca           D  getFilterOptionsFlow: Returning options for 'peliculas': FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)
+2026-04-20 02:11:14.870 24608-24608 CatalogFragment         com.johang.audiocinemateca           D  getCurrentCategoryName: Raw category is 'películas', Normalized category is 'peliculas'
+2026-04-20 02:11:14.871 24608-24682 CCodec                  com.johang.audiocinemateca           D  allocate(c2.android.vorbis.decoder)
+2026-04-20 02:11:14.871 24608-24608 FilterRepository        com.johang.audiocinemateca           D  updateFilter: Called for category: 'peliculas', type: 'Fecha', value: 'Más nuevo'
+2026-04-20 02:11:14.871 24608-24608 FilterRepository        com.johang.audiocinemateca           D  updateFilter: Old options for 'peliculas': FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)
+2026-04-20 02:11:14.871 24608-24608 FilterRepository        com.johang.audiocinemateca           D  updateFilter: New options to set for 'peliculas': FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)
+2026-04-20 02:11:14.872 24608-24608 FilterRepository        com.johang.audiocinemateca           D  updateFilter: _categoryFilters.value after update: {peliculas=FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null), cortometrajes=FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null), documentales=FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null), series=FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)}
+2026-04-20 02:11:14.872 24608-24608 FilterRepository        com.johang.audiocinemateca           D  getFilterOptionsFlow: Returning options for 'peliculas': FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)
+2026-04-20 02:11:14.874 24608-24682 CCodec                  com.johang.audiocinemateca           I  setting up 'default' as default (vendor) store
+2026-04-20 02:11:14.879 24608-24662 MediaCodecList          com.johang.audiocinemateca           D  codecHandlesFormat: no format, so no extra checks
+2026-04-20 02:11:14.879 24608-24682 CCodec                  com.johang.audiocinemateca           I  Created component [c2.android.vorbis.decoder]
+2026-04-20 02:11:14.880 24608-24682 CCodecConfig            com.johang.audiocinemateca           D  read media type: audio/vorbis
+2026-04-20 02:11:14.880 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898045800) init name(c2.android.vorbis.decoder)
+2026-04-20 02:11:14.882 24608-24684 CCodec                  com.johang.audiocinemateca           D  allocate(c2.android.vorbis.decoder)
+2026-04-20 02:11:14.884 24608-24682 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.max-count.values
+2026-04-20 02:11:14.885 24608-24684 CCodec                  com.johang.audiocinemateca           I  setting up 'default' as default (vendor) store
+2026-04-20 02:11:14.885 24608-24682 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.subscribed-indices.values
+2026-04-20 02:11:14.886 24608-24682 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: input.buffers.allocator-ids.values
+2026-04-20 02:11:14.886 24608-24682 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.buffers.allocator-ids.values
+2026-04-20 02:11:14.887 24608-24682 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.allocator-ids.values
+2026-04-20 02:11:14.887 24608-24682 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.buffers.pool-ids.values
+2026-04-20 02:11:14.887 24608-24682 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.pool-ids.values
+2026-04-20 02:11:14.890 24608-24684 CCodec                  com.johang.audiocinemateca           I  Created component [c2.android.vorbis.decoder]
+2026-04-20 02:11:14.890 24608-24682 CCodecConfig            com.johang.audiocinemateca           I  query failed after returning 8 values (BAD_INDEX)
+2026-04-20 02:11:14.891 24608-24682 CCodecConfig            com.johang.audiocinemateca           D  c2 config diff is Dict {
+                                                                                                      c2::u32 coded.bitrate.value = 64000
+                                                                                                      c2::u32 input.buffers.max-size.value = 32768
+                                                                                                      c2::u32 input.delay.value = 0
+                                                                                                      string input.media-type.value = "audio/vorbis"
+                                                                                                      c2::u32 output.large-frame.max-size = 0
+                                                                                                      c2::u32 output.large-frame.threshold-size = 0
+                                                                                                      string output.media-type.value = "audio/raw"
+                                                                                                      c2::u32 raw.channel-count.value = 1
+                                                                                                      c2::u32 raw.sample-rate.value = 48000
+                                                                                                    }
+2026-04-20 02:11:14.891 24608-24684 CCodecConfig            com.johang.audiocinemateca           D  read media type: audio/vorbis
+2026-04-20 02:11:14.892 24608-24682 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898044000) Component Allocated (c2.android.vorbis.decoder)
+2026-04-20 02:11:14.894 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898044000) configure surface(0x0) crypto(0x0) flags(0)
+2026-04-20 02:11:14.894 24608-24661 MediaCodec              com.johang.audiocinemateca           D  (0xb400007898044000) configure format: AMessage(what = 0x00000000) = {
+                                                                                                          string mime = "audio/vorbis"
+                                                                                                          int64_t durationUs = 313333
+                                                                                                          int32_t track-id = 1
+                                                                                                          Buffer csd-0 = {
+                                                                                                            00000000:  01 76 6f 72 62 69 73 00  00 00 00 02 80 bb 00 00  .vorbis.........
+                                                                                                            00000010:  ff ff ff ff 30 57 05 00  ff ff ff ff b8 01        ....0W........
+                                                                                                          }
+                                                                                                          Buffer *csd-1 = 0xb400007897fc5440
+                                                                                                          int32_t bitrate = 350000
+                                                                                                          int32_t channel-count = 2
+                                                                                                          int32_t sample-rate = 48000
+                                                                                                          int32_t channel-mask = 3
+                                                                                                        }
+2026-04-20 02:11:14.894 24608-24682 CCodec                  com.johang.audiocinemateca           D  [c2.android.vorbis.decoder] buffers are bound to CCodec for this session
+2026-04-20 02:11:14.894 24608-24682 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for durationUs
+2026-04-20 02:11:14.894 24608-24682 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for track-id
+2026-04-20 02:11:14.894 24608-24682 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for csd-1
+2026-04-20 02:11:14.894 24608-24682 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for flags
+2026-04-20 02:11:14.895 24608-24682 CCodecConfig            com.johang.audiocinemateca           D  c2 config diff is   c2::u32 coded.bitrate.value = 350000
+                                                                                                      c2::u32 raw.channel-count.value = 2
+2026-04-20 02:11:14.896 24608-24684 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.max-count.values
+2026-04-20 02:11:14.897 24608-24684 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.subscribed-indices.values
+2026-04-20 02:11:14.897 24608-24682 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 1107298332.
+2026-04-20 02:11:14.897 24608-24684 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: input.buffers.allocator-ids.values
+2026-04-20 02:11:14.897 24608-24682 CCodec                  com.johang.audiocinemateca           D  encoding statistics level = 0
+2026-04-20 02:11:14.897 24608-24682 CCodec                  com.johang.audiocinemateca           D  setup formats input: AMessage(what = 0x00000000) = {
+                                                                                                      int32_t bitrate = 350000
+                                                                                                      int32_t channel-count = 2
+                                                                                                      int32_t max-input-size = 32768
+                                                                                                      string mime = "audio/vorbis"
+                                                                                                      int32_t sample-rate = 48000
+                                                                                                    }
+2026-04-20 02:11:14.897 24608-24682 CCodec                  com.johang.audiocinemateca           D  setup formats output: AMessage(what = 0x00000000) = {
+                                                                                                      int32_t buffer-batch-max-output-size = 0
+                                                                                                      int32_t buffer-batch-threshold-output-size = 0
+                                                                                                      int32_t channel-count = 2
+                                                                                                      string mime = "audio/raw"
+                                                                                                      int32_t sample-rate = 48000
+                                                                                                      int32_t channel-mask = 3
+                                                                                                      int32_t android._config-pcm-encoding = 2
+                                                                                                    }
+2026-04-20 02:11:14.897 24608-24684 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.buffers.allocator-ids.values
+2026-04-20 02:11:14.898 24608-24682 CCodecConfig            com.johang.audiocinemateca           I  query failed after returning 8 values (BAD_INDEX)
+2026-04-20 02:11:14.898 24608-24684 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.allocator-ids.values
+2026-04-20 02:11:14.898 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898044000) start
+2026-04-20 02:11:14.898 24608-24684 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: output.buffers.pool-ids.values
+2026-04-20 02:11:14.898 24608-24684 ReflectedParamUpdater   com.johang.audiocinemateca           D  extent() != 1 for single value type: algo.buffers.pool-ids.values
+2026-04-20 02:11:14.899 24608-24682 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 1342179345.
+2026-04-20 02:11:14.899 24608-24682 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 2415921170.
+2026-04-20 02:11:14.900 24608-24682 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#428] Created input block pool with allocatorID 16 => poolID 21 - OK (0)
+2026-04-20 02:11:14.900 24608-24684 CCodecConfig            com.johang.audiocinemateca           I  query failed after returning 8 values (BAD_INDEX)
+2026-04-20 02:11:14.901 24608-24684 CCodecConfig            com.johang.audiocinemateca           D  c2 config diff is Dict {
+                                                                                                      c2::u32 coded.bitrate.value = 64000
+                                                                                                      c2::u32 input.buffers.max-size.value = 32768
+                                                                                                      c2::u32 input.delay.value = 0
+                                                                                                      string input.media-type.value = "audio/vorbis"
+                                                                                                      c2::u32 output.large-frame.max-size = 0
+                                                                                                      c2::u32 output.large-frame.threshold-size = 0
+                                                                                                      string output.media-type.value = "audio/raw"
+                                                                                                      c2::u32 raw.channel-count.value = 1
+                                                                                                      c2::u32 raw.sample-rate.value = 48000
+                                                                                                    }
+2026-04-20 02:11:14.902 24608-24684 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898045800) Component Allocated (c2.android.vorbis.decoder)
+2026-04-20 02:11:14.902 24608-24682 CCodecBufferChannel     com.johang.audiocinemateca           I  [c2.android.vorbis.decoder#428] Created output block pool with allocatorID 16 => poolID 28915 - OK
+2026-04-20 02:11:14.903 24608-24682 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#428] Configured output block pool ids 28915 => OK
+2026-04-20 02:11:14.903 24608-24682 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#428] start: updating output delay 0
+2026-04-20 02:11:14.904 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898045800) configure surface(0x0) crypto(0x0) flags(0)
+2026-04-20 02:11:14.904 24608-24662 MediaCodec              com.johang.audiocinemateca           D  (0xb400007898045800) configure format: AMessage(what = 0x00000000) = {
+                                                                                                          string mime = "audio/vorbis"
+                                                                                                          int64_t durationUs = 398666
+                                                                                                          int32_t track-id = 1
+                                                                                                          Buffer csd-0 = {
+                                                                                                            00000000:  01 76 6f 72 62 69 73 00  00 00 00 02 80 bb 00 00  .vorbis.........
+                                                                                                            00000010:  ff ff ff ff 30 57 05 00  ff ff ff ff b8 01        ....0W........
+                                                                                                          }
+                                                                                                          Buffer *csd-1 = 0xb400007897fc5940
+                                                                                                          int32_t bitrate = 350000
+                                                                                                          int32_t channel-count = 2
+                                                                                                          int32_t sample-rate = 48000
+                                                                                                          int32_t channel-mask = 3
+                                                                                                        }
+2026-04-20 02:11:14.904 24608-24684 CCodec                  com.johang.audiocinemateca           D  [c2.android.vorbis.decoder] buffers are bound to CCodec for this session
+2026-04-20 02:11:14.904 24608-24684 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for durationUs
+2026-04-20 02:11:14.905 24608-24684 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for track-id
+2026-04-20 02:11:14.905 24608-24684 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for csd-1
+2026-04-20 02:11:14.905 24608-24684 CCodecConfig            com.johang.audiocinemateca           D  no c2 equivalents for flags
+2026-04-20 02:11:14.905 24608-24682 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898044000) kWhatStartCompleted
+2026-04-20 02:11:14.906 24608-24684 CCodecConfig            com.johang.audiocinemateca           D  c2 config diff is   c2::u32 coded.bitrate.value = 350000
+                                                                                                      c2::u32 raw.channel-count.value = 2
+2026-04-20 02:11:14.907 24608-24684 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 1107298332.
+2026-04-20 02:11:14.907 24608-24684 CCodec                  com.johang.audiocinemateca           D  encoding statistics level = 0
+2026-04-20 02:11:14.907 24608-24684 CCodec                  com.johang.audiocinemateca           D  setup formats input: AMessage(what = 0x00000000) = {
+                                                                                                      int32_t bitrate = 350000
+                                                                                                      int32_t channel-count = 2
+                                                                                                      int32_t max-input-size = 32768
+                                                                                                      string mime = "audio/vorbis"
+                                                                                                      int32_t sample-rate = 48000
+                                                                                                    }
+2026-04-20 02:11:14.907 24608-24684 CCodec                  com.johang.audiocinemateca           D  setup formats output: AMessage(what = 0x00000000) = {
+                                                                                                      int32_t buffer-batch-max-output-size = 0
+                                                                                                      int32_t buffer-batch-threshold-output-size = 0
+                                                                                                      int32_t channel-count = 2
+                                                                                                      string mime = "audio/raw"
+                                                                                                      int32_t sample-rate = 48000
+                                                                                                      int32_t channel-mask = 3
+                                                                                                      int32_t android._config-pcm-encoding = 2
+                                                                                                    }
+2026-04-20 02:11:14.908 24608-24684 CCodecConfig            com.johang.audiocinemateca           I  query failed after returning 8 values (BAD_INDEX)
+2026-04-20 02:11:14.908 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898045800) start
+2026-04-20 02:11:14.909 24608-24684 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 1342179345.
+2026-04-20 02:11:14.909 24608-24684 Codec2Client            com.johang.audiocinemateca           W  query -- param skipped: index = 2415921170.
+2026-04-20 02:11:14.910 24608-24684 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#44] Created input block pool with allocatorID 16 => poolID 22 - OK (0)
+2026-04-20 02:11:14.913 24608-24684 CCodecBufferChannel     com.johang.audiocinemateca           I  [c2.android.vorbis.decoder#44] Created output block pool with allocatorID 16 => poolID 28916 - OK
+2026-04-20 02:11:14.913 24608-24684 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#44] Configured output block pool ids 28916 => OK
+2026-04-20 02:11:14.914 24608-24684 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#44] start: updating output delay 0
+2026-04-20 02:11:14.916 24608-24684 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898045800) kWhatStartCompleted
+2026-04-20 02:11:14.938 24608-24663 DynamiteModule          com.johang.audiocinemateca           W  Local module descriptor class for com.google.android.gms.providerinstaller.dynamite not found.
+2026-04-20 02:11:14.945 24608-24663 DynamiteModule          com.johang.audiocinemateca           I  Considering local module com.google.android.gms.providerinstaller.dynamite:0 and remote module com.google.android.gms.providerinstaller.dynamite:0
+2026-04-20 02:11:14.945 24608-24663 ProviderInstaller       com.johang.audiocinemateca           W  Failed to load providerinstaller module: No acceptable module com.google.android.gms.providerinstaller.dynamite found. Local version is 0 and remote version is 0.
+2026-04-20 02:11:14.946 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898044000) stop
+2026-04-20 02:11:14.946 24608-24682 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#428] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.946 24608-24682 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#428] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.951 24608-24661 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898044000) release
+2026-04-20 02:11:14.954 24608-24682 hw-BpHwBinder           com.johang.audiocinemateca           I  onLastStrongRef automatically unlinking death recipients
+2026-04-20 02:11:14.955 24608-24608 WindowOnBackDispatcher  com.johang.audiocinemateca           W  OnBackInvokedCallback is not enabled for the application.
+                                                                                                    Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+2026-04-20 02:11:14.957 24608-24663 ApplicationLoaders      com.johang.audiocinemateca           D  Returning zygote-cached class loader: /system/framework/org.apache.http.legacy.jar
+2026-04-20 02:11:14.963 24608-24663 audiocinemateca         com.johang.audiocinemateca           W  Loading /data/misc/apexdata/com.android.art/dalvik-cache/arm64/system@framework@com.android.location.provider.jar@classes.odex non-executable as it requires an image which we failed to load
+2026-04-20 02:11:14.970 24608-24663 nativeloader            com.johang.audiocinemateca           D  Configuring clns-8 for other apk /system/framework/com.android.location.provider.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~JVqNbGVCMAF8-nnCqKMwrw==/com.google.android.gms-6p-XUHhYqs6uJ9FsPZiH_w==/lib/arm64:/data/app/~~JVqNbGVCMAF8-nnCqKMwrw==/com.google.android.gms-6p-XUHhYqs6uJ9FsPZiH_w==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+2026-04-20 02:11:14.970 24608-24663 nativeloader            com.johang.audiocinemateca           D  Extending system_exposed_libraries: libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libjni_helper.motocameradesktop.so:libimgTuner_jni.motoimagetuner.so:libupdateprof.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+2026-04-20 02:11:14.978 24608-24663 nativeloader            com.johang.audiocinemateca           D  Configuring clns-9 for other apk /system/framework/com.android.media.remotedisplay.jar. target_sdk_version=37, uses_libraries=ALL, library_path=/data/app/~~JVqNbGVCMAF8-nnCqKMwrw==/com.google.android.gms-6p-XUHhYqs6uJ9FsPZiH_w==/lib/arm64:/data/app/~~JVqNbGVCMAF8-nnCqKMwrw==/com.google.android.gms-6p-XUHhYqs6uJ9FsPZiH_w==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+2026-04-20 02:11:14.978 24608-24663 nativeloader            com.johang.audiocinemateca           D  Extending system_exposed_libraries: libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libjni_helper.motocameradesktop.so:libimgTuner_jni.motoimagetuner.so:libupdateprof.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+2026-04-20 02:11:14.981 24608-24663 ApplicationLoaders      com.johang.audiocinemateca           D  Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+2026-04-20 02:11:14.981 24608-24663 ApplicationLoaders      com.johang.audiocinemateca           D  Returning zygote-cached class loader: /system_ext/framework/androidx.window.sidecar.jar
+2026-04-20 02:11:14.986 24608-24608 TtsManager              com.johang.audiocinemateca           D  TTS initialization SUCCESS
+2026-04-20 02:11:14.990 24608-24663 audiocinemateca         com.johang.audiocinemateca           W  Loading /data/app/~~JVqNbGVCMAF8-nnCqKMwrw==/com.google.android.gms-6p-XUHhYqs6uJ9FsPZiH_w==/oat/arm64/base.odex non-executable as it requires an image which we failed to load
+2026-04-20 02:11:14.996 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898045800) stop
+2026-04-20 02:11:14.996 24608-24684 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#44] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.997 24608-24684 CCodecBufferChannel     com.johang.audiocinemateca           D  [c2.android.vorbis.decoder#44] MediaCodec discarded an unknown buffer
+2026-04-20 02:11:14.998 24608-24663 nativeloader            com.johang.audiocinemateca           D  Configuring clns-10 for other apk /data/app/~~JVqNbGVCMAF8-nnCqKMwrw==/com.google.android.gms-6p-XUHhYqs6uJ9FsPZiH_w==/base.apk. target_sdk_version=37, uses_libraries=, library_path=/data/app/~~JVqNbGVCMAF8-nnCqKMwrw==/com.google.android.gms-6p-XUHhYqs6uJ9FsPZiH_w==/lib/arm64:/data/app/~~JVqNbGVCMAF8-nnCqKMwrw==/com.google.android.gms-6p-XUHhYqs6uJ9FsPZiH_w==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.gms
+2026-04-20 02:11:15.001 24608-24662 MediaCodec              com.johang.audiocinemateca           I  (0xb400007898045800) release
+2026-04-20 02:11:15.008 24608-24608 TtsManager              com.johang.audiocinemateca           D  Settings applied for system_default: Pitch=1.0, Rate=1.0, Voice=
+2026-04-20 02:11:15.012 24608-24684 hw-BpHwBinder           com.johang.audiocinemateca           I  onLastStrongRef automatically unlinking death recipients
+2026-04-20 02:11:15.095 24608-24694 GoogleApiManager        com.johang.audiocinemateca           E  Failed to get service from broker.  (Fix with AI)
+                                                                                                    java.lang.SecurityException: Unknown calling package name 'com.google.android.gms'.
+                                                                                                    	at android.os.Parcel.createExceptionOrNull(Parcel.java:3241)
+                                                                                                    	at android.os.Parcel.createException(Parcel.java:3225)
+                                                                                                    	at android.os.Parcel.readException(Parcel.java:3208)
+                                                                                                    	at android.os.Parcel.readException(Parcel.java:3150)
+                                                                                                    	at bisg.a(:com.google.android.gms@261332035@26.13.32 (260400-895912391):36)
+                                                                                                    	at biqh.z(:com.google.android.gms@261332035@26.13.32 (260400-895912391):143)
+                                                                                                    	at bhwi.run(:com.google.android.gms@261332035@26.13.32 (260400-895912391):42)
+                                                                                                    	at android.os.Handler.handleCallback(Handler.java:1001)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:105)
+                                                                                                    	at cyil.mp(:com.google.android.gms@261332035@26.13.32 (260400-895912391):1)
+                                                                                                    	at cyil.dispatchMessage(:com.google.android.gms@261332035@26.13.32 (260400-895912391):5)
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:268)
+                                                                                                    	at android.os.Looper.loop(Looper.java:384)
+                                                                                                    	at android.os.HandlerThread.run(HandlerThread.java:103)
+2026-04-20 02:11:15.096 24608-24613 audiocinemateca         com.johang.audiocinemateca           I  Compiler allocated 5213KB to compile void android.view.ViewRootImpl.performTraversals()
+2026-04-20 02:11:15.098 24608-24694 GoogleApiManager        com.johang.audiocinemateca           W  Not showing notification since connectionResult is not user-facing: ConnectionResult{statusCode=DEVELOPER_ERROR, resolution=null, message=null, clientMethodKey=null}
+2026-04-20 02:11:15.159 24608-24693 FlagRegistrar           com.johang.audiocinemateca           W  Failed to register com.google.android.gms.providerinstaller#com.johang.audiocinemateca (Fix with AI)
+                                                                                                    giyd: 17: 17: API: Phenotype.API is not available on this device. Connection failed with: ConnectionResult{statusCode=DEVELOPER_ERROR, resolution=null, message=null, clientMethodKey=null}
+                                                                                                    	at giyf.a(:com.google.android.gms@261332035@26.13.32 (260400-895912391):13)
+                                                                                                    	at hiov.d(:com.google.android.gms@261332035@26.13.32 (260400-895912391):3)
+                                                                                                    	at hiox.run(:com.google.android.gms@261332035@26.13.32 (260400-895912391):130)
+                                                                                                    	at hirg.execute(:com.google.android.gms@261332035@26.13.32 (260400-895912391):1)
+                                                                                                    	at hipf.f(:com.google.android.gms@261332035@26.13.32 (260400-895912391):1)
+                                                                                                    	at hipf.m(:com.google.android.gms@261332035@26.13.32 (260400-895912391):99)
+                                                                                                    	at hipf.r(:com.google.android.gms@261332035@26.13.32 (260400-895912391):17)
+                                                                                                    	at gaqm.hA(:com.google.android.gms@261332035@26.13.32 (260400-895912391):35)
+                                                                                                    	at fnei.run(:com.google.android.gms@261332035@26.13.32 (260400-895912391):12)
+                                                                                                    	at hirg.execute(:com.google.android.gms@261332035@26.13.32 (260400-895912391):1)
+                                                                                                    	at fnej.b(:com.google.android.gms@261332035@26.13.32 (260400-895912391):18)
+                                                                                                    	at fney.b(:com.google.android.gms@261332035@26.13.32 (260400-895912391):34)
+                                                                                                    	at fnfa.d(:com.google.android.gms@261332035@26.13.32 (260400-895912391):25)
+                                                                                                    	at bhtr.c(:com.google.android.gms@261332035@26.13.32 (260400-895912391):9)
+                                                                                                    	at bhwg.q(:com.google.android.gms@261332035@26.13.32 (260400-895912391):48)
+                                                                                                    	at bhwg.d(:com.google.android.gms@261332035@26.13.32 (260400-895912391):10)
+                                                                                                    	at bhwg.g(:com.google.android.gms@261332035@26.13.32 (260400-895912391):191)
+                                                                                                    	at bhwg.onConnectionFailed(:com.google.android.gms@261332035@26.13.32 (260400-895912391):2)
+                                                                                                    	at bhwi.run(:com.google.android.gms@261332035@26.13.32 (260400-895912391):70)
+                                                                                                    	at android.os.Handler.handleCallback(Handler.java:1001)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:105)
+                                                                                                    	at cyil.mp(:com.google.android.gms@261332035@26.13.32 (260400-895912391):1)
+                                                                                                    	at cyil.dispatchMessage(:com.google.android.gms@261332035@26.13.32 (260400-895912391):5)
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:268)
+                                                                                                    	at android.os.Looper.loop(Looper.java:384)
+                                                                                                    	at android.os.HandlerThread.run(HandlerThread.java:103)
+                                                                                                    Caused by: bhry: 17: API: Phenotype.API is not available on this device. Connection failed with: ConnectionResult{statusCode=DEVELOPER_ERROR, resolution=null, message=null, clientMethodKey=null}
+                                                                                                    	at bipt.a(:com.google.android.gms@261332035@26.13.32 (260400-895912391):15)
+                                                                                                    	at bhtu.a(:com.google.android.gms@261332035@26.13.32 (260400-895912391):1)
+                                                                                                    	at bhtr.c(:com.google.android.gms@261332035@26.13.32 (260400-895912391):5)
+                                                                                                    	at bhwg.q(:com.google.android.gms@261332035@26.13.32 (260400-895912391):48) 
+                                                                                                    	at bhwg.d(:com.google.android.gms@261332035@26.13.32 (260400-895912391):10) 
+                                                                                                    	at bhwg.g(:com.google.android.gms@261332035@26.13.32 (260400-895912391):191) 
+                                                                                                    	at bhwg.onConnectionFailed(:com.google.android.gms@261332035@26.13.32 (260400-895912391):2) 
+                                                                                                    	at bhwi.run(:com.google.android.gms@261332035@26.13.32 (260400-895912391):70) 
+                                                                                                    	at android.os.Handler.handleCallback(Handler.java:1001) 
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:105) 
+                                                                                                    	at cyil.mp(:com.google.android.gms@261332035@26.13.32 (260400-895912391):1) 
+                                                                                                    	at cyil.dispatchMessage(:com.google.android.gms@261332035@26.13.32 (260400-895912391):5) 
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:268) 
+                                                                                                    	at android.os.Looper.loop(Looper.java:384) 
+                                                                                                    	at android.os.HandlerThread.run(HandlerThread.java:103) 
+2026-04-20 02:11:15.328 24608-24608 libc                    com.johang.audiocinemateca           W  Access denied finding property "vendor.display.enable_optimal_refresh_rate"
+2026-04-20 02:11:15.326 24608-24608 audiocinemateca         com.johang.audiocinemateca           W  type=1400 audit(0.0:323483): avc:  denied  { read } for  name="u:object_r:vendor_display_prop:s0" dev="tmpfs" ino=3017 scontext=u:r:untrusted_app:s0:c231,c258,c512,c768 tcontext=u:object_r:vendor_display_prop:s0 tclass=file permissive=0 app=com.johang.audiocinemateca
+2026-04-20 02:11:15.452 24608-24608 FilterRepository        com.johang.audiocinemateca           D  getFilterOptionsFlow: Returning options for 'peliculas': FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)
+2026-04-20 02:11:15.453 24608-24608 PeliculasFragment       com.johang.audiocinemateca           D  Received new movie list. Size: 0
+2026-04-20 02:11:15.456 24608-24608 FilterRepository        com.johang.audiocinemateca           D  getFilterOptionsFlow: Returning options for 'peliculas': FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)
+2026-04-20 02:11:15.459 24608-24642 CatalogRepository       com.johang.audiocinemateca           D  Attempting to get catalog from file
+2026-04-20 02:11:15.469 24608-24608 PeliculasFragment       com.johang.audiocinemateca           D  Loading state changed: true
+2026-04-20 02:11:15.483 24608-24608 CatalogFragment         com.johang.audiocinemateca           D  getCurrentCategoryName: Raw category is 'películas', Normalized category is 'peliculas'
+2026-04-20 02:11:15.483 24608-24608 FilterRepository        com.johang.audiocinemateca           D  getFilterOptionsFlow: Returning options for 'peliculas': FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)
+2026-04-20 02:11:15.486 24608-24608 CatalogFragment         com.johang.audiocinemateca           D  getCurrentCategoryName: Raw category is 'películas', Normalized category is 'peliculas'
+2026-04-20 02:11:15.487 24608-24608 FilterRepository        com.johang.audiocinemateca           D  updateFilter: Called for category: 'peliculas', type: 'Fecha', value: 'Más nuevo'
+2026-04-20 02:11:15.487 24608-24608 FilterRepository        com.johang.audiocinemateca           D  updateFilter: Old options for 'peliculas': FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)
+2026-04-20 02:11:15.488 24608-24608 FilterRepository        com.johang.audiocinemateca           D  updateFilter: New options to set for 'peliculas': FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)
+2026-04-20 02:11:15.489 24608-24608 FilterRepository        com.johang.audiocinemateca           D  updateFilter: _categoryFilters.value after update: {peliculas=FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null), cortometrajes=FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null), documentales=FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null), series=FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)}
+2026-04-20 02:11:15.489 24608-24608 FilterRepository        com.johang.audiocinemateca           D  getFilterOptionsFlow: Returning options for 'peliculas': FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)
+2026-04-20 02:11:15.549 24608-24642 CatalogRepository       com.johang.audiocinemateca           D  Catalog file path from DB: /data/user/0/com.johang.audiocinemateca/files/audiocinemateca_catalog.json
+2026-04-20 02:11:15.564 24608-24608 View                    com.johang.audiocinemateca           W  requestLayout() improperly called by androidx.appcompat.widget.AppCompatSpinner{dfca38c VFED..CL. ......ID 28,27-353,69 #7f0a01c6 app:id/filter_type_spinner aid=1073741824} during layout: running second layout pass
+2026-04-20 02:11:15.720 24608-24619 HWUI                    com.johang.audiocinemateca           I  Davey! duration=735ms; Flags=1, FrameTimelineVsyncId=269614491, IntendedVsync=1990600631299534, Vsync=1990600686740934, InputEventId=0, HandleInputStart=1990600695854497, AnimationStart=1990600695856372, PerformTraversalsStart=1990600695857049, DrawStart=1990601249654757, FrameDeadline=1990600644966200, FrameInterval=1990600695630435, FrameStartTime=11088280, SyncQueued=1990601314618091, SyncStart=1990601314820486, IssueDrawCommandsStart=1990601315522518, SwapBuffers=1990601363712309, FrameCompleted=1990601366802778, DequeueBufferDuration=40937, QueueBufferDuration=305989, GpuCompleted=1990601366802778, SwapBuffersCompleted=1990601364400955, DisplayPresentTime=7018934208180090473, CommandSubmissionCompleted=1990601363712309, 
+2026-04-20 02:11:15.748 24608-24608 Choreographer           com.johang.audiocinemateca           I  Skipped 60 frames!  The application may be doing too much work on its main thread.
+2026-04-20 02:11:15.800 24608-24608 CatalogFragment         com.johang.audiocinemateca           D  getCurrentCategoryName: Raw category is 'películas', Normalized category is 'peliculas'
+2026-04-20 02:11:15.801 24608-24608 FilterRepository        com.johang.audiocinemateca           D  getFilterOptionsFlow: Returning options for 'peliculas': FilterOptions(filterType=Fecha, filterValue=Más nuevo, searchQuery=null)
+2026-04-20 02:11:16.308 24608-24608 VRI[SplashActivity]     com.johang.audiocinemateca           D  visibilityChanged oldVisibility=true newVisibility=false
+2026-04-20 02:11:16.316 24608-24608 WindowOnBackDispatcher  com.johang.audiocinemateca           W  sendCancelIfRunning: isInProgress=false callback=android.view.ViewRootImpl$$ExternalSyntheticLambda11@c6887fd
+2026-04-20 02:11:16.321 24608-24635 Surface                 com.johang.audiocinemateca           D  Surface::disconnect
+2026-04-20 02:11:16.321 24608-24635 BufferQueueProducer     com.johang.audiocinemateca           D  [com.johang.audiocinemateca/com.johang.audiocinemateca.SplashActivity#116043(BLAST Consumer)pid:24608](id:602000000000,api:1,p:24608,c:24608) disconnect: api 1
+2026-04-20 02:11:16.392 24608-24663 nativeloader            com.johang.audiocinemateca           D  Load /data/app/~~JVqNbGVCMAF8-nnCqKMwrw==/com.google.android.gms-6p-XUHhYqs6uJ9FsPZiH_w==/base.apk!/lib/arm64-v8a/libconscrypt_gmscore_jni.so using class loader ns clns-10 (caller=/data/app/~~JVqNbGVCMAF8-nnCqKMwrw==/com.google.android.gms-6p-XUHhYqs6uJ9FsPZiH_w==/base.apk): ok
+2026-04-20 02:11:16.393 24608-24663 NativeCrypto            com.johang.audiocinemateca           V  Registering com/google/android/gms/org/conscrypt/NativeCrypto's 336 native methods...
+2026-04-20 02:11:16.406 24608-24663 audiocinemateca         com.johang.audiocinemateca           I  hiddenapi: Accessing hidden method Ljava/security/spec/ECParameterSpec;->getCurveName()Ljava/lang/String; (runtime_flags=0, domain=core-platform, api=unsupported) from Lcom/google/android/gms/org/conscrypt/Platform; (domain=app, TargetSdkVersion=36) using reflection: allowed
+2026-04-20 02:11:16.477 24608-24663 ProviderInstaller       com.johang.audiocinemateca           I  Installed default security provider GmsCore_OpenSSL
+2026-04-20 02:11:16.677 24608-24715 audiocinemateca         com.johang.audiocinemateca           I  hiddenapi: Accessing hidden field Ljava/net/Socket;->impl:Ljava/net/SocketImpl; (runtime_flags=0, domain=core-platform, api=unsupported) from Lcom/google/android/gms/org/conscrypt/Platform; (domain=app, TargetSdkVersion=36) using reflection: allowed
+2026-04-20 02:11:16.791 24608-24715 audiocinemateca         com.johang.audiocinemateca           I  hiddenapi: Accessing hidden method Ljava/security/spec/ECParameterSpec;->setCurveName(Ljava/lang/String;)V (runtime_flags=0, domain=core-platform, api=unsupported) from Lcom/google/android/gms/org/conscrypt/Platform; (domain=app, TargetSdkVersion=36) using reflection: allowed
+2026-04-20 02:11:16.814 24608-24614 audiocinemateca         com.johang.audiocinemateca           I  Background concurrent copying GC freed 12MB AllocSpace bytes, 46(9872KB) LOS objects, 74% free, 32MB/128MB, paused 207us,137us total 105.314ms
+2026-04-20 02:11:16.840 24608-24616 System                  com.johang.audiocinemateca           W  A resource failed to call close. 
+2026-04-20 02:11:16.840 24608-24616 System                  com.johang.audiocinemateca           W  A resource failed to call close. 
+2026-04-20 02:11:16.840 24608-24616 System                  com.johang.audiocinemateca           W  A resource failed to call close. 
+2026-04-20 02:11:16.840 24608-24616 System                  com.johang.audiocinemateca           W  A resource failed to call close. 
+2026-04-20 02:11:16.841 24608-24616 System                  com.johang.audiocinemateca           W  A resource failed to call close. 
+2026-04-20 02:11:16.841 24608-24616 System                  com.johang.audiocinemateca           W  A resource failed to call close. 
+2026-04-20 02:11:16.841 24608-24616 audiocinemateca         com.johang.audiocinemateca           W  ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~XEo37IB78o-FClPF2aI0tg==/es.codefactory.eloquencetts-IksJ0p6m5Fwvo58Awh0waw==/base.apk' with 1 weak references
+2026-04-20 02:11:18.628 24608-24608 Firestore               com.johang.audiocinemateca           W  (26.1.2) [CustomClassMapper]: No setter/field for stability found on class com.johang.audiocinemateca.presentation.aichat.LinkedContent (fields/setters are case sensitive!)
+2026-04-20 02:11:18.629 24608-24608 Firestore               com.johang.audiocinemateca           W  (26.1.2) [CustomClassMapper]: No setter/field for stability found on class com.johang.audiocinemateca.presentation.aichat.LinkedContent (fields/setters are case sensitive!)
+2026-04-20 02:11:18.629 24608-24608 Firestore               com.johang.audiocinemateca           W  (26.1.2) [CustomClassMapper]: No setter/field for stability found on class com.johang.audiocinemateca.presentation.aichat.LinkedContent (fields/setters are case sensitive!)
+2026-04-20 02:11:19.140 24608-24608 WindowOnBackDispatcher  com.johang.audiocinemateca           W  OnBackInvokedCallback is not enabled for the application.
+                                                                                                    Set 'android:enableOnBackInvokedCallback="true"' in the application manifest.
+2026-04-20 02:11:19.142 24608-24619 TtsManager              com.johang.audiocinemateca           D  Speech started: TTS_REQUEST_1776669079137
+2026-04-20 02:11:19.183 24608-24608 audiocinemateca         com.johang.audiocinemateca           W  Unable to open libdolphin.so: dlopen failed: library "libdolphin.so" not found.
+2026-04-20 02:11:19.261 24608-24614 audiocinemateca         com.johang.audiocinemateca           I  Background young concurrent copying GC freed 25MB AllocSpace bytes, 0(0B) LOS objects, 16% free, 106MB/128MB, paused 340us,185us total 127.764ms
+2026-04-20 02:11:19.331 24608-24735 ProfileInstaller        com.johang.audiocinemateca           D  Installing profile for com.johang.audiocinemateca
+2026-04-20 02:11:19.600 24608-24669 BufferPoolAccessor2.0   com.johang.audiocinemateca           D  bufferpool2 0xb400007897fdd228 : 0(0 size) total buffers - 0(0 size) used buffers - 1/7 (recycle/alloc) - 5/64 (fetch/transfer)
+2026-04-20 02:11:19.601 24608-24669 BufferPoolAccessor2.0   com.johang.audiocinemateca           D  evictor expired: 1, evicted: 1
+2026-04-20 02:11:20.284 24608-24642 CatalogRepository       com.johang.audiocinemateca           D  Deserialized and cached catalog
+2026-04-20 02:11:20.300 24608-24608 PeliculasFragment       com.johang.audiocinemateca           D  Received new movie list. Size: 20
+2026-04-20 02:11:20.301 24608-24608 PeliculasFragment       com.johang.audiocinemateca           D  Loading state changed: false
+2026-04-20 02:11:20.601 24608-24669 BufferPoolAccessor2.0   com.johang.audiocinemateca           D  bufferpool2 0xb400007897fdd628 : 0(0 size) total buffers - 0(0 size) used buffers - 2/7 (recycle/alloc) - 9/120 (fetch/transfer)
+2026-04-20 02:11:20.601 24608-24669 BufferPoolAccessor2.0   com.johang.audiocinemateca           D  bufferpool2 0xb400007897fdde28 : 0(0 size) total buffers - 0(0 size) used buffers - 2/7 (recycle/alloc) - 5/114 (fetch/transfer)
+2026-04-20 02:11:20.601 24608-24669 BufferPoolAccessor2.0   com.johang.audiocinemateca           D  bufferpool2 0xb400007897fdd428 : 0(0 size) total buffers - 0(0 size) used buffers - 2/7 (recycle/alloc) - 5/86 (fetch/transfer)
+2026-04-20 02:11:20.601 24608-24669 BufferPoolAccessor2.0   com.johang.audiocinemateca           D  bufferpool2 0xb400007897fddc28 : 0(0 size) total buffers - 0(0 size) used buffers - 1/7 (recycle/alloc) - 6/38 (fetch/transfer)
+2026-04-20 02:11:20.601 24608-24669 BufferPoolAccessor2.0   com.johang.audiocinemateca           D  bufferpool2 0xb40000789805c628 : 0(0 size) total buffers - 0(0 size) used buffers - 2/7 (recycle/alloc) - 5/46 (fetch/transfer)
+2026-04-20 02:11:20.601 24608-24669 BufferPoolAccessor2.0   com.johang.audiocinemateca           D  evictor expired: 5, evicted: 5
+2026-04-20 02:11:22.241 24608-24608 Firestore               com.johang.audiocinemateca           W  (26.1.2) [CustomClassMapper]: No setter/field for stability found on class com.johang.audiocinemateca.presentation.aichat.LinkedContent (fields/setters are case sensitive!)
+2026-04-20 02:11:22.241 24608-24608 Firestore               com.johang.audiocinemateca           W  (26.1.2) [CustomClassMapper]: No setter/field for stability found on class com.johang.audiocinemateca.presentation.aichat.LinkedContent (fields/setters are case sensitive!)
+2026-04-20 02:11:22.241 24608-24608 Firestore               com.johang.audiocinemateca           W  (26.1.2) [CustomClassMapper]: No setter/field for stability found on class com.johang.audiocinemateca.presentation.aichat.LinkedContent (fields/setters are case sensitive!)
+2026-04-20 02:11:22.258 24608-24608 SoundEffectsManager     com.johang.audiocinemateca           D  Reproduciendo sonido: aura_receive
+2026-04-20 02:11:22.310 24608-24756 AudioTrack              com.johang.audiocinemateca           D  setVolume: mRelativePercentage:1.000000, left:1.000000, right:1.000000
+2026-04-20 02:11:23.356 24608-24618 TtsManager              com.johang.audiocinemateca           D  Speech started: TTS_REQUEST_1776669082435
+2026-04-20 02:11:26.475 24608-24694 GoogleApiManager        com.johang.audiocinemateca           E  Failed to get service from broker.  (Fix with AI)
+                                                                                                    java.lang.SecurityException: Unknown calling package name 'com.google.android.gms'.
+                                                                                                    	at android.os.Parcel.createExceptionOrNull(Parcel.java:3241)
+                                                                                                    	at android.os.Parcel.createException(Parcel.java:3225)
+                                                                                                    	at android.os.Parcel.readException(Parcel.java:3208)
+                                                                                                    	at android.os.Parcel.readException(Parcel.java:3150)
+                                                                                                    	at bisg.a(:com.google.android.gms@261332035@26.13.32 (260400-895912391):36)
+                                                                                                    	at biqh.z(:com.google.android.gms@261332035@26.13.32 (260400-895912391):143)
+                                                                                                    	at bhwi.run(:com.google.android.gms@261332035@26.13.32 (260400-895912391):42)
+                                                                                                    	at android.os.Handler.handleCallback(Handler.java:1001)
+                                                                                                    	at android.os.Handler.dispatchMessage(Handler.java:105)
+                                                                                                    	at cyil.mp(:com.google.android.gms@261332035@26.13.32 (260400-895912391):1)
+                                                                                                    	at cyil.dispatchMessage(:com.google.android.gms@261332035@26.13.32 (260400-895912391):5)
+                                                                                                    	at android.os.Looper.loopOnce(Looper.java:268)
+                                                                                                    	at android.os.Looper.loop(Looper.java:384)
+                                                                                                    	at android.os.HandlerThread.run(HandlerThread.java:103)
+2026-04-20 02:11:26.476 24608-24694 GoogleApiManager        com.johang.audiocinemateca           W  Not showing notification since connectionResult is not user-facing: ConnectionResult{statusCode=DEVELOPER_ERROR, resolution=null, message=null, clientMethodKey=null}
