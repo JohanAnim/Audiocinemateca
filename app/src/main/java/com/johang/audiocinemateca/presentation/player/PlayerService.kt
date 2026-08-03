@@ -25,8 +25,6 @@ import com.johang.audiocinemateca.MainActivity
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity
 import com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
-import androidx.media3.cast.CastPlayer
-import androidx.media3.cast.SessionAvailabilityListener
 import com.google.android.gms.cast.framework.CastContext
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope

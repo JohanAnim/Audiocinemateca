@@ -73,7 +73,6 @@ exoplayer-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "e
 exoplayer-common = { group = "androidx.media3", name = "media3-common", version.ref = "exoplayer" }
 exoplayer-session = { group = "androidx.media3", name = "media3-session", version.ref = "exoplayer" }
 exoplayer-okhttp = { group = "androidx.media3", name = "media3-datasource-okhttp", version.ref = "exoplayer" }
-exoplayer-cast = { group = "androidx.media3", name = "media3-cast", version.ref = "exoplayer" }
 play-services-cast-framework = { group = "com.google.android.gms", name = "play-services-cast-framework", version.ref = "playServicesCastFramework" }
 
 # Firebase

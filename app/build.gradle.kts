@@ -132,7 +132,6 @@ dependencies {
     implementation(libs.exoplayer.common)
     implementation(libs.exoplayer.session)
     implementation(libs.exoplayer.okhttp)
-    implementation(libs.exoplayer.cast)
     implementation(libs.play.services.cast.framework)
 
     // Firebase
