@@ -488,6 +488,78 @@ class PlayerService : MediaSessionService() {
             }
         }
 
+        override fun setPlayWhenReady(playWhenReady: Boolean) {
+            val remoteClient = getActiveCastSession()?.remoteMediaClient
+            if (remoteClient != null) {
+                if (playWhenReady) {
+                    remoteClient.play()
+                    notifyCastStatusChanged(true, getCurrentPosition())
+                } else {
+                    remoteClient.pause()
+                    notifyCastStatusChanged(false, getCurrentPosition())
+                }
+            } else {
+                super.setPlayWhenReady(playWhenReady)
+            }
+        }
+
+        override fun prepare() {
+            val remoteClient = getActiveCastSession()?.remoteMediaClient
+            if (remoteClient == null) {
+                super.prepare()
+            }
+        }
+
+        override fun setMediaItems(mediaItems: MutableList<MediaItem>, resetPosition: Boolean) {
+            val remoteClient = getActiveCastSession()?.remoteMediaClient
+            if (remoteClient != null) {
+                if (mediaItems.isNotEmpty()) {
+                    loadMediaItemToCast(remoteClient, mediaItems[0], 0L)
+                }
+            } else {
+                super.setMediaItems(mediaItems, resetPosition)
+            }
+        }
+
+        override fun setMediaItems(mediaItems: MutableList<MediaItem>, startWindowIndex: Int, startPositionMs: Long) {
+            val remoteClient = getActiveCastSession()?.remoteMediaClient
+            if (remoteClient != null) {
+                val index = startWindowIndex.coerceAtLeast(0).coerceAtMost(mediaItems.size - 1)
+                if (mediaItems.isNotEmpty() && index < mediaItems.size) {
+                    loadMediaItemToCast(remoteClient, mediaItems[index], startPositionMs)
+                }
+            } else {
+                super.setMediaItems(mediaItems, startWindowIndex, startPositionMs)
+            }
+        }
+
+        private fun loadMediaItemToCast(remoteClient: com.google.android.gms.cast.framework.media.RemoteMediaClient, item: MediaItem, startPositionMs: Long) {
+            try {
+                val rawUri = item.localConfiguration?.uri?.toString() ?: return
+                val proxiedUrl = com.johang.audiocinemateca.util.AudioProxyUtil.buildCastProxyUrl(rawUri)
+                val title = item.mediaMetadata.title?.toString() ?: "Audiocinemateca"
+                val artist = item.mediaMetadata.artist?.toString() ?: "Audiocinemateca"
+                val castMetadata = com.google.android.gms.cast.MediaMetadata(com.google.android.gms.cast.MediaMetadata.MEDIA_TYPE_MUSIC_TRACK).apply {
+                    putString(com.google.android.gms.cast.MediaMetadata.KEY_TITLE, title)
+                    putString(com.google.android.gms.cast.MediaMetadata.KEY_ARTIST, artist)
+                    putString(com.google.android.gms.cast.MediaMetadata.KEY_SUBTITLE, artist)
+                }
+                val mediaInfo = com.google.android.gms.cast.MediaInfo.Builder(proxiedUrl)
+                    .setStreamType(com.google.android.gms.cast.MediaInfo.STREAM_TYPE_BUFFERED)
+                    .setContentType("audio/mpeg")
+                    .setMetadata(castMetadata)
+                    .build()
+                val loadOptions = com.google.android.gms.cast.MediaLoadOptions.Builder()
+                    .setAutoplay(true)
+                    .setPlayPosition(startPositionMs.coerceAtLeast(0L))
+                    .build()
+                remoteClient.load(mediaInfo, loadOptions)
+                notifyCastStatusChanged(true, startPositionMs.coerceAtLeast(0L))
+            } catch (e: Exception) {
+                Log.e("PlayerService", "Error cargando item a Cast desde ForwardingPlayer: ${e.message}")
+            }
+        }
+
         override fun play() {
             val remoteClient = getActiveCastSession()?.remoteMediaClient
             if (remoteClient != null) {
