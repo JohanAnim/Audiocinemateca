@@ -9,22 +9,20 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
-android {
-    namespace = "com.johang.audiocinemateca"
-    compileSdk = libs.versions.compileSdk.get().toInt()
-}
-
 base {
     archivesName.set("Audiocinemateca")
 }
 
 android {
+    namespace = "com.johang.audiocinemateca"
+    compileSdk = 37
+
     defaultConfig {
         applicationId = "com.johang.audiocinemateca"
         minSdk = 25
-        targetSdk = libs.versions.targetSdk.get().toInt()
+        targetSdk = 37
         versionCode = 6
-        versionName = "3.2.0"
+        versionName = "3.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -37,7 +35,7 @@ android {
                 "proguard-rules.pro"
             )
         }
-        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -125,6 +123,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 
     // ExoPlayer & Cast
     implementation(libs.exoplayer.core)
@@ -132,6 +131,7 @@ dependencies {
     implementation(libs.exoplayer.common)
     implementation(libs.exoplayer.session)
     implementation(libs.exoplayer.okhttp)
+    implementation(libs.exoplayer.cast)
     implementation(libs.play.services.cast.framework)
 
     // Firebase

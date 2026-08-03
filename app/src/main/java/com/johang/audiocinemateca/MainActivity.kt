@@ -374,8 +374,9 @@ class MainActivity : AppCompatActivity() {
             currentPlayingItemId?.let { id -> currentPlayingItemType?.let { type ->
                 lifecycleScope.launch {
                     searchRepository.getCatalogItemByIdAndType(id, type)?.let {
-                        if (navController.currentDestination?.id != R.id.contentDetailFragment) navController.navigate(MainNavGraphDirections.actionGlobalContentDetailFragment(id, type))
-                        navController.navigate(R.id.action_global_playerFragment, Bundle().apply { putParcelable("catalogItem", it); putInt("partIndex", currentPlayingPartIndex); putInt("episodeIndex", currentPlayingEpisodeIndex) })
+                        if (navController.currentDestination?.id != R.id.playerFragment) {
+                            navController.navigate(R.id.action_global_playerFragment, Bundle().apply { putParcelable("catalogItem", it); putInt("partIndex", currentPlayingPartIndex); putInt("episodeIndex", currentPlayingEpisodeIndex) })
+                        }
                     }
                 }
             }}
@@ -579,19 +580,18 @@ class MainActivity : AppCompatActivity() {
                 if (navController.currentDestination?.id == R.id.playerFragment) {
                     return@launch
                 }
-                if (navController.currentDestination?.id != R.id.contentDetailFragment) {
-                    try {
-                        navController.navigate(MainNavGraphDirections.actionGlobalContentDetailFragment(id, type))
-                    } catch (e: Exception) {}
-                }
                 try {
+                    val navOptions = NavOptions.Builder()
+                        .setLaunchSingleTop(true)
+                        .build()
                     navController.navigate(
                         R.id.action_global_playerFragment,
                         Bundle().apply {
                             putParcelable("catalogItem", catItem)
                             putInt("partIndex", partIndex)
                             putInt("episodeIndex", episodeIndex)
-                        }
+                        },
+                        navOptions
                     )
                 } catch (e: Exception) {
                     Log.e("MainActivity", "Error navegando a playerFragment: ${e.message}")

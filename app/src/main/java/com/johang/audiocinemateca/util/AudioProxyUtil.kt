@@ -1,5 +1,6 @@
 package com.johang.audiocinemateca.util
 
+import java.net.URLDecoder
 import java.net.URLEncoder
 
 object AudioProxyUtil {
@@ -11,10 +12,17 @@ object AudioProxyUtil {
      */
     fun buildCastProxyUrl(originalAudioUrl: String): String {
         return try {
-            val encoded = URLEncoder.encode(originalAudioUrl, "UTF-8")
+            var cleanUrl = originalAudioUrl
+            while (cleanUrl.contains("%20") || cleanUrl.contains("%25")) {
+                val decoded = URLDecoder.decode(cleanUrl, "UTF-8")
+                if (decoded == cleanUrl) break
+                cleanUrl = decoded
+            }
+            val encoded = URLEncoder.encode(cleanUrl, "UTF-8")
             "$PROXY_BASE_URL?url=$encoded"
         } catch (e: Exception) {
-            originalAudioUrl
+            val encoded = URLEncoder.encode(originalAudioUrl, "UTF-8")
+            "$PROXY_BASE_URL?url=$encoded"
         }
     }
 }

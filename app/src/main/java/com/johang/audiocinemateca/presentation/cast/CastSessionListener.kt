@@ -63,7 +63,7 @@ class CastSessionListener @Inject constructor(
     }
 
     override fun onSessionEnding(session: CastSession) {
-        val pos = session.remoteMediaClient?.approximateStreamPosition ?: -1L
+        val pos = try { session.remoteMediaClient?.approximateStreamPosition ?: -1L } catch (e: Exception) { -1L }
         if (pos > 0) {
             lastCapturedPosition = pos
             Log.d("CastSessionListener", "Capturada posición antes de finalizar: $pos ms")
@@ -71,7 +71,7 @@ class CastSessionListener @Inject constructor(
     }
 
     override fun onSessionEnded(session: CastSession, error: Int) {
-        val pos = session.remoteMediaClient?.approximateStreamPosition ?: -1L
+        val pos = try { session.remoteMediaClient?.approximateStreamPosition ?: -1L } catch (e: Exception) { -1L }
         val finalPos = if (pos > 0) pos else lastCapturedPosition
         Log.d("CastSessionListener", "Sesión de Cast FINALIZADA en pos: $finalPos ms")
         ttsManager.speak("Reproduciendo en este dispositivo")

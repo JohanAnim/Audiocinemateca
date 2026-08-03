@@ -6,13 +6,20 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
+import com.google.gson.Gson
+import com.google.gson.JsonObject
 import com.johang.audiocinemateca.data.model.ChatMessage
 import com.johang.audiocinemateca.data.model.OnlineUser
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,6 +27,13 @@ import javax.inject.Singleton
 class GlobalChatRepository @Inject constructor() {
 
     private val db = FirebaseFirestore.getInstance()
+    private val okHttpClient = OkHttpClient()
+    private val gson = Gson()
+
+    companion object {
+        private const val PRESENCE_BASE_URL = "http://207.231.110.156/audiocinemateca-server/api/presence"
+        private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+    }
 
     fun getMessages(): Flow<List<ChatMessage>> = callbackFlow {
         val subscription = db.collection("global_chat")
@@ -83,8 +97,8 @@ class GlobalChatRepository @Inject constructor() {
     }
 
     fun setUserPresence(userId: String, displayName: String? = null, email: String? = null, isOnline: Boolean = true) {
-        val presenceRef = db.collection("presence").document(userId)
-        val userRef = db.collection("users").document(userId)
+        if (userId.isBlank()) return
+
         val cleanEmail = email ?: ""
         val resolvedName = when {
             !displayName.isNullOrBlank() -> displayName
@@ -92,54 +106,106 @@ class GlobalChatRepository @Inject constructor() {
             else -> "Usuario #${userId.takeLast(4)}"
         }
 
-        val data = mutableMapOf<String, Any>(
-            "userId" to userId,
-            "online" to isOnline,
-            "displayName" to resolvedName,
-            "email" to cleanEmail,
-            "lastActive" to Timestamp.now()
-        )
+        if (!isOnline) {
+            val bodyMap = mapOf("userId" to userId)
+            val jsonPayload = gson.toJson(bodyMap)
+            val request = Request.Builder()
+                .url("$PRESENCE_BASE_URL/offline")
+                .post(jsonPayload.toRequestBody(JSON_MEDIA_TYPE))
+                .build()
+
+            okHttpClient.newCall(request).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: java.io.IOException) {}
+                override fun onResponse(call: Call, response: Response) { response.close() }
+            })
+            return
+        }
 
         com.google.firebase.messaging.FirebaseMessaging.getInstance().token
             .addOnCompleteListener { task ->
                 val token = if (task.isSuccessful) task.result else null
+                val bodyMap = mutableMapOf<String, Any>(
+                    "userId" to userId,
+                    "displayName" to resolvedName,
+                    "email" to cleanEmail
+                )
                 if (!token.isNullOrEmpty()) {
-                    data["fcmToken"] = token
-                    userRef.set(mapOf("fcmToken" to token, "displayName" to resolvedName, "email" to cleanEmail), com.google.firebase.firestore.SetOptions.merge())
+                    bodyMap["fcmToken"] = token
                 }
-                presenceRef.set(data, com.google.firebase.firestore.SetOptions.merge())
+
+                val jsonPayload = gson.toJson(bodyMap)
+                val request = Request.Builder()
+                    .url("$PRESENCE_BASE_URL/heartbeat")
+                    .post(jsonPayload.toRequestBody(JSON_MEDIA_TYPE))
+                    .build()
+
+                okHttpClient.newCall(request).enqueue(object : Callback {
+                    override fun onFailure(call: Call, e: java.io.IOException) {}
+                    override fun onResponse(call: Call, response: Response) { response.close() }
+                })
             }
     }
 
-    fun getOnlineUsersFlow(): Flow<List<OnlineUser>> = callbackFlow {
-        val subscription = db.collection("presence")
-            .whereEqualTo("online", true)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    close(error)
-                    return@addSnapshotListener
-                }
+    suspend fun fetchOnlineUsers(): List<OnlineUser> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$PRESENCE_BASE_URL/list")
+                .get()
+                .build()
 
-                val nowSec = Timestamp.now().seconds
-                val activeUsers = snapshot?.documents?.mapNotNull { doc ->
-                    val user = doc.toObject(OnlineUser::class.java)?.copy(userId = doc.id)
-                    user?.let {
-                        val resolvedName = when {
-                            it.displayName.isNotBlank() -> it.displayName
-                            it.email.isNotBlank() -> it.email.substringBefore("@")
-                            else -> "Usuario #${it.userId.takeLast(4)}"
-                        }
-                        it.copy(displayName = resolvedName)
-                    }
-                }?.filter { user ->
-                    // Filtrar usuarios cuya presencia haya sido registrada en los últimos 90 segundos
-                    val lastActiveSec = user.lastActive?.seconds ?: 0L
-                    (nowSec - lastActiveSec) <= 90
-                } ?: emptyList()
-
-                trySend(activeUsers)
+            val response = okHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                response.close()
+                return@withContext emptyList()
             }
-        awaitClose { subscription.remove() }
+
+            val bodyString = response.body.string()
+            response.close()
+
+            val jsonObject = gson.fromJson(bodyString, JsonObject::class.java)
+            if (jsonObject != null && jsonObject.has("users")) {
+                val usersArray = jsonObject.getAsJsonArray("users")
+                val result = mutableListOf<OnlineUser>()
+                for (element in usersArray) {
+                    val uObj = element.asJsonObject
+                    val uid = if (uObj.has("userId") && !uObj.get("userId").isJsonNull) uObj.get("userId").asString else ""
+                    val name = if (uObj.has("displayName") && !uObj.get("displayName").isJsonNull) uObj.get("displayName").asString else ""
+                    val mail = if (uObj.has("email") && !uObj.get("email").isJsonNull) uObj.get("email").asString else ""
+                    val online = if (uObj.has("online") && !uObj.get("online").isJsonNull) uObj.get("online").asBoolean else true
+                    val token = if (uObj.has("fcmToken") && !uObj.get("fcmToken").isJsonNull) uObj.get("fcmToken").asString else null
+                    val lastActiveMs = if (uObj.has("lastActive") && !uObj.get("lastActive").isJsonNull) uObj.get("lastActive").asLong else System.currentTimeMillis()
+
+                    val resolvedName = when {
+                        name.isNotBlank() -> name
+                        mail.isNotBlank() -> mail.substringBefore("@")
+                        else -> "Usuario #${uid.takeLast(4)}"
+                    }
+
+                    result.add(
+                        OnlineUser(
+                            userId = uid,
+                            displayName = resolvedName,
+                            email = mail,
+                            online = online,
+                            lastActive = Timestamp(lastActiveMs / 1000, ((lastActiveMs % 1000) * 1_000_000).toInt()),
+                            fcmToken = token
+                        )
+                    )
+                }
+                result
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun getOnlineUsersFlow(): Flow<List<OnlineUser>> = kotlinx.coroutines.flow.flow {
+        while (true) {
+            emit(fetchOnlineUsers())
+            kotlinx.coroutines.delay(30000L)
+        }
     }
 
     fun getOnlineCount(): Flow<Int> = getOnlineUsersFlow().map { it.size }

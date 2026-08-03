@@ -619,7 +619,12 @@ class GlobalChatViewModel @Inject constructor(
             putExtra(PlayerService.EXTRA_JAM_POSITION, expectedPos)
             putExtra(PlayerService.EXTRA_JAM_IS_PLAYING, jam.isPlaying)
         }
-        context.sendBroadcast(intent)
+        try {
+            androidx.core.content.ContextCompat.startForegroundService(context, intent)
+        } catch (e: Exception) {
+            Log.e("GlobalChatViewModel", "Error starting PlayerService for Jam sync", e)
+        }
+        androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
     }
 
     private fun stopListenerAudio() {
@@ -627,7 +632,7 @@ class GlobalChatViewModel @Inject constructor(
         val intent = android.content.Intent(context, PlayerService::class.java).apply {
             action = PlayerService.ACTION_STOP
         }
-        context.sendBroadcast(intent)
+        androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
     }
 
     override fun onCleared() {

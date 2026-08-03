@@ -409,17 +409,35 @@ class PlayerFragment : Fragment() {
         customPrevMediaButton = binding.exoplayerView.findViewById(R.id.custom_prev_media)!!
         customNextMediaButton = binding.exoplayerView.findViewById(R.id.custom_next_media)!!
 
+        val playPauseButton = binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_play_pause)
         val rewindButton = binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_rew)
         val forwardButton = binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_ffwd)
         val timeBar = binding.exoplayerView.findViewById<androidx.media3.ui.DefaultTimeBar>(androidx.media3.ui.R.id.exo_progress)
 
+        playPauseButton?.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            val controller = mediaController ?: return@setOnClickListener
+            if (controller.isPlaying) {
+                controller.pause()
+            } else {
+                if (controller.playbackState == Player.STATE_IDLE || controller.playbackState == Player.STATE_ENDED) {
+                    controller.prepare()
+                }
+                controller.playWhenReady = true
+                controller.play()
+            }
+        }
+
         timeBar?.addListener(object : androidx.media3.ui.TimeBar.OnScrubListener {
-            override fun onScrubStart(timeBar: androidx.media3.ui.TimeBar, position: Long) {}
+            override fun onScrubStart(timeBar: androidx.media3.ui.TimeBar, position: Long) {
+                (timeBar as? View)?.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            }
             override fun onScrubMove(timeBar: androidx.media3.ui.TimeBar, position: Long) {
                 binding.exoplayerView.findViewById<TextView>(androidx.media3.ui.R.id.exo_position)?.text = TimeFormatUtils.formatDuration(position)
             }
             override fun onScrubStop(timeBar: androidx.media3.ui.TimeBar, position: Long, canceled: Boolean) {
                 if (!canceled) {
+                    (timeBar as? View)?.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
                     mediaController?.seekTo(position)
                     updateTimestamps()
                 }
@@ -427,6 +445,7 @@ class PlayerFragment : Fragment() {
         })
 
         rewindButton?.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             val rewindMs = (sharedPreferencesManager.getString("rewind_interval", "5")?.toLongOrNull() ?: 5L) * 1000
             val currentPos = mediaController?.currentPosition ?: 0L
             val targetPos = (currentPos - rewindMs).coerceAtLeast(0L)
@@ -436,6 +455,7 @@ class PlayerFragment : Fragment() {
         }
 
         forwardButton?.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
             val forwardMs = (sharedPreferencesManager.getString("forward_interval", "15")?.toLongOrNull() ?: 15L) * 1000
             val currentPos = mediaController?.currentPosition ?: 0L
             val targetPos = currentPos + forwardMs
@@ -466,8 +486,14 @@ class PlayerFragment : Fragment() {
             shareContainer?.setOnClickListener { it.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK); shareContent() }
         }
 
-        customPrevMediaButton.setOnClickListener { handlePrevious() }
-        customNextMediaButton.setOnClickListener { handleNext() }
+        customPrevMediaButton.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            handlePrevious()
+        }
+        customNextMediaButton.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+            handleNext()
+        }
     }
 
     private fun updateSkipButtonsContentDescription() {
@@ -478,9 +504,12 @@ class PlayerFragment : Fragment() {
     }
 
     private fun setPlayerControlsEnabled(enabled: Boolean) {
-        binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_play_pause)?.isEnabled = enabled
-        binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_rew)?.isEnabled = enabled
-        binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_ffwd)?.isEnabled = enabled
+        binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_play_pause)?.isEnabled = true
+        binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_rew)?.isEnabled = true
+        binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_ffwd)?.isEnabled = true
+        binding.exoplayerView.findViewById<androidx.media3.ui.DefaultTimeBar>(androidx.media3.ui.R.id.exo_progress)?.isEnabled = true
+        if (::customPrevMediaButton.isInitialized) customPrevMediaButton.isEnabled = true
+        if (::customNextMediaButton.isInitialized) customNextMediaButton.isEnabled = true
     }
 
     private fun showRewindIntervalDialog() {
@@ -598,7 +627,7 @@ class PlayerFragment : Fragment() {
             return
         }
 
-        setPlayerControlsEnabled(false)
+        setPlayerControlsEnabled(true)
         viewLifecycleOwner.lifecycleScope.launch {
             val mediaItems = createMediaItems(catalogItem)
             if (mediaItems.isEmpty()) return@launch

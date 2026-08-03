@@ -223,10 +223,10 @@ class JamRepository @Inject constructor(
 
     /**
      * Sincroniza la posición y estado de reproducción del Jam (Anfitrión).
+     * Las actualizaciones de 2 segundos se envían únicamente al servidor Node.js (SSE) para optimizar lecturas/escrituras en Firestore.
      */
     suspend fun updateJamProgress(positionMs: Long, isPlaying: Boolean) {
-        val now = System.currentTimeMillis()
-        // 1. Enviar a Servidor Linux Node.js
+        // Enviar a Servidor Linux Node.js
         try {
             val bodyMap = mapOf("positionMs" to positionMs, "isPlaying" to isPlaying)
             val jsonPayload = gson.toJson(bodyMap)
@@ -236,13 +236,6 @@ class JamRepository @Inject constructor(
                 .build()
             val resp = okHttpClient.newCall(req).execute()
             resp.close()
-        } catch (e: Exception) {}
-
-        // 2. Backup a Firestore
-        try {
-            firestore.collection(COLLECTION_JAMS).document(DOC_CURRENT_JAM)
-                .update(mapOf("positionMs" to positionMs, "isPlaying" to isPlaying, "lastUpdatedTimestamp" to now))
-                .await()
         } catch (e: Exception) {}
     }
 

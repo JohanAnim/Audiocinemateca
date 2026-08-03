@@ -16,25 +16,31 @@ class FeaturedBannerRepository @Inject constructor(
 ) {
 
     private val bannerDocument = firestore.collection("app_config").document("featured_banner")
+    private var cachedBanner: FeaturedBanner? = null
 
-    fun getFeaturedBanner(): Flow<FeaturedBanner?> = callbackFlow {
-        val listener = bannerDocument.addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                Log.e("FeaturedBannerRepo", "Error escuchando banner destacado: ${error.message}", error)
-                trySend(null)
-                return@addSnapshotListener
-            }
-
-            if (snapshot != null && snapshot.exists()) {
+    suspend fun getFeaturedBannerOnce(forceRefresh: Boolean = false): FeaturedBanner? {
+        if (!forceRefresh && cachedBanner != null) {
+            return cachedBanner
+        }
+        return try {
+            val snapshot = bannerDocument.get().await()
+            if (snapshot.exists()) {
                 val banner = snapshot.toObject(FeaturedBanner::class.java)
+                cachedBanner = banner
                 Log.d("FeaturedBannerRepo", "Banner destacado real obtenido de Firestore: ${banner?.title}")
-                trySend(banner)
+                banner
             } else {
                 Log.d("FeaturedBannerRepo", "No existe el documento app_config/featured_banner en Firestore.")
-                trySend(null)
+                null
             }
+        } catch (e: Exception) {
+            Log.e("FeaturedBannerRepo", "Error obteniendo banner destacado: ${e.message}", e)
+            null
         }
-        awaitClose { listener.remove() }
+    }
+
+    fun getFeaturedBanner(): Flow<FeaturedBanner?> = kotlinx.coroutines.flow.flow {
+        emit(getFeaturedBannerOnce())
     }
 
     suspend fun publishFeaturedBanner(
@@ -60,6 +66,17 @@ class FeaturedBannerRepository @Inject constructor(
             )
 
             bannerDocument.set(bannerMap).await()
+            cachedBanner = FeaturedBanner(
+                id = bannerMap["id"] as String,
+                title = title,
+                description = description,
+                linkUrl = linkUrl,
+                itemId = itemId,
+                itemType = itemType,
+                rating = rating,
+                maxRating = 5,
+                genres = genres
+            )
             Log.d("FeaturedBannerRepo", "Banner publicado exitosamente en app_config/featured_banner")
             Result.success(Unit)
         } catch (e: Exception) {

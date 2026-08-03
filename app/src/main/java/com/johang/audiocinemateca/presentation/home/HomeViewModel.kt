@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -84,42 +85,40 @@ class HomeViewModel @Inject constructor(
     private fun observeCuratedCollections() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                val snapshot = com.google.firebase.firestore.FirebaseFirestore.getInstance()
                     .collection("global_rankings")
                     .document("curated_collections")
-                    .addSnapshotListener { snapshot, error ->
-                        if (error != null || snapshot == null || !snapshot.exists()) return@addSnapshotListener
-                        try {
-                            @Suppress("UNCHECKED_CAST")
-                            val rawCollections = snapshot.get("collections") as? List<Map<String, Any>> ?: return@addSnapshotListener
-                            val parsedList = rawCollections.mapNotNull { map ->
-                                val id = map["id"] as? String ?: ""
-                                val title = map["title"] as? String ?: ""
-                                val subtitle = map["subtitle"] as? String ?: ""
-                                @Suppress("UNCHECKED_CAST")
-                                val rawItems = map["items"] as? List<Map<String, Any>> ?: emptyList()
-                                val items = rawItems.mapNotNull { iMap ->
-                                    val itemId = iMap["id"] as? String ?: return@mapNotNull null
-                                    val itemTitle = iMap["title"] as? String ?: ""
-                                    val itemType = iMap["type"] as? String ?: "peliculas"
-                                    val itemYear = iMap["year"] as? String ?: ""
-                                    val itemGenre = iMap["genre"] as? String ?: ""
-                                    CuratedItem(itemId, itemTitle, itemType, itemYear, itemGenre)
-                                }
-                                if (title.isNotBlank() && items.isNotEmpty()) {
-                                    CuratedCollection(id, title, subtitle, items)
-                                } else null
-                            }
+                    .get()
+                    .await()
 
-                            viewModelScope.launch(Dispatchers.Main) {
-                                _uiState.value = _uiState.value.copy(curatedCollections = parsedList)
-                            }
-                        } catch (e: Exception) {
-                            Log.e("HomeViewModel", "Error parsing curated collections", e)
+                if (snapshot != null && snapshot.exists()) {
+                    @Suppress("UNCHECKED_CAST")
+                    val rawCollections = snapshot.get("collections") as? List<Map<String, Any>> ?: return@launch
+                    val parsedList = rawCollections.mapNotNull { map ->
+                        val id = map["id"] as? String ?: ""
+                        val title = map["title"] as? String ?: ""
+                        val subtitle = map["subtitle"] as? String ?: ""
+                        @Suppress("UNCHECKED_CAST")
+                        val rawItems = map["items"] as? List<Map<String, Any>> ?: emptyList()
+                        val items = rawItems.mapNotNull { iMap ->
+                            val itemId = iMap["id"] as? String ?: return@mapNotNull null
+                            val itemTitle = iMap["title"] as? String ?: ""
+                            val itemType = iMap["type"] as? String ?: "peliculas"
+                            val itemYear = iMap["year"] as? String ?: ""
+                            val itemGenre = iMap["genre"] as? String ?: ""
+                            CuratedItem(itemId, itemTitle, itemType, itemYear, itemGenre)
                         }
+                        if (title.isNotBlank() && items.isNotEmpty()) {
+                            CuratedCollection(id, title, subtitle, items)
+                        } else null
                     }
+
+                    withContext(Dispatchers.Main) {
+                        _uiState.value = _uiState.value.copy(curatedCollections = parsedList)
+                    }
+                }
             } catch (e: Exception) {
-                Log.e("HomeViewModel", "Error listening to curated collections", e)
+                Log.e("HomeViewModel", "Error fetching curated collections", e)
             }
         }
     }
