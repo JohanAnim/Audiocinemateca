@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.media.audiofx.Equalizer
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -67,6 +68,26 @@ class PlayerService : MediaSessionService() {
 
     private var lastKnownCastPositionMs: Long = -1L
     private var castProgressListenerRegistered = false
+    private var castCallbackRegistered = false
+
+    private val castRemoteCallback = object : com.google.android.gms.cast.framework.media.RemoteMediaClient.Callback() {
+        override fun onStatusUpdated() {
+            val castSession = getActiveCastSession() ?: return
+            val remoteMediaClient = castSession.remoteMediaClient ?: return
+            val isPlayingOnCast = remoteMediaClient.isPlaying
+            val pos = remoteMediaClient.approximateStreamPosition
+            if (pos >= 0) {
+                lastKnownCastPositionMs = pos
+            }
+            notifyCastStatusChanged(isPlayingOnCast, pos)
+
+            val intent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply {
+                putExtra(MainActivity.EXTRA_IS_PLAYING, isPlayingOnCast)
+            }
+            LocalBroadcastManager.getInstance(this@PlayerService).sendBroadcast(intent)
+            sharedPreferencesManager.saveBoolean("is_currently_playing", isPlayingOnCast)
+        }
+    }
 
     private val progressSaveHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val progressSaveRunnable = object : Runnable {
@@ -239,6 +260,7 @@ class PlayerService : MediaSessionService() {
                         }
                         lastKnownCastPositionMs = -1L
                         castProgressListenerRegistered = false
+                        castCallbackRegistered = false
                     } catch (e: Exception) {
                         Log.e("PlayerService", "Error al restaurar posición tras desconectar Cast: ${e.message}")
                     }
@@ -272,26 +294,17 @@ class PlayerService : MediaSessionService() {
                 }
             }
 
-            remoteMediaClient.registerCallback(object : com.google.android.gms.cast.framework.media.RemoteMediaClient.Callback() {
-                override fun onStatusUpdated() {
-                    val isPlayingOnCast = remoteMediaClient.isPlaying
-                    val pos = remoteMediaClient.approximateStreamPosition
-                    if (pos >= 0) {
-                        lastKnownCastPositionMs = pos
-                    }
-                    
-                    notifyCastStatusChanged(isPlayingOnCast, pos)
-
-                    val intent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply {
-                        putExtra(MainActivity.EXTRA_IS_PLAYING, isPlayingOnCast)
-                    }
-                    LocalBroadcastManager.getInstance(this@PlayerService).sendBroadcast(intent)
-                    sharedPreferencesManager.saveBoolean("is_currently_playing", isPlayingOnCast)
-                }
-            })
+            if (!castCallbackRegistered) {
+                remoteMediaClient.registerCallback(castRemoteCallback)
+                castCallbackRegistered = true
+            }
 
             val currentItem = exoPlayer.currentMediaItem ?: return
             val rawUri = currentItem.localConfiguration?.uri?.toString() ?: return
+            if (rawUri.startsWith("file:") || rawUri.startsWith("content:")) {
+                Toast.makeText(this, "No se puede transmitir contenido descargado a Cast", Toast.LENGTH_LONG).show()
+                return
+            }
             val proxiedUrl = com.johang.audiocinemateca.util.AudioProxyUtil.buildCastProxyUrl(rawUri)
 
             val currentRemoteMediaInfo = remoteMediaClient.mediaInfo
@@ -323,7 +336,6 @@ class PlayerService : MediaSessionService() {
                 lastKnownCastPositionMs > 0 -> lastKnownCastPositionMs
                 else -> exoPlayer.currentPosition.coerceAtLeast(0L)
             }
-            lastKnownCastPositionMs = currentPos
 
             val loadOptions = com.google.android.gms.cast.MediaLoadOptions.Builder()
                 .setAutoplay(true)
@@ -534,6 +546,10 @@ class PlayerService : MediaSessionService() {
         private fun loadMediaItemToCast(remoteClient: com.google.android.gms.cast.framework.media.RemoteMediaClient, item: MediaItem, startPositionMs: Long) {
             try {
                 val rawUri = item.localConfiguration?.uri?.toString() ?: return
+                if (rawUri.startsWith("file:") || rawUri.startsWith("content:")) {
+                    Toast.makeText(this@PlayerService, "No se puede transmitir contenido descargado a Cast", Toast.LENGTH_LONG).show()
+                    return
+                }
                 val proxiedUrl = com.johang.audiocinemateca.util.AudioProxyUtil.buildCastProxyUrl(rawUri)
                 val title = item.mediaMetadata.title?.toString() ?: "Audiocinemateca"
                 val artist = item.mediaMetadata.artist?.toString() ?: "Audiocinemateca"
@@ -634,6 +650,23 @@ class PlayerService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, player).setId("AudiocinematecaPlayerSession").build()
         updateSessionActivity()
         progressSaveHandler.post(progressSaveRunnable)
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        val playerActionFilter = IntentFilter().apply {
+            addAction(ACTION_PLAY_PAUSE)
+            addAction(ACTION_STOP)
+            addAction(MainActivity.ACTION_REQUEST_PLAYBACK_STATE)
+            addAction(MainActivity.ACTION_REQUEST_MINI_PLAYER_STATE)
+            addAction(MainActivity.ACTION_SAVE_PLAYBACK_PROGRESS)
+            addAction(MainActivity.ACTION_SEEK_TO_PREVIOUS)
+            addAction(MainActivity.ACTION_SEEK_TO_NEXT)
+            addAction(ACTION_SYNC_JAM_STATE)
+            addAction(com.johang.audiocinemateca.presentation.cast.CastSessionListener.ACTION_CAST_CONNECTED)
+            addAction(com.johang.audiocinemateca.presentation.cast.CastSessionListener.ACTION_CAST_DISCONNECTED)
+        }
+        LocalBroadcastManager.getInstance(this).registerReceiver(playerActionReceiver, playerActionFilter)
     }
 
     private var hapticGenerator: android.media.audiofx.HapticGenerator? = null
@@ -776,6 +809,8 @@ class PlayerService : MediaSessionService() {
             release(); mediaSession = null
         }
         LocalBroadcastManager.getInstance(this).unregisterReceiver(playerActionReceiver)
+        getActiveCastSession()?.remoteMediaClient?.removeCallback(castRemoteCallback)
+        castCallbackRegistered = false
         equalizer?.release()
         equalizer = null
         super.onDestroy()
