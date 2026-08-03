@@ -291,5 +291,9 @@
   - Al conectarse a una sesión de Google Cast (`ACTION_CAST_CONNECTED`), el reproductor local `exoPlayer` se silencia de forma transparente (`volume = 0f`) y se pausa si estaba sonando localmente.
   - La URL del contenido se canaliza usando [`AudioProxyUtil.buildCastProxyUrl(...)`](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/util/AudioProxyUtil.kt#L12) con las credenciales temporales y se envía directamente a `remoteMediaClient` para sonar exclusivamente en la TV o altavoz Chromecast.
   - Registro de escuchas continuas (`addProgressListener` a 500 ms y `RemoteMediaClient.Callback`) para notificar en tiempo real los cambios de estado de reproducción y avance de tiempo hacia la interfaz de usuario (`PlayerFragment`), manteniendo los botones y la barra de tiempo sincronizados de manera reactiva.
-  - Al desconectar el Cast (`ACTION_CAST_DISCONNECTED`), el volumen local se restablece (`volume = 1f`), la posición se restaura en el milisegundo exacto de la televisión y la reproducción vuelve al altavoz del teléfono de forma fluida.
+- **Delegación 100% al RemoteMediaClient de Google Cast ([PlayerService.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/player/PlayerService.kt)):**
+  - Al conectarse a Cast, `exoPlayer.pause()` y `exoPlayer.stop()` detienen por completo el reproductor local, garantizando 0 audio por el altavoz del teléfono.
+  - Sobrescrita la sobrecarga `seekTo(positionMs: Long)` y `seekTo(mediaItemIndex, positionMs)` en `CastAwareForwardingPlayer` para derivar inmediatamente los comandos de avance/retroceso y barra de tiempo al `remoteMediaClient`.
+  - Al desconectar el Cast (`ACTION_CAST_DISCONNECTED`), se llama a `exoPlayer.prepare()` y `exoPlayer.play()`, reanudando de forma segura y fiable la reproducción local.
+
 
