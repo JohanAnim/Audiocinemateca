@@ -64,9 +64,9 @@ class SplashActivity : ComponentActivity() {
     private val splashDurationState = mutableStateOf(2500L)
     private var isFlowStarted = false
 
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { _: Boolean ->
+    private val requestMultiplePermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
         continueAppFlow()
     }
 
@@ -84,16 +84,44 @@ class SplashActivity : ComponentActivity() {
             }
         }
 
+        val permissionsToRequest = mutableListOf<String>()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.BLUETOOTH_CONNECT)
+            }
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.BLUETOOTH_SCAN
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.BLUETOOTH_SCAN)
+            }
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
                     this,
                     Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
+                ) != PackageManager.PERMISSION_GRANTED
             ) {
-                continueAppFlow()
-            } else {
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
             }
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.NEARBY_WIFI_DEVICES
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                permissionsToRequest.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+            }
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            requestMultiplePermissionsLauncher.launch(permissionsToRequest.toTypedArray())
         } else {
             continueAppFlow()
         }
