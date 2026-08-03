@@ -233,7 +233,6 @@ class PlayerService : MediaSessionService() {
                 }
                 com.johang.audiocinemateca.presentation.cast.CastSessionListener.ACTION_CAST_DISCONNECTED -> {
                     try {
-                        exoPlayer.volume = 1f
                         val posFromIntent = intent?.getLongExtra(com.johang.audiocinemateca.presentation.cast.CastSessionListener.EXTRA_LAST_CAST_POSITION, -1L) ?: -1L
                         val pos = if (posFromIntent > 0) posFromIntent else if (lastKnownCastPositionMs > 0) lastKnownCastPositionMs else -1L
                         if (pos > 0) {
@@ -245,6 +244,7 @@ class PlayerService : MediaSessionService() {
                     } catch (e: Exception) {
                         Log.e("PlayerService", "Error al restaurar posición tras desconectar Cast: ${e.message}")
                     }
+                    exoPlayer.prepare()
                     exoPlayer.play()
                 }
             }
@@ -257,10 +257,8 @@ class PlayerService : MediaSessionService() {
             val remoteMediaClient = castSession.remoteMediaClient ?: return
 
             // 1. Silenciar y pausar ExoPlayer local
-            exoPlayer.volume = 0f
-            if (exoPlayer.isPlaying) {
-                exoPlayer.pause()
-            }
+            exoPlayer.pause()
+            exoPlayer.stop()
 
             if (!castProgressListenerRegistered) {
                 try {
@@ -452,28 +450,41 @@ class PlayerService : MediaSessionService() {
             }
         }
 
+        override fun seekTo(positionMs: Long) {
+            val remoteClient = getActiveCastSession()?.remoteMediaClient
+            if (remoteClient != null && positionMs >= 0) {
+                performCastSeek(remoteClient, positionMs)
+            } else {
+                super.seekTo(positionMs)
+            }
+        }
+
         override fun seekTo(mediaItemIndex: Int, positionMs: Long) {
             val remoteClient = getActiveCastSession()?.remoteMediaClient
             if (remoteClient != null && positionMs >= 0) {
-                lastKnownCastPositionMs = positionMs
-                try {
-                    val resumeState = if (remoteClient.isPlaying) {
-                        com.google.android.gms.cast.MediaSeekOptions.RESUME_STATE_PLAY
-                    } else {
-                        com.google.android.gms.cast.MediaSeekOptions.RESUME_STATE_PAUSE
-                    }
-                    val seekOptions = com.google.android.gms.cast.MediaSeekOptions.Builder()
-                        .setPosition(positionMs)
-                        .setResumeState(resumeState)
-                        .build()
-                    remoteClient.seek(seekOptions)
-                    notifyCastStatusChanged(remoteClient.isPlaying, positionMs)
-                    Log.d("PlayerService", "📡 Seek enviado a Google Cast: $positionMs ms")
-                } catch (e: Exception) {
-                    Log.e("PlayerService", "Error al realizar seek en RemoteMediaClient: ${e.message}")
-                }
+                performCastSeek(remoteClient, positionMs)
             } else {
                 super.seekTo(mediaItemIndex, positionMs)
+            }
+        }
+
+        private fun performCastSeek(remoteClient: com.google.android.gms.cast.framework.media.RemoteMediaClient, positionMs: Long) {
+            lastKnownCastPositionMs = positionMs
+            try {
+                val resumeState = if (remoteClient.isPlaying) {
+                    com.google.android.gms.cast.MediaSeekOptions.RESUME_STATE_PLAY
+                } else {
+                    com.google.android.gms.cast.MediaSeekOptions.RESUME_STATE_PAUSE
+                }
+                val seekOptions = com.google.android.gms.cast.MediaSeekOptions.Builder()
+                    .setPosition(positionMs)
+                    .setResumeState(resumeState)
+                    .build()
+                remoteClient.seek(seekOptions)
+                notifyCastStatusChanged(remoteClient.isPlaying, positionMs)
+                Log.d("PlayerService", "📡 Seek enviado a Google Cast: $positionMs ms")
+            } catch (e: Exception) {
+                Log.e("PlayerService", "Error al realizar seek en RemoteMediaClient: ${e.message}")
             }
         }
 
