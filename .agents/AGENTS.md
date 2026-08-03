@@ -294,6 +294,10 @@
 - **Delegación 100% al RemoteMediaClient de Google Cast ([PlayerService.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/player/PlayerService.kt)):**
   - Al conectarse a Cast, `exoPlayer.pause()` y `exoPlayer.stop()` detienen por completo el reproductor local, garantizando 0 audio por el altavoz del teléfono.
   - Sobrescrita la sobrecarga `seekTo(positionMs: Long)` y `seekTo(mediaItemIndex, positionMs)` en `CastAwareForwardingPlayer` para derivar inmediatamente los comandos de avance/retroceso y barra de tiempo al `remoteMediaClient`.
-  - Al desconectar el Cast (`ACTION_CAST_DISCONNECTED`), se llama a `exoPlayer.prepare()` y `exoPlayer.play()`, reanudando de forma segura y fiable la reproducción local.
+- **Interceptor de Órdenes Cast en CastAwareForwardingPlayer ([PlayerService.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/player/PlayerService.kt)):**
+  - Sobrescritos `setMediaItems`, `prepare()` y `setPlayWhenReady(playWhenReady)` en `CastAwareForwardingPlayer` cuando la sesión Cast está activa.
+  - Impide que `PlayerFragment` active el `exoPlayer` local al cargar metadatos o darle a reproducir, desviando el 100% de la carga de audio al `remoteMediaClient` con la URL proxied [`AudioProxyUtil.buildCastProxyUrl(...)`](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/util/AudioProxyUtil.kt#L12).
+  - Enrutamiento imperativo de `play()` y `pause()` directamente hacia el Chromecast, resolviendo la desincronización del botón Reproducir/Pausar en la interfaz de usuario.
+
 
 
