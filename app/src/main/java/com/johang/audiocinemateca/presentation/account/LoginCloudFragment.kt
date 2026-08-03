@@ -6,6 +6,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
@@ -15,7 +21,7 @@ import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.data.local.dao.FavoritesDao
 import com.johang.audiocinemateca.data.local.dao.PlaybackProgressDao
 import com.johang.audiocinemateca.data.repository.CloudRepository
-import com.johang.audiocinemateca.databinding.FragmentLoginCloudBinding
+import com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -36,65 +42,63 @@ class LoginCloudFragment : Fragment() {
     @Inject
     lateinit var sharedPreferencesManager: SharedPreferencesManager
 
-    private var _binding: FragmentLoginCloudBinding? = null
-    private val binding get() = _binding!!
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        _binding = FragmentLoginCloudBinding.inflate(inflater, container, false)
-        return binding.root
-    }
+        return ComposeView(requireContext()).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                AudiocinematecaTheme {
+                    var isLoading by remember { mutableStateOf(false) }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        binding.btnBack.setOnClickListener { findNavController().navigateUp() }
-
-        binding.btnLogin.setOnClickListener {
-            val email = binding.etEmail.text.toString().trim()
-            val password = binding.etPassword.text.toString().trim()
-
-            if (email.isEmpty()) {
-                Toast.makeText(requireContext(), "Introduce tu correo", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            if (password.isEmpty()) {
-                Toast.makeText(requireContext(), "Introduce tu contraseña", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            setLoading(true)
-            auth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener { task ->
-                    setLoading(false)
-                    if (task.isSuccessful) {
-                        lifecycleScope.launch {
-                            try {
-                                // 1. OBLIGATORIO: Crear/Verificar DB del usuario
-                                cloudRepository.syncUserProfile()
-                                
-                                // 2. Si éxito -> Continuar flujo
-                                checkAndPromptSync()
-                                MaterialAlertDialogBuilder(requireContext())
-                                    .setTitle("Conexión Exitosa")
-                                    .setMessage("Has conectado tu cuenta con la nube y tu base de datos está lista.")
-                                    .setPositiveButton("Genial") { _, _ -> findNavController().navigateUp() }
-                                    .show()
-                                    
-                            } catch (e: Exception) {
-                                // 3. Si fallo -> Alerta de Error
-                                Log.e("LoginCloud", "Error creando perfil DB: ${e.message}")
-                                MaterialAlertDialogBuilder(requireContext())
-                                    .setTitle("Error de Base de Datos")
-                                    .setMessage("Se inició sesión, pero falló la creación de tu perfil en la nube.\n\nError: ${e.localizedMessage}")
-                                    .setPositiveButton("Entendido", null)
-                                    .show()
-                            }
+                    LoginCloudScreen(
+                        isLoading = isLoading,
+                        onBackClick = { findNavController().navigateUp() },
+                        onLoginClick = { email, password ->
+                            isLoading = true
+                            auth.signInWithEmailAndPassword(email, password)
+                                .addOnCompleteListener { task ->
+                                    if (task.isSuccessful) {
+                                        lifecycleScope.launch {
+                                            try {
+                                                // 1. OBLIGATORIO: Crear/Verificar DB del usuario
+                                                cloudRepository.syncUserProfile()
+                                                
+                                                // 2. Si éxito -> Continuar flujo
+                                                checkAndPromptSync()
+                                                
+                                                MaterialAlertDialogBuilder(requireContext())
+                                                    .setTitle("Conexión Exitosa")
+                                                    .setMessage("Has conectado tu cuenta con la nube y tu base de datos está lista.")
+                                                    .setPositiveButton("Genial") { _, _ -> 
+                                                        findNavController().navigateUp() 
+                                                    }
+                                                    .show()
+                                            } catch (e: Exception) {
+                                                // 3. Si fallo -> Alerta de Error
+                                                Log.e("LoginCloud", "Error creando perfil DB: ${e.message}")
+                                                MaterialAlertDialogBuilder(requireContext())
+                                                    .setTitle("Error de Base de Datos")
+                                                    .setMessage("Se inició sesión, pero falló la creación de tu perfil en la nube.\n\nError: ${e.localizedMessage}")
+                                                    .setPositiveButton("Entendido", null)
+                                                    .show()
+                                            } finally {
+                                                isLoading = false
+                                            }
+                                        }
+                                    } else {
+                                        isLoading = false
+                                        Toast.makeText(
+                                            requireContext(), 
+                                            "Error: ${task.exception?.localizedMessage}", 
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
                         }
-                    } else {
-                        Toast.makeText(requireContext(), "Error: ${task.exception?.localizedMessage}", Toast.LENGTH_LONG).show()
-                    }
+                    )
                 }
+            }
         }
     }
 
@@ -132,10 +136,17 @@ class LoginCloudFragment : Fragment() {
         }
     }
 
-    private fun downloadCloudDataToLocal(cloudFavs: List<com.johang.audiocinemateca.data.remote.model.CloudFavorite>, cloudHist: List<com.johang.audiocinemateca.data.remote.model.CloudHistory>) {
+    private fun downloadCloudDataToLocal(
+        cloudFavs: List<com.johang.audiocinemateca.data.remote.model.CloudFavorite>,
+        cloudHist: List<com.johang.audiocinemateca.data.remote.model.CloudHistory>
+    ) {
         lifecycleScope.launch {
             try {
-                Toast.makeText(requireContext(), "Restaurando datos...", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Restaurando datos de tu cuenta...", Toast.LENGTH_SHORT).show()
+                // Purgar datos locales de cuentas anteriores o invitado para evitar mezcla de historiales
+                playbackProgressDao.deleteAllPlaybackProgress()
+                favoritesDao.deleteAllFavorites()
+
                 cloudFavs.forEach { cloud ->
                     var timestamp = cloud.addedAt
                     if (timestamp in 1L..9999999999L) {
@@ -174,7 +185,10 @@ class LoginCloudFragment : Fragment() {
         }
     }
 
-    private fun syncLocalDataToCloud(favorites: List<com.johang.audiocinemateca.data.local.entities.FavoriteEntity>, history: List<com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity>) {
+    private fun syncLocalDataToCloud(
+        favorites: List<com.johang.audiocinemateca.data.local.entities.FavoriteEntity>,
+        history: List<com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity>
+    ) {
         lifecycleScope.launch {
             try {
                 favorites.forEach { cloudRepository.uploadFavorite(it) }
@@ -185,15 +199,5 @@ class LoginCloudFragment : Fragment() {
                 Toast.makeText(requireContext(), "Error al subir datos", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun setLoading(isLoading: Boolean) {
-        binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
-        binding.btnLogin.isEnabled = !isLoading
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 }

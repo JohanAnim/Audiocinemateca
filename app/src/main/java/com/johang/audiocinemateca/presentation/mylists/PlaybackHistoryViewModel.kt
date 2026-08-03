@@ -25,23 +25,34 @@ class PlaybackHistoryViewModel @Inject constructor(
     private val _historyItems = MutableStateFlow<List<HistoryListItem>>(emptyList())
     val historyItems: StateFlow<List<HistoryListItem>> = _historyItems
 
+    private fun getEffectiveTimestamp(timestamp: Long): Long {
+        val now = System.currentTimeMillis()
+        return if (timestamp > now + 60_000L) now else timestamp
+    }
+
     init {
         viewModelScope.launch {
-            val fullCatalog = contentRepository.getCatalogResponse()
-
             playbackProgressRepository.getAllPlaybackProgress().collect { progressList ->
-                // FILTRADO INTELIGENTE: Agrupamos por contentId y nos quedamos solo con el último visto
-                val filteredList = progressList
-                    .groupBy { it.contentId }
-                    .map { entry -> entry.value.maxBy { it.lastPlayedTimestamp } }
-                    .sortedByDescending { it.lastPlayedTimestamp }
+                val fullCatalog = contentRepository.getCatalogResponse()
 
-                val displayList = filteredList.map { progress ->
-                    val catalogItem = contentRepository.getContentItem(progress.contentId, progress.contentType, fullCatalog)
-                    HistoryItemDisplay(progress, catalogItem)
+                val displayList = progressList.mapNotNull { progress ->
+                    val cleanId = progress.contentId.trim()
+                    if (cleanId.isBlank() || cleanId.lowercase(Locale.ROOT) in listOf("pelicula", "serie", "cortometraje", "documental", "documentales")) {
+                        return@mapNotNull null
+                    }
+                    val catalogItem = contentRepository.getContentItem(cleanId, progress.contentType, fullCatalog)
+                    if (catalogItem != null) {
+                        HistoryItemDisplay(progress, catalogItem)
+                    } else null
                 }
 
-                _historyItems.value = groupHistoryItemsByDate(displayList)
+                // Deduplicación estricta por ID real de catálogo para eliminar duplicados/triplicados
+                val deduplicatedList = displayList
+                    .groupBy { it.catalogItem?.id?.lowercase(Locale.ROOT) ?: it.playbackProgress.contentId.lowercase(Locale.ROOT) }
+                    .mapNotNull { entry -> entry.value.maxByOrNull { getEffectiveTimestamp(it.playbackProgress.lastPlayedTimestamp) } }
+                    .sortedByDescending { getEffectiveTimestamp(it.playbackProgress.lastPlayedTimestamp) }
+
+                _historyItems.value = groupHistoryItemsByDate(deduplicatedList)
             }
         }
     }
@@ -61,8 +72,6 @@ class PlaybackHistoryViewModel @Inject constructor(
         return finalList
     }
 
-    
-
     fun clearAllHistory() {
         viewModelScope.launch {
             playbackProgressRepository.deleteAllPlaybackProgress()
@@ -71,11 +80,7 @@ class PlaybackHistoryViewModel @Inject constructor(
 
     fun deleteHistoryItem(playbackProgress: PlaybackProgressEntity) {
         viewModelScope.launch {
-            playbackProgressRepository.deletePlaybackProgress(
-                playbackProgress.contentId,
-                playbackProgress.partIndex,
-                playbackProgress.episodeIndex
-            )
+            playbackProgressRepository.deleteAllPlaybackProgressForContent(playbackProgress.contentId)
         }
     }
 }

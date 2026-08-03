@@ -149,12 +149,17 @@ class ContentDetailViewModel @Inject constructor(
                     "documental" -> "documentales"
                     else -> itemType
                 }
-                val item = when (pluralItemType) {
+                val item: CatalogItem? = when (pluralItemType) {
                     "peliculas" -> catalog?.movies?.find { it.id == itemId }
                     "series" -> catalog?.series?.find { it.id == itemId }
                     "cortometrajes" -> catalog?.shortFilms?.find { it.id == itemId }
                     "documentales" -> catalog?.documentaries?.find { it.id == itemId }
                     else -> null
+                } ?: catalog?.let { cat ->
+                    cat.movies?.find { it.id == itemId }
+                        ?: cat.series?.find { it.id == itemId }
+                        ?: cat.documentaries?.find { it.id == itemId }
+                        ?: cat.shortFilms?.find { it.id == itemId }
                 }
                 _contentItem.value = item
                 if (item != null) {

@@ -75,14 +75,27 @@ class PlaybackHistoryAdapter(
             onClick: (PlaybackProgressEntity, CatalogItem?) -> Unit,
             onLongClick: (PlaybackProgressEntity, CatalogItem?) -> Boolean
         ) {
-            titleTextView.text = catalogItem?.title ?: "Título desconocido"
+            val seasonIndex = playbackProgress.partIndex.coerceAtLeast(0)
+            val episodeIndex = playbackProgress.episodeIndex.coerceAtLeast(0)
+            val epTitle = if (catalogItem is Serie) {
+                val seasons = catalogItem.capitulos.keys.sorted()
+                val seasonKey = seasons.getOrNull(seasonIndex)
+                catalogItem.capitulos[seasonKey]?.getOrNull(episodeIndex)?.titulo
+            } else null
+
+            titleTextView.text = if (!epTitle.isNullOrEmpty() && catalogItem != null) {
+                "${catalogItem.title} - $epTitle"
+            } else {
+                catalogItem?.title ?: "Título desconocido"
+            }
 
             val remainingMs = playbackProgress.totalDurationMs - playbackProgress.currentPositionMs
-            val timeRemainingText = if (remainingMs > 1000) { // Considerar completado si queda menos de 1 segundo
+            val isFinished = playbackProgress.isFinished || (playbackProgress.totalDurationMs > 0 && remainingMs <= 1000)
+            val timeRemainingText = if (isFinished || remainingMs <= 1000) {
+                "Completado"
+            } else {
                 val formattedDuration = com.johang.audiocinemateca.util.TimeFormatUtils.formatDuration(remainingMs)
                 "Continuar: $formattedDuration restantes"
-            } else {
-                "Completado"
             }
             timeRemainingTextView.text = timeRemainingText
 
@@ -92,9 +105,7 @@ class PlaybackHistoryAdapter(
                 is Documentary -> "Documental"
                 is ShortFilm -> "Cortometraje"
                 is Serie -> {
-                    val season = playbackProgress.partIndex + 1
-                    val episode = playbackProgress.episodeIndex + 1
-                    "Serie - T${season}:E${episode}"
+                    "Serie - T${seasonIndex + 1}:E${episodeIndex + 1}"
                 }
                 else -> "Contenido"
             }

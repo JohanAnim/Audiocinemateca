@@ -13,6 +13,21 @@
         <item>system</item>
     </string-array>
 
+    <!-- Boot Animation Frequency -->
+    <string-array name="boot_animation_frequency_entries">
+        <item>Siempre (en cada inicio)</item>
+        <item>Cada 6 horas</item>
+        <item>Cada 12 horas</item>
+        <item>Cada 24 horas (diario)</item>
+    </string-array>
+
+    <string-array name="boot_animation_frequency_values">
+        <item>always</item>
+        <item>6_hours</item>
+        <item>12_hours</item>
+        <item>24_hours</item>
+    </string-array>
+
     <!-- Rewind Interval -->
     <string-array name="rewind_interval_entries">
         <item>5 segundos</item>
@@ -58,12 +73,14 @@
 
     <!-- Startup Tab -->
     <string-array name="startup_tab_entries">
-        <item>Inicio (Catálogo)</item>
+        <item>Inicio</item>
+        <item>Explorar (Catálogo)</item>
         <item>Mis Listas</item>
         <item>Cuenta</item>
     </string-array>
 
     <string-array name="startup_tab_values">
+        <item>home</item>
         <item>catalog</item>
         <item>mylists</item>
         <item>account</item>

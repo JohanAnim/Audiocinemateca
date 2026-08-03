@@ -89,6 +89,21 @@ class GeminiRepository @Inject constructor(
         return true
     }
 
+    suspend fun generateContentRating(title: String, description: String): String? = withContext(Dispatchers.IO) {
+        if (!initialize()) return@withContext null
+        if (apiKey.isBlank()) return@withContext null
+        try {
+            val prompt = "[DIRECTIVA: CLASIFICACION_CONTENIDO] Analiza el siguiente contenido cinematográfico/audiolibro:\nTítulo: '$title'\nSinopsis: '$description'\nGenera únicamente la clasificación de edad recomendada (ej: 'Clasificación 12+', 'Clasificación 16+', 'Apto para Todo Público') seguida de los descriptores de contenido breves (ej: 'Diálogos sugerentes, violencia moderada, lenguaje fuerte'). Responde en máximo 1 frase concisa en español."
+            val res = generateContent(prompt)
+            if (res.isSuccess) {
+                res.getOrNull()?.trim()
+            } else null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     fun startChat() { chatHistory.clear() }
 
     fun getHistory(): List<Content> = chatHistory.toList()

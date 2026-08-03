@@ -19,6 +19,7 @@ class AudiocinematecaApp : Application() {
         com.johang.audiocinemateca.util.CrashLogger(this)
         
         createNotificationChannel()
+        subscribeToGlobalTopic()
 
         // Apply the saved theme on startup
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
@@ -26,21 +27,51 @@ class AudiocinematecaApp : Application() {
         ThemeManager.applyTheme(theme ?: "system")
     }
 
+    private fun subscribeToGlobalTopic() {
+        try {
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().subscribeToTopic("audiocinemateca_global")
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        android.util.Log.d("FCM", "Suscrito con éxito al tema: audiocinemateca_global")
+                    } else {
+                        android.util.Log.e("FCM", "Error al suscribirse al tema audiocinemateca_global", task.exception)
+                    }
+                }
+        } catch (e: Exception) {
+            android.util.Log.e("FCM", "Error iniciando FCM topic subscription: ${e.message}")
+        }
+    }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Descargas"
-            val descriptionText = "Notificaciones sobre el progreso de las descargas"
-            val importance = NotificationManager.IMPORTANCE_LOW
-            val channel = NotificationChannel(DOWNLOAD_CHANNEL_ID, name, importance).apply {
-                description = descriptionText
-            }
             val notificationManager: NotificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
+
+            val downloadChannel = NotificationChannel(
+                DOWNLOAD_CHANNEL_ID,
+                "Descargas",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Notificaciones sobre el progreso de las descargas"
+            }
+
+            val announcementsChannel = NotificationChannel(
+                COMMUNITY_CHANNEL_ID,
+                "Anuncios de la Comunidad",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notificaciones y anuncios globales de la comunidad"
+                enableVibration(true)
+                enableLights(true)
+            }
+
+            notificationManager.createNotificationChannel(downloadChannel)
+            notificationManager.createNotificationChannel(announcementsChannel)
         }
     }
 
     companion object {
         const val DOWNLOAD_CHANNEL_ID = "download_channel"
+        const val COMMUNITY_CHANNEL_ID = "community_announcements"
     }
 }

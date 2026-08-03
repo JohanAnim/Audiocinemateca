@@ -94,4 +94,32 @@ class RatingRepository @Inject constructor(
             transaction.set(userRatingRef, mapOf("rating" to newRating), SetOptions.merge())
         }.await()
     }
+
+    /**
+     * Obtiene todas las calificaciones por estrellas (1 a 5) realizadas por el usuario actual desde Firestore.
+     * Retorna un mapa de contentId -> ratingStars (1 a 5)
+     */
+    suspend fun getUserRatings(): Map<String, Int> {
+        val userId = auth.currentUser?.uid ?: return emptyMap()
+        return try {
+            val querySnapshot = firestore.collectionGroup("user_ratings")
+                .get()
+                .await()
+
+            val resultMap = mutableMapOf<String, Int>()
+            for (doc in querySnapshot.documents) {
+                if (doc.id == userId) {
+                    val ratingStars = doc.getLong("rating")?.toInt() ?: 0
+                    val parentDocId = doc.reference.parent.parent?.id
+                    if (parentDocId != null && ratingStars in 1..5) {
+                        resultMap[parentDocId] = ratingStars
+                    }
+                }
+            }
+            resultMap
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyMap()
+        }
+    }
 }

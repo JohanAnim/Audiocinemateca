@@ -54,7 +54,10 @@ class NotificationAdapter(
                 binding.btnNotificationNav.text = when {
                     isDonation -> "Donar ahora"
                     notification.destination == "announcements" -> "Ver Anuncios"
-                    notification.linkUrl?.contains("audiocinemateca.com") == true -> "Ver ahora"
+                    notification.destination == "content_detail" -> "Ver contenido"
+                    notification.destination == "global_chat" -> "Ir al Chat"
+                    notification.destination == "comments" -> "Ver comentarios"
+                    notification.linkUrl?.contains("audiocinemateca.com") == true -> "Ver contenido"
                     else -> "Abrir enlace"
                 }
 

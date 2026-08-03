@@ -42,6 +42,15 @@ class PlaybackProgressRepository @Inject constructor(
         }
     }
 
+    suspend fun deleteAllPlaybackProgressForContent(contentId: String) {
+        playbackProgressDao.deleteAllPlaybackProgressForContent(contentId)
+        try {
+            cloudRepository.deleteHistoryItem(contentId, 0, 0)
+        } catch (e: Exception) {
+            android.util.Log.e("SyncHistory", "Error al borrar todo para contenido en nube")
+        }
+    }
+
     suspend fun deleteAllPlaybackProgress() {
         playbackProgressDao.deleteAllPlaybackProgress()
         try {

@@ -68,6 +68,22 @@ class CatalogFragment : Fragment() {
 
         val tabLayout = view.findViewById<TabLayout>(R.id.tab_layout)
         
+        val composeToolbar = view.findViewById<androidx.compose.ui.platform.ComposeView>(R.id.compose_catalog_toolbar)
+        composeToolbar.setContent {
+            com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme {
+                CatalogToolbar(
+                    onMenuClick = {
+                        (activity as? com.johang.audiocinemateca.MainActivity)?.openNavigationDrawer()
+                    },
+                    onSearchClick = {
+                        handleSearchClick()
+                    },
+                    onSurpriseMeClick = {
+                        handleSurpriseMeClick()
+                    }
+                )
+            }
+        }
 
         this.viewPager = view.findViewById<ViewPager2>(R.id.view_pager)
         viewPager.isUserInputEnabled = false
@@ -131,28 +147,36 @@ class CatalogFragment : Fragment() {
         inflater.inflate(R.menu.catalog_combined_menu, menu)
     }
 
+    private fun handleSearchClick() {
+        try {
+            findNavController().navigate(CatalogFragmentDirections.actionCatalogFragmentToSearchFragment())
+        } catch (e: Exception) {
+            Log.e("CatalogFragment", "Error al navegar a SearchFragment: ${e.message}", e)
+            Toast.makeText(requireContext(), "Error al abrir la búsqueda: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun handleSurpriseMeClick() {
+        lifecycleScope.launch {
+            val currentCategory = getCurrentCategoryName()
+            val randomItem = searchRepository.getRandomCatalogItem(currentCategory)
+            randomItem?.let { item ->
+                val action = MainNavGraphDirections.actionGlobalContentDetailFragment(item.id, currentCategory)
+                findNavController().navigate(action)
+            } ?: run {
+                Toast.makeText(requireContext(), "No se pudo encontrar un elemento aleatorio en esta categoría.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_search -> {
-                try {
-                    findNavController().navigate(CatalogFragmentDirections.actionCatalogFragmentToSearchFragment())
-                } catch (e: Exception) {
-                    Log.e("CatalogFragment", "Error al navegar a SearchFragment: ${e.message}", e)
-                    Toast.makeText(requireContext(), "Error al abrir la búsqueda: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                handleSearchClick()
                 true
             }
             R.id.action_surprise_me -> {
-                lifecycleScope.launch {
-                    val currentCategory = getCurrentCategoryName()
-                    val randomItem = searchRepository.getRandomCatalogItem(currentCategory)
-                    randomItem?.let { item ->
-                        val action = MainNavGraphDirections.actionGlobalContentDetailFragment(item.id, currentCategory)
-                        findNavController().navigate(action)
-                    } ?: run {
-                        Toast.makeText(requireContext(), "No se pudo encontrar un elemento aleatorio en esta categoría.", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                handleSurpriseMeClick()
                 true
             }
             else -> super.onOptionsItemSelected(item)

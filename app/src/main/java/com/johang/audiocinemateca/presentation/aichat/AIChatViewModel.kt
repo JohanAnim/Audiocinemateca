@@ -519,25 +519,83 @@ class AIChatViewModel @Inject constructor(
     }
 
     private suspend fun parseLinkedContentGlobally(text: String): List<LinkedContent> {
-        val regex = """\[\[(.*?)]]""".toRegex()
-        val matches = regex.findAll(text)
         val linked = mutableListOf<LinkedContent>()
+        if (text.isBlank()) return linked
+
+        // 1. Extraer URLs de audiocinemateca.com
+        val urlRegex = Regex("""(?:https?://)?(?:www\.)?audiocinemateca\.com/[^\s<>\)"']\S*""", RegexOption.IGNORE_CASE)
+        val urlMatches = urlRegex.findAll(text)
+
+        for (match in urlMatches) {
+            try {
+                var rawUrl = match.value.trim().trimEnd('.', ',', ')', ']', '"', '\'', '>', '!', '?', ';', ':', '}')
+                if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+                    rawUrl = "https://$rawUrl"
+                }
+
+                val uri = android.net.Uri.parse(rawUrl)
+                val pathSegments = uri.pathSegments
+                val firstSeg = pathSegments.getOrNull(0)?.lowercase() ?: ""
+                val secondSeg = pathSegments.getOrNull(1)
+
+                val categoryHint = when {
+                    firstSeg.contains("peli") -> "peliculas"
+                    firstSeg.contains("serie") -> "series"
+                    firstSeg.contains("docu") -> "documentales"
+                    firstSeg.contains("corto") -> "cortometrajes"
+                    else -> null
+                }
+
+                val rawIdParam = uri.getQueryParameter("id")
+                    ?: uri.getQueryParameter("id_contenido")
+                    ?: secondSeg
+                    ?: if (categoryHint == null && firstSeg.isNotBlank() && firstSeg != "com" && firstSeg != "www") firstSeg else null
+
+                val cleanId = rawIdParam?.trim()?.takeWhile { it.isLetterOrDigit() || it == '-' || it == '_' }
+
+                if (!cleanId.isNullOrBlank()) {
+                    val item = if (categoryHint != null) {
+                        searchRepository.getCatalogItemByIdAndType(cleanId, categoryHint)
+                            ?: searchRepository.findCatalogItemById(cleanId)
+                    } else {
+                        searchRepository.findCatalogItemById(cleanId)
+                    }
+
+                    if (item != null) {
+                        val typeStr = when (item) {
+                            is com.johang.audiocinemateca.data.model.Serie -> "series"
+                            is com.johang.audiocinemateca.data.model.Documentary -> "documentales"
+                            is com.johang.audiocinemateca.data.model.ShortFilm -> "cortometrajes"
+                            else -> "peliculas"
+                        }
+                        if (linked.none { it.id == item.id }) {
+                            linked.add(LinkedContent(item.id, item.title, typeStr))
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("AIChatVM", "Error parseando URL para linked content", e)
+            }
+        }
+
+        // 2. Extraer corchetes [[Título]]
+        val bracketRegex = """\[\[(.*?)]]""".toRegex()
+        val matches = bracketRegex.findAll(text)
         for (match in matches) {
             val titleInText = match.groupValues[1].trim()
             try {
                 val foundItems = searchRepository.searchCatalog(titleInText)
-                // Búsqueda flexible: primero exacta, luego contiene
                 val exactItem = foundItems.find { it.title.equals(titleInText, ignoreCase = true) }
                     ?: foundItems.find { it.title.contains(titleInText, ignoreCase = true) }
                     ?: foundItems.find { titleInText.contains(it.title, ignoreCase = true) }
                     ?: foundItems.firstOrNull()
-                
-                if (exactItem != null) {
+
+                if (exactItem != null && linked.none { it.id == exactItem.id }) {
                     val typeStr = when (exactItem) {
-                        is com.johang.audiocinemateca.data.model.Serie -> "serie"
-                        is com.johang.audiocinemateca.data.model.Documentary -> "documental"
-                        is com.johang.audiocinemateca.data.model.ShortFilm -> "cortometraje"
-                        else -> "pelicula"
+                        is com.johang.audiocinemateca.data.model.Serie -> "series"
+                        is com.johang.audiocinemateca.data.model.Documentary -> "documentales"
+                        is com.johang.audiocinemateca.data.model.ShortFilm -> "cortometrajes"
+                        else -> "peliculas"
                     }
                     linked.add(LinkedContent(exactItem.id, exactItem.title, typeStr))
                 }
@@ -545,6 +603,7 @@ class AIChatViewModel @Inject constructor(
                 Log.w("AIChatVM", "Error buscando '$titleInText' para linked content", e)
             }
         }
+
         return linked.distinctBy { it.id }
     }
 

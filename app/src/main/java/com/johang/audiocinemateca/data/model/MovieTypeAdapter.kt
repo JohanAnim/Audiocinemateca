@@ -1,13 +1,11 @@
 package com.johang.audiocinemateca.data.model
 
-import com.google.gson.Gson
 import com.google.gson.TypeAdapter
-import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 
 class MovieTypeAdapter : TypeAdapter<Movie>() {
-    private val gson = Gson()
 
     override fun write(out: JsonWriter, value: Movie?) {
         if (value == null) {
@@ -33,12 +31,16 @@ class MovieTypeAdapter : TypeAdapter<Movie>() {
         out.name("filmaffinity").value(value.filmaffinity)
         out.name("sinopsis").value(value.sinopsis)
         out.name("enlaces")
-        gson.toJson(value.enlaces, object : TypeToken<List<String>>() {}.type, out)
+        out.beginArray()
+        for (link in value.enlaces) {
+            out.value(link)
+        }
+        out.endArray()
         out.endObject()
     }
 
     override fun read(reader: JsonReader): Movie? {
-        if (reader.peek() == com.google.gson.stream.JsonToken.NULL) {
+        if (reader.peek() == JsonToken.NULL) {
             reader.nextNull()
             return null
         }
@@ -82,7 +84,19 @@ class MovieTypeAdapter : TypeAdapter<Movie>() {
                 "partes" -> partes = reader.nextString()
                 "filmaffinity" -> filmaffinity = reader.nextString()
                 "sinopsis" -> sinopsis = reader.nextString()
-                "enlaces" -> enlaces = gson.fromJson(reader, object : TypeToken<List<String>>() {}.type)
+                "enlaces" -> {
+                    if (reader.peek() == JsonToken.BEGIN_ARRAY) {
+                        val list = mutableListOf<String>()
+                        reader.beginArray()
+                        while (reader.hasNext()) {
+                            list.add(reader.nextString())
+                        }
+                        reader.endArray()
+                        enlaces = list
+                    } else {
+                        reader.skipValue()
+                    }
+                }
                 else -> reader.skipValue()
             }
         }

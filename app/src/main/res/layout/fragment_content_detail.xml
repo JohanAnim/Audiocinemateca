@@ -1,15 +1,25 @@
-<?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     tools:context=".presentation.contentdetail.ContentDetailFragment">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/compose_detail_toolbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="24dp">
+        android:layout_height="wrap_content" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="24dp">
 
         <LinearLayout
             android:id="@+id/content_details_container"
@@ -380,3 +390,4 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </ScrollView>
+</LinearLayout>

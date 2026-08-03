@@ -137,15 +137,18 @@ class LoginViewModel @Inject constructor(
         }
     }
 
+    private var welcomeSoundsJob: kotlinx.coroutines.Job? = null
+
     fun playWelcomeSounds() {
-        viewModelScope.launch {
+        welcomeSoundsJob?.cancel()
+        welcomeSoundsJob = viewModelScope.launch {
             soundEffectsPlayer.loadSound(R.raw.efecto_bienvenida) { resId ->
                 soundEffectsPlayer.playSound(resId, 0.5f) // Volumen a la mitad
-                viewModelScope.launch {
+                welcomeSoundsJob = viewModelScope.launch {
                     delay(500)
                     voicePlayer.playVoice(R.raw.voz_bienvenida) {
                         // Se ejecuta al completar la primera voz
-                        viewModelScope.launch {
+                        welcomeSoundsJob = viewModelScope.launch {
                             delay(1000) // Retraso de 1 segundo
                             voicePlayer.playVoice(R.raw.voz_instrucciones_login)
                         }
@@ -156,6 +159,8 @@ class LoginViewModel @Inject constructor(
     }
 
     fun stopCurrentVoice() {
+        welcomeSoundsJob?.cancel()
+        welcomeSoundsJob = null
         voicePlayer.stopVoice()
     }
 }

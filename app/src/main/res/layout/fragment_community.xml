@@ -15,11 +15,12 @@
         android:id="@+id/tab_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
+        android:background="#1E293B"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:tabIndicatorColor="#38BDF8"
         app:tabIndicatorGravity="top"
         app:tabMode="fixed"
-        app:tabSelectedTextColor="?attr/colorPrimary"
-        app:tabTextColor="?attr/colorOnSurfaceVariant" />
+        app:tabSelectedTextColor="#38BDF8"
+        app:tabTextColor="#94A3B8" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

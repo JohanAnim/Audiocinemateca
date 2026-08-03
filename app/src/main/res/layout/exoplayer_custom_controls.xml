@@ -235,6 +235,19 @@
 
     </LinearLayout>
 
+    <!-- Contenedor para la Tarjeta de Clasificación de Contenido por IA (Compose) -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/compose_ai_content_rating"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="12dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/vote_container" />
+
     <!-- Sección de Comentarios (Vista Previa) -->
     <LinearLayout
         android:id="@+id/comments_preview_container"

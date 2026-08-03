@@ -4,10 +4,16 @@ import com.google.gson.Gson
 import com.google.gson.TypeAdapter
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
+import java.lang.reflect.Type
 
 class SerieTypeAdapter : TypeAdapter<Serie>() {
-    private val gson = Gson()
+
+    companion object {
+        private val GSON_INSTANCE = Gson()
+        private val CAPITULOS_TYPE: Type = object : TypeToken<Map<String, List<Episode>>>() {}.type
+    }
 
     override fun write(out: JsonWriter, value: Serie?) {
         if (value == null) {
@@ -33,12 +39,12 @@ class SerieTypeAdapter : TypeAdapter<Serie>() {
         out.name("sinopsis").value(value.sinopsis)
         out.name("productora").value(value.productora)
         out.name("capitulos")
-        gson.toJson(value.capitulos, object : TypeToken<Map<String, List<Episode>>>() {}.type, out)
+        GSON_INSTANCE.toJson(value.capitulos, CAPITULOS_TYPE, out)
         out.endObject()
     }
 
     override fun read(reader: JsonReader): Serie? {
-        if (reader.peek() == com.google.gson.stream.JsonToken.NULL) {
+        if (reader.peek() == JsonToken.NULL) {
             reader.nextNull()
             return null
         }
@@ -83,9 +89,11 @@ class SerieTypeAdapter : TypeAdapter<Serie>() {
                 "sinopsis" -> sinopsis = reader.nextString()
                 "productora" -> productora = reader.nextString()
                 "capitulos" -> {
-                    // Read the nested ChaptersWrapper
-                    val type = object : TypeToken<Map<String, List<Episode>>>() {}.type
-                                capitulos = gson.fromJson(reader, type)
+                    if (reader.peek() != JsonToken.NULL) {
+                        capitulos = GSON_INSTANCE.fromJson(reader, CAPITULOS_TYPE) ?: emptyMap()
+                    } else {
+                        reader.nextNull()
+                    }
                 }
                 else -> reader.skipValue()
             }

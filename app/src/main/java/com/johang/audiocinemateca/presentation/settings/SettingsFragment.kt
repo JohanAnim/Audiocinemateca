@@ -1,57 +1,49 @@
 package com.johang.audiocinemateca.presentation.settings
 
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
-import androidx.appcompat.app.AppCompatActivity
+import android.view.ViewGroup
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import androidx.preference.Preference
-import androidx.preference.PreferenceFragmentCompat
 import com.johang.audiocinemateca.R
-import com.johang.audiocinemateca.data.repository.GeminiRepository
+import com.johang.audiocinemateca.presentation.settings.compose.SettingsScreen
+import com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme
+import dagger.hilt.android.AndroidEntryPoint
 
-class SettingsFragment : PreferenceFragmentCompat() {
+@AndroidEntryPoint
+class SettingsFragment : Fragment() {
 
-    override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        setPreferencesFromResource(R.xml.preferences, rootKey)
-
-        setupCategoryNavigation("pref_general", "general")
-        setupCategoryNavigation("pref_playback", "playback")
-        setupCategoryNavigation("pref_community", "community")
-        setupCategoryNavigation("pref_ai", "ai")
-        setupCategoryNavigation("pref_tts", "tts")
-        setupCategoryNavigation("pref_downloads", "downloads")
-
-        // Lógica para Información Legal
-        findPreference<Preference>("nav_privacy")?.setOnPreferenceClickListener {
-            val bundle = Bundle().apply { putString("url", "https://audiocinemateca.com/privacidad") }
-            findNavController().navigate(R.id.webViewFragment, bundle)
-            true
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        return ComposeView(requireContext()).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                AudiocinematecaTheme {
+                    SettingsScreen(
+                        onNavigateToCategory = { categoryTag ->
+                            val bundle = Bundle().apply { putString("category", categoryTag) }
+                            findNavController().navigate(R.id.action_settingsFragment_to_categorySettingsFragment, bundle)
+                        },
+                        onNavigateToPrivacy = {
+                            val bundle = Bundle().apply { putString("url", "https://audiocinemateca.com/privacidad") }
+                            findNavController().navigate(R.id.webViewFragment, bundle)
+                        },
+                        onNavigateToTerms = {
+                            val bundle = Bundle().apply { putString("url", "https://audiocinemateca.com/terminos") }
+                            findNavController().navigate(R.id.webViewFragment, bundle)
+                        },
+                        onBack = {
+                            findNavController().navigateUp()
+                        }
+                    )
+                }
+            }
         }
-
-        findPreference<Preference>("nav_terms")?.setOnPreferenceClickListener {
-            val bundle = Bundle().apply { putString("url", "https://audiocinemateca.com/terminos") }
-            findNavController().navigate(R.id.webViewFragment, bundle)
-            true
-        }
-    }
-
-    private fun setupCategoryNavigation(prefKey: String, categoryTag: String) {
-        findPreference<Preference>(prefKey)?.setOnPreferenceClickListener {
-            val bundle = Bundle().apply { putString("category", categoryTag) }
-            findNavController().navigate(R.id.action_settingsFragment_to_categorySettingsFragment, bundle)
-            true
-        }
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        (activity as? AppCompatActivity)?.supportActionBar?.title = "Ajustes"
-    }
-
-    @dagger.hilt.EntryPoint
-    @dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
-    interface GeminiEntryPoint {
-        fun geminiRepository(): GeminiRepository
-        fun ttsManager(): com.johang.audiocinemateca.util.TtsManager
     }
 }

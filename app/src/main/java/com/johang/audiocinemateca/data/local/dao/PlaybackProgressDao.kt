@@ -27,6 +27,9 @@ interface PlaybackProgressDao {
     @Query("DELETE FROM playback_progress")
     suspend fun deleteAllPlaybackProgress()
 
+    @Query("DELETE FROM playback_progress WHERE LOWER(contentId) IN ('pelicula', 'serie', 'cortometraje', 'documental', 'documentales')")
+    suspend fun deleteCorruptProgress()
+
     @Query("SELECT * FROM playback_progress ORDER BY lastPlayedTimestamp DESC")
     fun getAllPlaybackProgress(): Flow<List<PlaybackProgressEntity>>
 }

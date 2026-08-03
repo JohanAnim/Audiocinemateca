@@ -44,6 +44,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 
 @AndroidEntryPoint
 class ContentDetailFragment : Fragment() {
@@ -58,6 +60,8 @@ class ContentDetailFragment : Fragment() {
     lateinit var downloadManager: DownloadManager
 
     private var favoriteMenuItem: MenuItem? = null
+
+    private val toolbarTitleState = androidx.compose.runtime.mutableStateOf("Detalles del contenido")
 
     // Views
     private lateinit var contentTitleHeader: TextView
@@ -121,7 +125,20 @@ class ContentDetailFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setHasOptionsMenu(true)
 
-        (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        val composeToolbar = view.findViewById<androidx.compose.ui.platform.ComposeView>(R.id.compose_detail_toolbar)
+        composeToolbar.setContent {
+            com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme {
+                val title by toolbarTitleState
+                val isFavorite by viewModel.isFavorite.collectAsState()
+                com.johang.audiocinemateca.presentation.catalog.DetailToolbar(
+                    title = title,
+                    isFavorite = isFavorite,
+                    onBackClick = { findNavController().navigateUp() },
+                    onFavoriteClick = { viewModel.toggleFavorite() },
+                    onShareClick = { shareContent() }
+                )
+            }
+        }
 
         initializeViews(view)
         viewModel.loadContentDetail(args.itemId, args.itemType)
@@ -392,7 +409,7 @@ class ContentDetailFragment : Fragment() {
             is ShortFilm -> "Detalles del cortometraje"
             else -> "Detalles del contenido"
         }
-        (activity as? AppCompatActivity)?.supportActionBar?.title = actionBarTitle
+        toolbarTitleState.value = actionBarTitle
         
         contentYear.text = "Año: ${item.anio}"
         contentGenre.text = "Género: ${item.genero}"

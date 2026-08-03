@@ -7,6 +7,7 @@ data class ChatMessage(
     val id: String = "",
     val senderId: String = "",
     val senderName: String = "",
+    val senderEmail: String = "",
     val text: String = "",
     val timestamp: Timestamp = Timestamp.now(),
     val mentions: List<String> = emptyList(),
@@ -16,5 +17,6 @@ data class ChatMessage(
     val replyToText: String? = null,
     val reactions: Map<String, List<String>> = emptyMap(),
     val edited: Boolean = false,
+    val isDeleted: Boolean = false,
     val linkedItems: List<LinkedContent> = emptyList()
 )

@@ -7,6 +7,7 @@ import android.content.ClipboardManager
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.asSharedFlow
 import java.io.File
 import java.util.Date
@@ -71,9 +72,11 @@ class CatalogRepository @Inject constructor(
                 Log.d("CatalogRepository", "Deleted old catalog file: ${oldCatalogFile.absolutePath}")
             }
 
-            // Write the new catalog to a file
+            // Write the new catalog to a file directly via buffered stream
             val catalogFile = File(context.filesDir, CATALOG_FILE_NAME)
-            catalogFile.writeText(gson.toJson(catalog))
+            catalogFile.outputStream().buffered().writer(Charsets.UTF_8).use { writer ->
+                gson.toJson(catalog, writer)
+            }
             Log.d("CatalogRepository", "Saved catalog to file: ${catalogFile.absolutePath}")
 
             // Save the file path in the database
@@ -89,13 +92,18 @@ class CatalogRepository @Inject constructor(
         }
     }
 
+    private val catalogMutex = kotlinx.coroutines.sync.Mutex()
+
     suspend fun getCatalog(): CatalogResponse? = withContext(Dispatchers.IO) {
         if (cachedCatalog != null) {
-            Log.d("CatalogRepository", "Returning cached catalog")
             return@withContext cachedCatalog
         }
-        
-        loadCatalogFromFile()
+        catalogMutex.withLock {
+            if (cachedCatalog != null) {
+                return@withLock cachedCatalog
+            }
+            loadCatalogFromFile()
+        }
     }
 
     private suspend fun loadCatalogFromFile(): CatalogResponse? = withContext(Dispatchers.IO) {
@@ -107,9 +115,9 @@ class CatalogRepository @Inject constructor(
                 val catalogFile = File(filePath)
                 Log.d("CatalogRepository", "Catalog file path from DB: ${filePath}")
                 if (catalogFile.exists()) {
-                    val jsonString = catalogFile.readText()
-                    val type = object : TypeToken<CatalogResponse>() {}.type
-                    val catalog = gson.fromJson<CatalogResponse>(jsonString, type)
+                    val catalog = catalogFile.inputStream().buffered().reader(Charsets.UTF_8).use { reader ->
+                        gson.fromJson(reader, CatalogResponse::class.java)
+                    }
                     cachedCatalog = catalog
                     Log.d("CatalogRepository", "Deserialized and cached catalog")
                     return@withContext catalog

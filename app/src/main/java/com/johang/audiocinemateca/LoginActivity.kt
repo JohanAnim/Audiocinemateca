@@ -1,14 +1,23 @@
 package com.johang.audiocinemateca
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import com.johang.audiocinemateca.presentation.login.LoginScreen
+import com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_login)
+        enableEdgeToEdge()
+        setContent {
+            AudiocinematecaTheme {
+                LoginScreen()
+            }
+        }
     }
 }

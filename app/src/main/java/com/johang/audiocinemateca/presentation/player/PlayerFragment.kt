@@ -78,6 +78,12 @@ class PlayerFragment : Fragment() {
     @Inject
     lateinit var downloadRepository: com.johang.audiocinemateca.data.repository.DownloadRepository
 
+    @Inject
+    lateinit var geminiRepository: com.johang.audiocinemateca.data.repository.GeminiRepository
+
+    @Inject
+    lateinit var ttsManager: com.johang.audiocinemateca.util.TtsManager
+
     private var mediaController: MediaController? = null
     private lateinit var controllerFuture: ListenableFuture<MediaController>
 
@@ -141,6 +147,7 @@ class PlayerFragment : Fragment() {
         setupCustomControlListeners()
         observeVoteStats()
         observeCommentsPreview()
+        observeAiContentRating()
 
         val filter = IntentFilter(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON)
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(playerStateReceiver, filter)
@@ -223,6 +230,14 @@ class PlayerFragment : Fragment() {
         val duration = mediaController?.duration ?: 0L
         binding.exoplayerView.findViewById<TextView>(androidx.media3.ui.R.id.exo_position)?.text = TimeFormatUtils.formatDuration(currentPosition)
         binding.exoplayerView.findViewById<TextView>(androidx.media3.ui.R.id.exo_duration)?.text = TimeFormatUtils.formatDuration(duration)
+
+        val timeBar = binding.exoplayerView.findViewById<androidx.media3.ui.DefaultTimeBar>(androidx.media3.ui.R.id.exo_progress)
+        timeBar?.let {
+            if (duration > 0) {
+                it.setDuration(duration)
+                it.setPosition(currentPosition)
+            }
+        }
     }
 
     private fun setupToolbar() {
@@ -233,6 +248,16 @@ class PlayerFragment : Fragment() {
         }
         binding.toolbar.navigationContentDescription = getString(R.string.close_button_description)
         binding.toolbar.inflateMenu(R.menu.player_toolbar_menu)
+
+        try {
+            com.google.android.gms.cast.framework.CastButtonFactory.setUpMediaRouteButton(
+                requireContext(),
+                binding.toolbar.menu,
+                R.id.action_cast
+            )
+        } catch (e: Exception) {
+            Log.e("PlayerFragment", "Error al configurar botón de Cast en la toolbar del reproductor: ${e.message}")
+        }
 
         val moreOptionsMenu = binding.toolbar.menu.findItem(R.id.action_more_options)
         val subMenu = moreOptionsMenu?.subMenu
@@ -386,16 +411,36 @@ class PlayerFragment : Fragment() {
 
         val rewindButton = binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_rew)
         val forwardButton = binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_ffwd)
+        val timeBar = binding.exoplayerView.findViewById<androidx.media3.ui.DefaultTimeBar>(androidx.media3.ui.R.id.exo_progress)
+
+        timeBar?.addListener(object : androidx.media3.ui.TimeBar.OnScrubListener {
+            override fun onScrubStart(timeBar: androidx.media3.ui.TimeBar, position: Long) {}
+            override fun onScrubMove(timeBar: androidx.media3.ui.TimeBar, position: Long) {
+                binding.exoplayerView.findViewById<TextView>(androidx.media3.ui.R.id.exo_position)?.text = TimeFormatUtils.formatDuration(position)
+            }
+            override fun onScrubStop(timeBar: androidx.media3.ui.TimeBar, position: Long, canceled: Boolean) {
+                if (!canceled) {
+                    mediaController?.seekTo(position)
+                    updateTimestamps()
+                }
+            }
+        })
 
         rewindButton?.setOnClickListener {
             val rewindMs = (sharedPreferencesManager.getString("rewind_interval", "5")?.toLongOrNull() ?: 5L) * 1000
-            mediaController?.seekTo((mediaController?.currentPosition ?: 0) - rewindMs)
+            val currentPos = mediaController?.currentPosition ?: 0L
+            val targetPos = (currentPos - rewindMs).coerceAtLeast(0L)
+            mediaController?.seekTo(targetPos)
+            updateTimestamps()
             timeUpdateHandler.postDelayed({ updateSkipButtonsContentDescription() }, 100)
         }
 
         forwardButton?.setOnClickListener {
             val forwardMs = (sharedPreferencesManager.getString("forward_interval", "15")?.toLongOrNull() ?: 15L) * 1000
-            mediaController?.seekTo((mediaController?.currentPosition ?: 0) + forwardMs)
+            val currentPos = mediaController?.currentPosition ?: 0L
+            val targetPos = currentPos + forwardMs
+            mediaController?.seekTo(targetPos)
+            updateTimestamps()
             timeUpdateHandler.postDelayed({ updateSkipButtonsContentDescription() }, 100)
         }
 
@@ -520,6 +565,13 @@ class PlayerFragment : Fragment() {
     }
 
     private fun initializeMediaController() {
+        val serviceIntent = Intent(requireContext(), PlayerService::class.java)
+        try {
+            androidx.core.content.ContextCompat.startForegroundService(requireContext(), serviceIntent)
+        } catch (e: Exception) {
+            Log.e("PlayerFragment", "Error al iniciar PlayerService: ${e.message}")
+        }
+
         val sessionToken = SessionToken(requireContext(), ComponentName(requireContext(), PlayerService::class.java))
         controllerFuture = MediaController.Builder(requireContext(), sessionToken).buildAsync()
         controllerFuture.addListener({
@@ -537,8 +589,16 @@ class PlayerFragment : Fragment() {
     }
 
     private fun prepareAndPlay() {
-        setPlayerControlsEnabled(false)
         val catalogItem = currentContentItem ?: return
+        val activeItemId = mediaController?.currentMediaItem?.mediaMetadata?.extras?.getString("itemId")
+        if (activeItemId == catalogItem.id) {
+            setPlayerControlsEnabled(true)
+            updateToolbarTitle()
+            updateNavigationButtonsState()
+            return
+        }
+
+        setPlayerControlsEnabled(false)
         viewLifecycleOwner.lifecycleScope.launch {
             val mediaItems = createMediaItems(catalogItem)
             if (mediaItems.isEmpty()) return@launch
@@ -568,6 +628,16 @@ class PlayerFragment : Fragment() {
     }
 
     private fun createPlayerListener() = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            val playPauseIntent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply { putExtra(MainActivity.EXTRA_IS_PLAYING, isPlaying) }
+            LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(playPauseIntent)
+            
+            val playPauseButton = binding.exoplayerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_play_pause)
+            playPauseButton?.apply {
+                val iconRes = if (isPlaying) androidx.media3.ui.R.drawable.exo_ic_pause_circle_filled else androidx.media3.ui.R.drawable.exo_ic_play_circle_filled
+                setImageDrawable(ContextCompat.getDrawable(requireContext(), iconRes))
+            }
+        }
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == Player.STATE_READY) {
                 setPlayerControlsEnabled(true)
@@ -718,5 +788,38 @@ class PlayerFragment : Fragment() {
         val url = "https://audiocinemateca.com/$typeSlug?id=${item.id}"
         val shareIntent = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "$message\n\n$url") }
         startActivity(Intent.createChooser(shareIntent, "Compartir contenido"))
+    }
+
+    private fun observeAiContentRating() {
+        val item = currentContentItem ?: return
+        val enabled = sharedPreferencesManager.getBoolean("ai_content_rating_enabled", true)
+        val apiKey = sharedPreferencesManager.getString("gemini_api_key", "") ?: ""
+        
+        val composeView = binding.exoplayerView.findViewById<androidx.compose.ui.platform.ComposeView>(R.id.compose_ai_content_rating)
+        if (!enabled || apiKey.isBlank()) {
+            composeView?.visibility = View.GONE
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                val rating = geminiRepository.generateContentRating(item.title, item.sinopsis)
+                if (!rating.isNullOrBlank() && isAdded) {
+                    composeView?.apply {
+                        visibility = View.VISIBLE
+                        setContent {
+                            com.johang.audiocinemateca.presentation.player.components.ContentRatingCard(
+                                ratingText = rating,
+                                onDismiss = { visibility = View.GONE }
+                            )
+                        }
+                    }
+                    delay(200)
+                    ttsManager.speak(rating)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 }

@@ -2,8 +2,8 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <group android:checkableBehavior="single">
         <item
-            android:id="@+id/catalogFragment"
-            android:icon="@drawable/ic_catalog"
+            android:id="@+id/homeFragment"
+            android:icon="@drawable/ic_home"
             android:title="Inicio" />
         <item
             android:id="@+id/communityFragment"

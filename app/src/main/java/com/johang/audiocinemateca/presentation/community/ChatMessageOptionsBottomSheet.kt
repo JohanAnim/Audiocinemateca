@@ -11,6 +11,7 @@ import com.johang.audiocinemateca.databinding.FragmentChatMessageOptionsBinding
 class ChatMessageOptionsBottomSheet(
     private val message: ChatMessage,
     private val currentUserId: String?,
+    private val isAdmin: Boolean = false,
     private val onAction: (Action) -> Unit
 ) : BottomSheetDialogFragment() {
 
@@ -42,11 +43,12 @@ override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
             dismiss()
         }
 
-        // Mostrar Editar/Eliminar solo si el mensaje es del usuario actual
+        // Mostrar Editar/Eliminar solo si el mensaje es del usuario actual o si es Admin
         val isMe = currentUserId != null && message.senderId == currentUserId
-        binding.btnActionEdit.visibility = if (isMe) View.VISIBLE else View.GONE
-        binding.btnActionDelete.visibility = if (isMe) View.VISIBLE else View.GONE
-        binding.btnActionReport.visibility = if (!isMe) View.VISIBLE else View.GONE
+        val canDelete = (isMe || isAdmin) && !message.isDeleted
+        binding.btnActionEdit.visibility = if (isMe && !message.isDeleted) View.VISIBLE else View.GONE
+        binding.btnActionDelete.visibility = if (canDelete) View.VISIBLE else View.GONE
+        binding.btnActionReport.visibility = if (!isMe && !message.isDeleted) View.VISIBLE else View.GONE
 
         // Listeners
         binding.btnActionReply.setOnClickListener { onAction(Action.Reply); dismiss() }

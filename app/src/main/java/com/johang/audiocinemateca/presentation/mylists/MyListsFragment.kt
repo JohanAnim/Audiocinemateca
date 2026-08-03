@@ -45,7 +45,7 @@ class MyListsFragment : Fragment() {
         tabLayout = view.findViewById(R.id.tab_layout_mylists)
         viewPager = view.findViewById(R.id.view_pager_mylists)
 
-        val adapter = MyListsPagerAdapter(requireActivity())
+        val adapter = MyListsPagerAdapter(this)
         viewPager.adapter = adapter
 
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
@@ -63,6 +63,15 @@ class MyListsFragment : Fragment() {
                 activity?.invalidateOptionsMenu()
             }
         })
+
+        // Observar cambios en el historial para refrescar el menú
+        viewLifecycleOwner.lifecycleScope.launch {
+            playbackHistoryViewModel.historyItems.collect {
+                if (isAdded) {
+                    activity?.invalidateOptionsMenu()
+                }
+            }
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -78,15 +87,9 @@ class MyListsFragment : Fragment() {
         super.onPrepareOptionsMenu(menu)
         if (viewPager.currentItem == 0) { // Pestaña "Historial"
             val clearHistoryItem = menu.findItem(R.id.action_clear_history)
-            lifecycleScope.launch {
-                // Observar el StateFlow para obtener el estado actual del historial
-                playbackHistoryViewModel.historyItems.collect { items ->
-                    val hasHistoryItems = items.any { it is HistoryListItem.Item }
-                    clearHistoryItem?.isEnabled = hasHistoryItems
-                    // Si el botón está deshabilitado, también podemos cambiar su apariencia si es necesario
-                    // clearHistoryItem?.icon?.alpha = if (hasHistoryItems) 255 else 130
-                }
-            }
+            val items = playbackHistoryViewModel.historyItems.value
+            val hasHistoryItems = items.any { it is HistoryListItem.Item }
+            clearHistoryItem?.isEnabled = hasHistoryItems
         }
     }
 

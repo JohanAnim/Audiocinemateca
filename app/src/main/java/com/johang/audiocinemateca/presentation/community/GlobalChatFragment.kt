@@ -26,6 +26,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.databinding.FragmentGlobalChatBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
@@ -35,9 +36,18 @@ import com.google.firebase.auth.FirebaseAuth
 import com.johang.audiocinemateca.data.model.ChatMessage
 import androidx.appcompat.app.AlertDialog
 import android.widget.PopupMenu
-import com.johang.audiocinemateca.R
 import android.util.Log
 import androidx.navigation.fragment.findNavController
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.johang.audiocinemateca.presentation.community.components.ConnectedUsersDialog
+import com.johang.audiocinemateca.presentation.community.components.GlobalChatHeader
 
 @AndroidEntryPoint
 class GlobalChatFragment : Fragment() {
@@ -59,6 +69,9 @@ class GlobalChatFragment : Fragment() {
             onLinkedContentClick = { linked ->
                 val action = com.johang.audiocinemateca.MainNavGraphDirections.actionGlobalContentDetailFragment(linked.id, linked.type)
                 findNavController().navigate(action)
+            },
+            onShowAllRecommendationsClick = { items ->
+                viewModel.openRecommendationsDialog(items)
             }
         ) 
     }
@@ -69,13 +82,33 @@ class GlobalChatFragment : Fragment() {
         if (isGranted) Toast.makeText(requireContext(), "Permiso concedido.", Toast.LENGTH_SHORT).show()
     }
 
-    private val onBackPressedCallback = object : OnBackPressedCallback(false) {
-        override fun handleOnBackPressed() { if (binding.emojiPickerContainer.visibility == View.VISIBLE) toggleEmojiPicker(false) }
+    private val onBackPressedCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            if (binding.emojiPickerContainer.visibility == View.VISIBLE) {
+                toggleEmojiPicker(false)
+                return
+            }
+            viewModel.onAttemptExitCommunity {
+                isEnabled = false
+                requireActivity().onBackPressedDispatcher.onBackPressed()
+                isEnabled = true
+            }
+        }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentGlobalChatBinding.inflate(inflater, container, false)
         return binding.root
+    }
+
+    override fun onResume() {
+        super.onResume()
+        GlobalChatState.isChatScreenActive = true
+    }
+
+    override fun onPause() {
+        super.onPause()
+        GlobalChatState.isChatScreenActive = false
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -95,16 +128,167 @@ class GlobalChatFragment : Fragment() {
     }
 
     private fun setupChatHeader() {
-        binding.btnChatOptions.setOnClickListener { view ->
-            val popup = PopupMenu(requireContext(), view)
-            popup.menu.add("Comentarios")
-            popup.setOnMenuItemClickListener { item ->
-                if (item.title == "Comentarios") {
-                    Toast.makeText(context, "Sección de comentarios", Toast.LENGTH_SHORT).show()
+        binding.composeChatHeader.setContent {
+            com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme {
+                val onlineCount by viewModel.onlineCount.collectAsStateWithLifecycle()
+                val onlineUsers by viewModel.onlineUsers.collectAsStateWithLifecycle()
+                val currentJam by viewModel.currentJam.collectAsStateWithLifecycle()
+                val isJoinedJam by viewModel.isJoinedJam.collectAsStateWithLifecycle()
+                val showExitJamConfirmation by viewModel.showExitJamConfirmation.collectAsStateWithLifecycle()
+                val showJamSelectorDialog by viewModel.showJamSelectorDialog.collectAsStateWithLifecycle()
+                val showPinPromptDialog by viewModel.showPinPromptDialog.collectAsStateWithLifecycle()
+                val catalogForJam by viewModel.catalogForJam.collectAsStateWithLifecycle()
+                val showRecommendationsDialog by viewModel.showRecommendationsDialog.collectAsStateWithLifecycle()
+
+                var showConnectedUsersDialog by remember { mutableStateOf(false) }
+                var showRulesDialog by remember { mutableStateOf(!viewModel.hasSeenChatRules) }
+                var showBanUserDialogFor by remember { mutableStateOf<com.johang.audiocinemateca.data.model.OnlineUser?>(null) }
+                var showBannedUsersDialog by remember { mutableStateOf(false) }
+
+                val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    GlobalChatHeader(
+                        onlineCount = onlineCount,
+                        isAdmin = viewModel.isAdmin,
+                        onBackClick = {
+                            viewModel.onAttemptExitCommunity {
+                                findNavController().navigateUp()
+                            }
+                        },
+                        onHeaderClick = {
+                            showConnectedUsersDialog = true
+                        },
+                        onOptionsClick = {
+                            val popup = PopupMenu(requireContext(), binding.composeChatHeader)
+                            if (viewModel.isAdmin) {
+                                popup.menu.add("🎙️ Iniciar Jam en Vivo")
+                            }
+                            popup.menu.add("Reglas de la Comunidad")
+                            if (viewModel.isAdmin) {
+                                popup.menu.add("Usuarios Sancionados")
+                            }
+                            popup.setOnMenuItemClickListener { item ->
+                                when (item.title) {
+                                    "🎙️ Iniciar Jam en Vivo" -> viewModel.openJamSelector()
+                                    "Reglas de la Comunidad" -> showRulesDialog = true
+                                    "Usuarios Sancionados" -> showBannedUsersDialog = true
+                                }
+                                true
+                            }
+                            popup.show()
+                        }
+                    )
+
+                    com.johang.audiocinemateca.presentation.community.components.LiveJamHeaderCard(
+                        currentJam = currentJam,
+                        isJoined = isJoinedJam,
+                        isHost = viewModel.isAdmin && currentJam?.hostUserId == currentUserId,
+                        onJoinJam = { jam -> viewModel.onAttemptJoinJam(jam) },
+                        onLeaveJam = { viewModel.leaveJamSession() },
+                        onEndJam = { viewModel.endJamSession() },
+                        onOpenJamPlayer = { viewModel.onOpenJamPlayer() }
+                    )
                 }
-                true
+
+                if (showJamSelectorDialog) {
+                    com.johang.audiocinemateca.presentation.community.components.JamSelectorDialog(
+                        catalogItems = catalogForJam,
+                        onSelectContentForJam = { item, pin -> viewModel.startJamSession(item, pin) },
+                        onDismiss = { viewModel.dismissJamSelector() }
+                    )
+                }
+
+                showPinPromptDialog?.let { jam ->
+                    com.johang.audiocinemateca.presentation.community.components.PinPromptDialog(
+                        hostName = jam.hostName,
+                        onConfirmPin = { enteredPin -> viewModel.verifyPinAndJoin(enteredPin) },
+                        onDismiss = { viewModel.dismissPinPrompt() }
+                    )
+                }
+
+                if (showExitJamConfirmation) {
+                    com.johang.audiocinemateca.presentation.community.components.ExitJamConfirmationDialog(
+                        hostName = currentJam?.hostName ?: "el Anfitrión",
+                        onStayInJam = { viewModel.cancelExitJam() },
+                        onConfirmExitAndStop = {
+                            viewModel.confirmExitJamAndStop {
+                                findNavController().navigateUp()
+                            }
+                        }
+                    )
+                }
+                
+                showRecommendationsDialog?.let { items ->
+                    com.johang.audiocinemateca.presentation.community.components.AllRecommendationsDialog(
+                        items = items,
+                        onDismissRequest = { viewModel.dismissRecommendationsDialog() },
+                        onItemSelected = { linked ->
+                            viewModel.dismissRecommendationsDialog()
+                            val action = com.johang.audiocinemateca.MainNavGraphDirections.actionGlobalContentDetailFragment(linked.id, linked.type)
+                            findNavController().navigate(action)
+                        }
+                    )
+                }
+
+                if (showRulesDialog) {
+                    com.johang.audiocinemateca.presentation.community.components.ChatRulesDialog(
+                        onDismiss = {
+                            viewModel.markRulesAsSeen()
+                            showRulesDialog = false
+                        }
+                    )
+                }
+
+                if (showConnectedUsersDialog) {
+                    com.johang.audiocinemateca.presentation.community.components.ConnectedUsersDialog(
+                        onlineUsers = onlineUsers,
+                        isAdmin = viewModel.isAdmin,
+                        currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid,
+                        onReplyToUser = { name ->
+                            insertMention(name)
+                            showConnectedUsersDialog = false
+                        },
+                        onMentionUser = { name ->
+                            insertMention(name)
+                            showConnectedUsersDialog = false
+                        },
+                        onBanUser = { user ->
+                            showBanUserDialogFor = user
+                            showConnectedUsersDialog = false
+                        },
+                        onDismiss = { showConnectedUsersDialog = false }
+                    )
+                }
+
+                showBanUserDialogFor?.let { user ->
+                    com.johang.audiocinemateca.presentation.community.components.BanUserDialog(
+                        targetUserId = user.userId,
+                        targetDisplayName = user.displayName,
+                        targetEmail = user.email,
+                        onConfirmBan = { bannedUser ->
+                            viewModel.banUser(bannedUser)
+                            showBanUserDialogFor = null
+                            Toast.makeText(requireContext(), "Usuario ${bannedUser.displayName} suspendido.", Toast.LENGTH_SHORT).show()
+                        },
+                        onDismiss = { showBanUserDialogFor = null }
+                    )
+                }
+
+                if (showBannedUsersDialog && viewModel.isAdmin) {
+                    val bannedList by viewModel.bannedUsers.collectAsStateWithLifecycle()
+                    com.johang.audiocinemateca.presentation.community.components.BannedUsersDialog(
+                        bannedUsers = bannedList,
+                        onUnbanUser = { uid ->
+                            viewModel.unbanUser(uid)
+                            Toast.makeText(requireContext(), "Sanción eliminada.", Toast.LENGTH_SHORT).show()
+                        },
+                        onDismiss = { showBannedUsersDialog = false }
+                    )
+                }
             }
-            popup.show()
         }
     }
 
@@ -118,6 +302,11 @@ class GlobalChatFragment : Fragment() {
             if (viewModel.sendMessage(binding.etMessage.text.toString())) {
                 binding.etMessage.text.clear()
                 if (binding.emojiPickerContainer.visibility == View.VISIBLE) toggleEmojiPicker(false)
+                binding.rvGlobalChat.postDelayed({
+                    if (_binding != null && adapter.itemCount > 0) {
+                        binding.rvGlobalChat.scrollToPosition(adapter.itemCount - 1)
+                    }
+                }, 100)
             } else Toast.makeText(requireContext(), "Espera un poco entre mensajes.", Toast.LENGTH_SHORT).show()
         }
         binding.btnCancelReply.setOnClickListener { 
@@ -158,7 +347,7 @@ class GlobalChatFragment : Fragment() {
     }
 
     private fun showMessageOptions(message: ChatMessage) {
-        val bottomSheet = ChatMessageOptionsBottomSheet(message, FirebaseAuth.getInstance().currentUser?.uid) { action ->
+        val bottomSheet = ChatMessageOptionsBottomSheet(message, FirebaseAuth.getInstance().currentUser?.uid, viewModel.isAdmin) { action ->
             when (action) {
                 is ChatMessageOptionsBottomSheet.Action.React -> viewModel.toggleReaction(message, action.emoji)
                 ChatMessageOptionsBottomSheet.Action.Reply -> startReply(message)
@@ -238,13 +427,14 @@ class GlobalChatFragment : Fragment() {
                 resetVoiceButtonUI()
             }
             override fun onResults(r: Bundle?) {
+                val b = _binding ?: return
                 val matches = r?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 if (!matches.isNullOrEmpty()) {
                     val text = matches[0]
-                    val currentText = binding.etMessage.text.toString().trim()
+                    val currentText = b.etMessage.text.toString().trim()
                     val newText = if (currentText.isEmpty()) text else "$currentText $text"
-                    binding.etMessage.setText(newText)
-                    binding.etMessage.setSelection(newText.length)
+                    b.etMessage.setText(newText)
+                    b.etMessage.setSelection(newText.length)
                     vibrateManually()
                 }
                 resetVoiceButtonUI()
@@ -278,9 +468,10 @@ class GlobalChatFragment : Fragment() {
     }
 
     private fun startVoiceListening(intent: Intent) {
+        val b = _binding ?: return
         viewModel.onVoiceStart()
-        binding.btnVoice.animate().scaleX(1.3f).scaleY(1.3f).setDuration(150).start()
-        binding.etMessage.hint = "Escuchando..."
+        b.btnVoice.animate().scaleX(1.3f).scaleY(1.3f).setDuration(150).start()
+        b.etMessage.hint = "Escuchando..."
         speechRecognizer?.startListening(intent)
     }
 
@@ -291,8 +482,9 @@ class GlobalChatFragment : Fragment() {
     }
 
     private fun resetVoiceButtonUI() {
-        binding.btnVoice.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
-        binding.etMessage.hint = "Escribe un mensaje..."
+        val b = _binding ?: return
+        b.btnVoice.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
+        b.etMessage.hint = "Escribe un mensaje..."
     }
 
     private fun vibrateManually() {
@@ -307,47 +499,91 @@ class GlobalChatFragment : Fragment() {
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.chatItems.collectLatest { items ->
-                adapter.submitList(items) { if (items.isNotEmpty()) binding.rvGlobalChat.scrollToPosition(items.size - 1) }
+                val targetScrollPos = viewModel.unreadPosition.value
+                adapter.submitList(items) { 
+                    val b = _binding ?: return@submitList
+                    if (items.isNotEmpty()) {
+                        if (targetScrollPos != null && targetScrollPos in items.indices) {
+                            b.rvGlobalChat.scrollToPosition(targetScrollPos)
+                            viewModel.clearUnreadScrollPosition()
+                        } else {
+                            val lm = b.rvGlobalChat.layoutManager as? LinearLayoutManager
+                            val lastVisiblePos = lm?.findLastVisibleItemPosition() ?: -1
+                            val isAtBottom = lastVisiblePos != -1 && lastVisiblePos >= (items.size - 2)
+                            if (isAtBottom) {
+                                b.rvGlobalChat.scrollToPosition(items.size - 1)
+                            }
+                        }
+                    }
+                }
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.isOpen.collectLatest { isOpen ->
-                binding.tvChatStatus.visibility = if (isOpen) View.GONE else View.VISIBLE
-                binding.inputContainer.visibility = if (isOpen) View.VISIBLE else View.GONE
-            }
-        }
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.onlineCount.collectLatest { count ->
-                binding.tvOnlineCount.text = "$count personas conectadas"
+                val b = _binding ?: return@collectLatest
+                b.tvChatStatus.visibility = if (isOpen) View.GONE else View.VISIBLE
+                b.inputContainer.visibility = if (isOpen) View.VISIBLE else View.GONE
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.replyingTo.collectLatest { msg ->
+                val b = _binding ?: return@collectLatest
                 if (msg != null) {
-                    binding.layoutReplyPreview.visibility = View.VISIBLE
-                    binding.tvReplyPreviewSender.text = msg.senderName
-                    binding.tvReplyPreviewText.text = msg.text
-                    binding.etMessage.hint = "Respondiendo a ${msg.senderName}..."
+                    b.layoutReplyPreview.visibility = View.VISIBLE
+                    b.tvReplyPreviewSender.text = msg.senderName
+                    b.tvReplyPreviewText.text = msg.text
+                    b.etMessage.hint = "Respondiendo a ${msg.senderName}..."
                 } else if (viewModel.editingMessage.value == null) {
-                    binding.layoutReplyPreview.visibility = View.GONE
-                    binding.etMessage.hint = "Escribe un mensaje..."
+                    b.layoutReplyPreview.visibility = View.GONE
+                    b.etMessage.hint = "Escribe un mensaje..."
                 }
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.editingMessage.collectLatest { msg ->
+                val b = _binding ?: return@collectLatest
                 if (msg != null) {
-                    binding.layoutReplyPreview.visibility = View.VISIBLE
-                    binding.tvReplyPreviewSender.text = "Editando mensaje"
-                    binding.tvReplyPreviewText.text = msg.text
-                    binding.etMessage.hint = "Editando..."
+                    b.layoutReplyPreview.visibility = View.VISIBLE
+                    b.tvReplyPreviewSender.text = "Editando mensaje"
+                    b.tvReplyPreviewText.text = msg.text
+                    b.etMessage.hint = "Editando..."
                 } else if (viewModel.replyingTo.value == null) {
-                    binding.layoutReplyPreview.visibility = View.GONE
-                    binding.etMessage.hint = "Escribe un mensaje..."
+                    b.layoutReplyPreview.visibility = View.GONE
+                    b.etMessage.hint = "Escribe un mensaje..."
                 }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.banStatusMessage.collectLatest { msg ->
+                if (!msg.isNullOrBlank()) {
+                    Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+                    viewModel.clearBanStatusMessage()
+                }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.navigateToPlayerEvent.collect { item ->
+                val jam = viewModel.currentJam.value
+                val bundle = Bundle().apply {
+                    putParcelable("catalogItem", item)
+                    putInt("partIndex", jam?.partIndex ?: 0)
+                    putInt("episodeIndex", jam?.episodeIndex ?: -1)
+                }
+                findNavController().navigate(R.id.action_global_playerFragment, bundle)
             }
         }
     }
 
-    override fun onDestroyView() { super.onDestroyView(); speechRecognizer?.destroy(); _binding = null }
+    override fun onStop() {
+        super.onStop()
+        GlobalChatState.isChatScreenActive = false
+        viewModel.markChatAsRead()
+    }
+
+    override fun onDestroyView() { 
+        viewModel.markChatAsRead()
+        super.onDestroyView()
+        speechRecognizer?.destroy()
+        _binding = null 
+    }
 }

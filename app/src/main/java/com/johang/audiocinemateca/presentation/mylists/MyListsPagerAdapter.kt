@@ -1,7 +1,6 @@
 package com.johang.audiocinemateca.presentation.mylists
 
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -12,7 +11,7 @@ import android.view.Gravity
 
 import com.johang.audiocinemateca.presentation.downloads.DownloadsFragment
 
-class MyListsPagerAdapter(fragmentActivity: FragmentActivity) : FragmentStateAdapter(fragmentActivity) {
+class MyListsPagerAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
 
     override fun getItemCount(): Int = 3 // Historial, Favoritos, Descargas
 

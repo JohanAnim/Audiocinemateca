@@ -18,6 +18,9 @@ interface FavoritesDao {
     @Query("DELETE FROM favorites WHERE contentId = :contentId")
     suspend fun removeFavorite(contentId: String)
 
+    @Query("DELETE FROM favorites")
+    suspend fun deleteAllFavorites()
+
     @Query("SELECT EXISTS(SELECT 1 FROM favorites WHERE contentId = :contentId LIMIT 1)")
     fun isFavorite(contentId: String): Flow<Boolean>
 }

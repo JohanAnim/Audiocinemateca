@@ -128,4 +128,33 @@ class VoteRepository @Inject constructor(
             }
         }.await()
     }
+
+    /**
+     * Obtiene los votos explícitos (Likes/Dislikes) realizados por el usuario actual desde Firestore.
+     * Retorna un mapa de contentId -> voteType (1: Like, -1: Dislike)
+     */
+    suspend fun getUserVotes(): Map<String, Int> {
+        val userId = auth.currentUser?.uid ?: return emptyMap()
+        return try {
+            val querySnapshot = firestore.collectionGroup("user_votes")
+                .get()
+                .await()
+
+            val resultMap = mutableMapOf<String, Int>()
+            for (doc in querySnapshot.documents) {
+                if (doc.id == userId) {
+                    val voteType = doc.getLong("voteType")?.toInt() ?: 0
+                    val parentDocId = doc.reference.parent.parent?.id
+                    if (parentDocId != null && voteType != 0) {
+                        val contentId = parentDocId.substringBefore("_S")
+                        resultMap[contentId] = voteType
+                    }
+                }
+            }
+            resultMap
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyMap()
+        }
+    }
 }

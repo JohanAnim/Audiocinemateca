@@ -286,13 +286,12 @@ class AuthCatalogRepository @Inject constructor(
         try {
             val response = authService.getCatalog(authString, "identity")
             if (response.isSuccessful && response.body() != null) {
-                // Progreso de descompresión (80-90%)
+                // Progreso de descompresión y lectura en flujo (80-90%)
                 send(LoadCatalogResultWithProgress.Progress(80))
-                val decompressed = decompressGzip(response.body()!!.byteStream())
-                send(LoadCatalogResultWithProgress.Progress(85))
-
-                val cleanedString = decompressed.trim()
-                val catalogResponse = gson.fromJson(cleanedString, com.johang.audiocinemateca.data.model.CatalogResponse::class.java)
+                val catalogResponse = GZIPInputStream(response.body()!!.byteStream()).buffered().reader(Charsets.UTF_8).use { reader ->
+                    gson.fromJson(reader, com.johang.audiocinemateca.data.model.CatalogResponse::class.java)
+                }
+                send(LoadCatalogResultWithProgress.Progress(88))
 
                 // Progreso de guardado en DB (90-100%)
                 send(LoadCatalogResultWithProgress.Progress(90))

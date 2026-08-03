@@ -49,6 +49,14 @@ class SharedPreferencesManager @Inject constructor(
         return prefs.getBoolean(key, defaultValue)
     }
 
+    fun saveLastReadChatTimestamp(timestamp: Long) {
+        saveLong(LAST_READ_CHAT_TIMESTAMP_KEY, timestamp)
+    }
+
+    fun getLastReadChatTimestamp(): Long {
+        return getLong(LAST_READ_CHAT_TIMESTAMP_KEY, 0L)
+    }
+
     fun getPrefs(): SharedPreferences {
         return prefs
     }
@@ -59,5 +67,6 @@ class SharedPreferencesManager @Inject constructor(
         const val STORED_USERNAME_KEY = "storedUsername"
         const val STORED_PASSWORD_KEY = "storedPassword"
         const val HAS_SEEN_DOWNLOADS_WELCOME_KEY = "has_seen_downloads_welcome"
+        const val LAST_READ_CHAT_TIMESTAMP_KEY = "last_read_chat_timestamp"
     }
 }

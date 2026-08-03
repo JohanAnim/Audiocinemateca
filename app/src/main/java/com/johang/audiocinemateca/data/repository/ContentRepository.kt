@@ -26,31 +26,31 @@ class ContentRepository @Inject constructor(
     // --- MÉTODOS DE CONSULTA ---
 
     suspend fun getContentItem(contentId: String, contentType: String, loadedCatalog: CatalogResponse? = null): CatalogItem? {
-        val catalogToUse = loadedCatalog ?: getCatalogResponse()
-        val normalizedType = when (contentType.lowercase()) {
-            "peliculas", "movie" -> "peliculas"
-            "series", "series" -> "series"
-            "cortometrajes", "short" -> "cortometrajes"
-            "documentales", "documentary" -> "documentales"
-            else -> contentType.lowercase()
+        val catalogToUse = loadedCatalog ?: getCatalogResponse() ?: return null
+        val cleanId = contentId.trim()
+        val baseId = cleanId.substringBefore('_')
+
+        val normalizedType = when (contentType.lowercase(java.util.Locale.ROOT)) {
+            "peliculas", "pelicula", "movie" -> "peliculas"
+            "series", "serie" -> "series"
+            "cortometrajes", "cortometraje", "short", "shortfilm" -> "cortometrajes"
+            "documentales", "documental", "documentary" -> "documentales"
+            else -> contentType.lowercase(java.util.Locale.ROOT)
         }
-        return when (normalizedType) {
-            "peliculas" -> catalogToUse?.movies?.firstOrNull { it.id == contentId }
-            "series" -> catalogToUse?.series?.firstOrNull { it.id == contentId }
-            "cortometrajes" -> catalogToUse?.shortFilms?.firstOrNull { it.id == contentId }
-            "documentales" -> catalogToUse?.documentaries?.firstOrNull { it.id == contentId }
-            else -> {
-                // Si aún así no se encuentra, buscar en todas las categorías como último recurso
-                val item = catalogToUse?.movies?.firstOrNull { it.id == contentId }
-                    ?: catalogToUse?.series?.firstOrNull { it.id == contentId }
-                    ?: catalogToUse?.documentaries?.firstOrNull { it.id == contentId }
-                    ?: catalogToUse?.shortFilms?.firstOrNull { it.id == contentId }
-                
-                if (item == null) {
-                    android.util.Log.w("ContentRepo", "No se encontró el item con ID: $contentId (Tipo: $contentType)")
-                }
-                item
-            }
+        val item = when (normalizedType) {
+            "peliculas" -> catalogToUse.movies?.firstOrNull { it.id.equals(cleanId, ignoreCase = true) || it.id.equals(baseId, ignoreCase = true) }
+            "series" -> catalogToUse.series?.firstOrNull { it.id.equals(cleanId, ignoreCase = true) || it.id.equals(baseId, ignoreCase = true) }
+            "cortometrajes" -> catalogToUse.shortFilms?.firstOrNull { it.id.equals(cleanId, ignoreCase = true) || it.id.equals(baseId, ignoreCase = true) }
+            "documentales" -> catalogToUse.documentaries?.firstOrNull { it.id.equals(cleanId, ignoreCase = true) || it.id.equals(baseId, ignoreCase = true) }
+            else -> null
+        } ?: (catalogToUse.movies?.firstOrNull { it.id.equals(cleanId, ignoreCase = true) || it.id.equals(baseId, ignoreCase = true) }
+            ?: catalogToUse.series?.firstOrNull { it.id.equals(cleanId, ignoreCase = true) || it.id.equals(baseId, ignoreCase = true) }
+            ?: catalogToUse.documentaries?.firstOrNull { it.id.equals(cleanId, ignoreCase = true) || it.id.equals(baseId, ignoreCase = true) }
+            ?: catalogToUse.shortFilms?.firstOrNull { it.id.equals(cleanId, ignoreCase = true) || it.id.equals(baseId, ignoreCase = true) })
+
+        if (item == null) {
+            android.util.Log.w("ContentRepo", "No se encontró el item con ID: $contentId (Tipo: $contentType)")
         }
+        return item
     }
 }

@@ -43,12 +43,12 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="?attr/colorOutlineVariant"
+            android:background="?attr/colorSurfaceVariant"
             android:layout_marginBottom="12dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_action_reply"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="56dp"
@@ -62,7 +62,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_action_mention"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="56dp"
@@ -76,7 +76,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_action_edit"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="56dp"
@@ -91,7 +91,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_action_delete"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="56dp"
@@ -108,7 +108,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_action_report"
-            style="@style/Widget.Material3.Button.TextButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="56dp"

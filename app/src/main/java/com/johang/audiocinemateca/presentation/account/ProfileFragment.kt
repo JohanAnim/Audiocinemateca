@@ -6,40 +6,27 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.TextView
 import android.widget.Toast
-import android.widget.CheckBox
-import android.text.method.HideReturnsTransformationMethod
-import android.text.method.PasswordTransformationMethod
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.UserProfileChangeRequest
-import com.johang.audiocinemateca.LoginActivity
 import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.data.AuthCatalogRepository
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.data.local.dao.FavoritesDao
 import com.johang.audiocinemateca.data.local.dao.PlaybackProgressDao
 import com.johang.audiocinemateca.data.repository.CloudRepository
-import com.johang.audiocinemateca.databinding.FragmentProfileBinding
+import com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
-import androidx.core.content.ContextCompat
-import android.content.res.ColorStateList
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
@@ -64,9 +51,6 @@ class ProfileFragment : Fragment() {
     @Inject
     lateinit var playbackProgressDao: PlaybackProgressDao
 
-    private var _binding: FragmentProfileBinding? = null
-    private val binding get() = _binding!!
-    
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
     private lateinit var credentialManager: CredentialManager
 
@@ -80,85 +64,46 @@ class ProfileFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentProfileBinding.inflate(inflater, container, false)
-        return binding.root
+        return ComposeView(requireContext()).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                AudiocinematecaTheme {
+                    ProfileScreen(
+                        authCatalogRepository = authCatalogRepository,
+                        sharedPreferencesManager = sharedPreferencesManager,
+                        cloudRepository = cloudRepository,
+                        favoritesDao = favoritesDao,
+                        playbackProgressDao = playbackProgressDao,
+                        onBackClick = { findNavController().navigateUp() },
+                        onSignInWithGoogle = { signInWithGoogle() },
+                        onNavigateToLogin = {
+                            findNavController().navigate(R.id.action_profileFragment_to_loginCloudFragment)
+                        },
+                        onNavigateToRegister = {
+                            findNavController().navigate(R.id.action_profileFragment_to_registerCloudFragment)
+                        },
+                        onSyncStarted = {
+                            Toast.makeText(requireContext(), "Iniciando Sincronización Inteligente...", Toast.LENGTH_SHORT).show()
+                        },
+                        onSyncFinished = { summary ->
+                            Toast.makeText(requireContext(), summary, Toast.LENGTH_LONG).show()
+                        },
+                        onSyncError = { error ->
+                            Toast.makeText(requireContext(), "Fallo en la sincronización: $error", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
+            }
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        setupUI()
-        loadUserData()
-        
         // COMPROBACIÓN AUTOMÁTICA AL ENTRAR
         if (firebaseAuth.currentUser != null) {
             checkAndPromptSync()
         }
-    }
-
-    private fun setupUI() {
-        binding.btnBack.setOnClickListener {
-            findNavController().navigateUp()
-        }
-
-        // Fila de Conexión
-        binding.btnGoogle.setOnClickListener {
-            signInWithGoogle()
-        }
-        binding.btnEmail.setOnClickListener {
-            findNavController().navigate(R.id.action_profileFragment_to_loginCloudFragment)
-        }
-        binding.btnRegister.setOnClickListener {
-            findNavController().navigate(R.id.action_profileFragment_to_registerCloudFragment)
-        }
-
-        // Botón Sincronización Manual
-        binding.btnManualSync.setOnClickListener {
-            lifecycleScope.launch {
-                val favs = favoritesDao.getAllFavorites().first()
-                val hist = playbackProgressDao.getAllPlaybackProgress().first()
-                syncLocalDataToCloud(favs, hist)
-            }
-        }
-
-        // Botón Asignar/Cambiar Contraseña
-        binding.btnAssignPassword.setOnClickListener {
-            showAssignPasswordDialog()
-        }
-
-        // Botón Desconectar de Firebase (Solo de la nube)
-        binding.btnFirebaseDisconnect.setOnClickListener {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Desconectar de la nube")
-                .setMessage("¿Quieres desconectarte de la sincronización en la nube? Seguirás conectado a tu cuenta local de Audiocinemateca.")
-                .setNegativeButton("No", null)
-                .setPositiveButton("Sí") { _, _ ->
-                    firebaseAuth.signOut()
-                    updateFirebaseUI()
-                    Toast.makeText(requireContext(), "Te has desconectado de la nube", Toast.LENGTH_SHORT).show()
-                }
-                .show()
-        }
-
-        // Botón Cerrar Sesión (Completo)
-        binding.btnLogout.setOnClickListener {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Cerrar Sesión")
-                .setMessage("¿Estás seguro de que quieres cerrar la sesión de Audiocinemateca por completo?")
-                .setNegativeButton("No", null)
-                .setPositiveButton("Sí") { _, _ ->
-                    lifecycleScope.launch {
-                        firebaseAuth.signOut()
-                        authCatalogRepository.logout()
-                        val intent = Intent(requireContext(), LoginActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        startActivity(intent)
-                    }
-                }
-                .show()
-        }
-
-        updateFirebaseUI()
     }
 
     private fun signInWithGoogle() {
@@ -222,7 +167,6 @@ class ProfileFragment : Fragment() {
                             
                             // Si pasa de aquí, todo está correcto
                             syncUsernameWithFirebase()
-                            updateFirebaseUI()
                             checkAndPromptSync()
                             
                             MaterialAlertDialogBuilder(requireContext())
@@ -332,7 +276,6 @@ class ProfileFragment : Fragment() {
                 }
 
                 Toast.makeText(requireContext(), "¡Tus datos han sido restaurados!", Toast.LENGTH_LONG).show()
-                updateFirebaseUI()
             } catch (e: Exception) {
                 Log.e("RestoreError", "Error al restaurar: ${e.message}")
                 Toast.makeText(requireContext(), "Error al descargar datos", Toast.LENGTH_SHORT).show()
@@ -431,7 +374,6 @@ class ProfileFragment : Fragment() {
                 
                 val summary = "Sincronizado: +$favsUploaded subidos, +$favsDownloaded bajados."
                 Toast.makeText(requireContext(), summary, Toast.LENGTH_LONG).show()
-                updateFirebaseUI()
             } catch (e: Exception) {
                 Log.e("SyncError", "Error en la sincronización", e)
                 Toast.makeText(requireContext(), "Fallo en la sincronización: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
@@ -455,160 +397,5 @@ class ProfileFragment : Fragment() {
                 }
             }
         }
-    }
-
-    private fun showAssignPasswordDialog() {
-        val user = firebaseAuth.currentUser
-        val hasPassword = user?.providerData?.any { it.providerId == EmailAuthProvider.PROVIDER_ID } ?: false
-        
-        val context = requireContext()
-        val title = if (hasPassword) "Cambiar Contraseña" else "Asignar Contraseña"
-        
-        val currentPasswordInput = EditText(context).apply {
-            hint = "Contraseña actual"
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-            visibility = if (hasPassword) View.VISIBLE else View.GONE
-        }
-        val passwordInput = EditText(context).apply {
-            hint = if (hasPassword) "Nueva contraseña" else "Elige una contraseña"
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-        }
-        val confirmInput = EditText(context).apply {
-            hint = "Confirma la contraseña"
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-        }
-        val showPasswordCheckbox = CheckBox(context).apply {
-            text = "Mostrar contraseñas"
-            setOnCheckedChangeListener { _, isChecked ->
-                val transformation = if (isChecked) HideReturnsTransformationMethod.getInstance() else PasswordTransformationMethod.getInstance()
-                currentPasswordInput.transformationMethod = transformation
-                passwordInput.transformationMethod = transformation
-                confirmInput.transformationMethod = transformation
-            }
-        }
-        
-        val layout = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(60, 40, 60, 10)
-            addView(currentPasswordInput)
-            addView(passwordInput)
-            addView(confirmInput)
-            addView(showPasswordCheckbox)
-        }
-
-        MaterialAlertDialogBuilder(context)
-            .setTitle(title)
-            .setView(layout)
-            .setPositiveButton("Guardar") { _, _ ->
-                val pass1 = passwordInput.text.toString()
-                val pass2 = confirmInput.text.toString()
-                if (pass1.length >= 6 && pass1 == pass2) {
-                    if (hasPassword) {
-                        val credential = EmailAuthProvider.getCredential(user?.email!!, currentPasswordInput.text.toString())
-                        user.reauthenticate(credential).addOnCompleteListener { 
-                            if (it.isSuccessful) user.updatePassword(pass1)
-                        }
-                    } else {
-                        linkEmailPassword(pass1)
-                    }
-                }
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
-
-    private fun linkEmailPassword(password: String) {
-        val user = firebaseAuth.currentUser
-        val email = user?.email ?: return
-        val credential = EmailAuthProvider.getCredential(email, password)
-        user.linkWithCredential(credential).addOnCompleteListener {
-            if (it.isSuccessful) updateFirebaseUI()
-        }
-    }
-
-    private fun updateFirebaseUI() {
-        val user = firebaseAuth.currentUser
-        if (user == null) {
-            binding.layoutNotLogged.visibility = View.VISIBLE
-            binding.tvEmail.visibility = View.GONE
-            binding.tvCreationDate.visibility = View.GONE
-            binding.layoutStats.visibility = View.GONE
-            binding.btnManualSync.visibility = View.GONE
-            binding.btnFirebaseDisconnect.visibility = View.GONE
-            binding.btnAssignPassword.visibility = View.GONE
-            binding.spacerUserInfo.visibility = View.VISIBLE
-            binding.tvUserRole.visibility = View.GONE
-        } else {
-            binding.layoutNotLogged.visibility = View.GONE
-            binding.tvEmail.text = "Tu correo: ${user.email}"
-            binding.tvEmail.visibility = View.VISIBLE
-            
-            val creationTimestamp = user.metadata?.creationTimestamp
-            if (creationTimestamp != null && creationTimestamp > 0) {
-                val date = Date(creationTimestamp)
-                val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                binding.tvCreationDate.text = "Te uniste el: ${formatter.format(date)}"
-                binding.tvCreationDate.visibility = View.VISIBLE
-            }
-
-            lifecycleScope.launch {
-                binding.layoutStats.visibility = View.VISIBLE
-                
-                // Observar Favoritos en tiempo real
-                launch {
-                    favoritesDao.getAllFavorites().collect { list ->
-                        binding.tvCountFavorites.text = "${list.size} títulos"
-                    }
-                }
-
-                // Observar Historial en tiempo real
-                launch {
-                    playbackProgressDao.getAllPlaybackProgress().collect { list ->
-                        // Agrupamos para contar títulos únicos igual que en la lista
-                        val uniqueCount = list.distinctBy { it.contentId }.size
-                        binding.tvCountHistory.text = "$uniqueCount títulos"
-                    }
-                }
-
-                try {
-                    // CARGAR ROL (Esto sí puede ser una sola vez o cuando cambie)
-                    val role = cloudRepository.getUserRole()
-                    binding.tvUserRole.text = when(role) {
-                        "admin" -> "ADMINISTRADOR"
-                        "editor" -> "EDITOR"
-                        else -> "CLIENTE"
-                    }
-                    binding.tvUserRole.visibility = View.VISIBLE
-                    
-                    val colorRes = if (role == "admin") android.R.color.holo_blue_dark else android.R.color.darker_gray
-                    binding.tvUserRole.backgroundTintList = ColorStateList.valueOf(
-                        ContextCompat.getColor(requireContext(), colorRes)
-                    )
-                } catch (e: Exception) {
-                    Log.e("Profile", "Error cargando rol")
-                }
-                binding.btnManualSync.visibility = View.VISIBLE
-            }
-
-            val hasPasswordProvider = user.providerData.any { it.providerId == EmailAuthProvider.PROVIDER_ID }
-            binding.btnAssignPassword.text = if (hasPasswordProvider) "Cambiar contraseña" else "Asignar contraseña"
-            binding.btnAssignPassword.visibility = View.VISIBLE
-            binding.btnFirebaseDisconnect.text = "Desconectar cuenta"
-            binding.btnFirebaseDisconnect.visibility = View.VISIBLE
-            binding.spacerUserInfo.visibility = View.GONE
-        }
-    }
-
-    private fun loadUserData() {
-        lifecycleScope.launch {
-            val username = authCatalogRepository.getStoredUsername()
-            binding.tvUsername.text = username ?: "Invitado"
-            binding.tvWelcomeTitle.text = "¡Hola, ${username ?: "amigo"}!"
-        }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 }

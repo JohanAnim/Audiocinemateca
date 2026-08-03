@@ -44,14 +44,37 @@ class CloudRepository @Inject constructor(
         
         try {
             val snapshot = userDoc.get().await()
+            val fcmToken = try {
+                com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
+            } catch (e: Exception) { null }
+
+            val updateData = mutableMapOf<String, Any>(
+                "email" to (user.email ?: ""),
+                "displayName" to (user.displayName ?: user.email?.substringBefore("@") ?: "Usuario"),
+                "lastActive" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+            )
+
+            if (!fcmToken.isNullOrEmpty()) {
+                updateData["fcmToken"] = fcmToken
+            }
+
             if (!snapshot.exists()) {
-                val data = hashMapOf(
-                    "email" to user.email,
-                    "name" to (user.displayName ?: ""),
-                    "role" to "user",
-                    "createdAt" to System.currentTimeMillis()
-                )
-                userDoc.set(data).await()
+                updateData["name"] = user.displayName ?: ""
+                updateData["role"] = "user"
+                updateData["createdAt"] = System.currentTimeMillis()
+                userDoc.set(updateData).await()
+            } else {
+                userDoc.set(updateData, SetOptions.merge()).await()
+            }
+
+            if (!fcmToken.isNullOrEmpty()) {
+                firestore.collection("presence").document(user.uid)
+                    .set(mapOf(
+                        "userId" to user.uid,
+                        "displayName" to (user.displayName ?: user.email?.substringBefore("@") ?: "Usuario"),
+                        "email" to (user.email ?: ""),
+                        "fcmToken" to fcmToken
+                    ), SetOptions.merge()).await()
             }
         } catch (e: Exception) {
             android.util.Log.e("CloudRepo", "Error syncing profile: ${e.message}")
@@ -89,6 +112,32 @@ class CloudRepository @Inject constructor(
         awaitClose { subscription.remove() }
     }
 
+    private fun parseContentIdAndIndices(doc: com.google.firebase.firestore.DocumentSnapshot): Triple<String, Int, Int> {
+        val rawContentId = doc.getString("contentId")
+        val rawPartIndex = (doc.get("partIndex") as? Number)?.toInt()
+        val rawEpisodeIndex = (doc.get("episodeIndex") as? Number)?.toInt()
+
+        val docId = doc.id
+        val parts = docId.split("_")
+
+        if (!rawContentId.isNullOrEmpty()) {
+            val p = rawPartIndex ?: if (parts.size >= 3) parts[parts.size - 2].toIntOrNull() ?: 0 else 0
+            val e = rawEpisodeIndex ?: if (parts.size >= 3) parts.last().toIntOrNull() ?: 0 else 0
+            return Triple(rawContentId, p.coerceAtLeast(0), e.coerceAtLeast(0))
+        }
+
+        if (parts.size >= 3 && parts[parts.size - 1].toIntOrNull() != null && parts[parts.size - 2].toIntOrNull() != null) {
+            val calculatedId = docId.substringBeforeLast('_').substringBeforeLast('_')
+            val calculatedPart = parts[parts.size - 2].toIntOrNull() ?: 0
+            val calculatedEp = parts[parts.size - 1].toIntOrNull() ?: 0
+            return Triple(calculatedId, calculatedPart.coerceAtLeast(0), calculatedEp.coerceAtLeast(0))
+        }
+
+        val p = rawPartIndex ?: 0
+        val e = rawEpisodeIndex ?: 0
+        return Triple(docId, p.coerceAtLeast(0), e.coerceAtLeast(0))
+    }
+
     fun getHistoryRealtimeFlow(): kotlinx.coroutines.flow.Flow<List<CloudHistory>> = callbackFlow {
         val userDoc = getUserDoc()
         if (userDoc == null) {
@@ -105,17 +154,17 @@ class CloudRepository @Inject constructor(
 
             val list = snapshot?.documents?.mapNotNull { doc ->
                 try {
-                    val contentId = doc.getString("contentId") ?: doc.id.split("_").firstOrNull() ?: ""
+                    val (contentId, pIndex, eIndex) = parseContentIdAndIndices(doc)
                     val title = doc.getString("title") ?: ""
                     val type = doc.getString("contentType") ?: "movie"
                     val currentPos = doc.getLong("currentPositionMs") ?: 0L
                     val totalDur = doc.getLong("totalDurationMs") ?: 0L
-                    val pIndex = (doc.get("partIndex") as? Number)?.toInt() ?: 0
-                    val eIndex = (doc.get("episodeIndex") as? Number)?.toInt() ?: -1
                     val timestamp = doc.getLong("lastPlayedTimestamp") ?: 0L
                     val finished = doc.getBoolean("isFinished") ?: false
 
-                    CloudHistory(contentId, title, type, currentPos, totalDur, pIndex, eIndex, timestamp, finished)
+                    if (contentId.isNotEmpty() && contentId !in listOf("pelicula", "serie", "cortometraje", "documental")) {
+                        CloudHistory(contentId, title, type, currentPos, totalDur, pIndex, eIndex, timestamp, finished)
+                    } else null
                 } catch (e: Exception) { null }
             } ?: emptyList()
 
@@ -237,7 +286,7 @@ class CloudRepository @Inject constructor(
 
             snapshot?.documents?.forEach { doc ->
                 try {
-                    val contentId = doc.getString("contentId") ?: doc.id.split("_").firstOrNull() ?: ""
+                    val (contentId, pIndex, eIndex) = parseContentIdAndIndices(doc)
                     var hTitle = doc.getString("title") ?: ""
                     var hType = doc.getString("contentType") ?: "movie"
                     
@@ -259,12 +308,10 @@ class CloudRepository @Inject constructor(
 
                     val currentPos = doc.getLong("currentPositionMs") ?: 0L
                     val totalDur = doc.getLong("totalDurationMs") ?: 0L
-                    val pIndex = (doc.get("partIndex") as? Number)?.toInt() ?: 0
-                    val eIndex = (doc.get("episodeIndex") as? Number)?.toInt() ?: -1
                     val timestamp = doc.getLong("lastPlayedTimestamp") ?: System.currentTimeMillis()
                     val finished = doc.getBoolean("isFinished") ?: false
 
-                    if (contentId.isNotEmpty()) {
+                    if (contentId.isNotEmpty() && contentId !in listOf("pelicula", "serie", "cortometraje", "documental")) {
                         list.add(
                             CloudHistory(
                                 contentId = contentId,
@@ -311,4 +358,67 @@ class CloudRepository @Inject constructor(
             throw e
         }
     }
+
+    // --- PERFIL DE GUSTOS Y RECOMENDACIONES (TASTE PROFILE) ---
+
+    suspend fun saveUserTasteProfile(profile: UserTasteProfile) {
+        val userDoc = getUserDoc() ?: return
+        try {
+            val data = mapOf(
+                "preferredDubbing" to profile.preferredDubbing,
+                "topGenres" to profile.topGenres,
+                "topDirectors" to profile.topDirectors,
+                "topNarrators" to profile.topNarrators,
+                "lastUpdated" to profile.lastUpdated
+            )
+            userDoc.collection("preferences").document("taste_profile")
+                .set(data, SetOptions.merge())
+                .await()
+        } catch (e: Exception) {
+            android.util.Log.e("CloudRepo", "Error al guardar perfil de gustos en Firestore: ${e.message}")
+        }
+    }
+
+    suspend fun getUserTasteProfile(): UserTasteProfile? {
+        val userDoc = getUserDoc() ?: return null
+        return try {
+            val doc = userDoc.collection("preferences").document("taste_profile").get().await()
+            if (!doc.exists()) return null
+
+            val preferredDubbing = doc.getString("preferredDubbing") ?: "latino"
+
+            @Suppress("UNCHECKED_CAST")
+            val rawGenres = doc.get("topGenres") as? Map<String, Any>
+            val topGenres = rawGenres?.mapValues { (it.value as? Number)?.toDouble() ?: 0.0 } ?: emptyMap()
+
+            @Suppress("UNCHECKED_CAST")
+            val rawDirectors = doc.get("topDirectors") as? Map<String, Any>
+            val topDirectors = rawDirectors?.mapValues { (it.value as? Number)?.toDouble() ?: 0.0 } ?: emptyMap()
+
+            @Suppress("UNCHECKED_CAST")
+            val rawNarrators = doc.get("topNarrators") as? Map<String, Any>
+            val topNarrators = rawNarrators?.mapValues { (it.value as? Number)?.toDouble() ?: 0.0 } ?: emptyMap()
+
+            val lastUpdated = doc.getLong("lastUpdated") ?: System.currentTimeMillis()
+
+            UserTasteProfile(
+                preferredDubbing = preferredDubbing,
+                topGenres = topGenres,
+                topDirectors = topDirectors,
+                topNarrators = topNarrators,
+                lastUpdated = lastUpdated
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("CloudRepo", "Error al leer perfil de gustos de Firestore: ${e.message}")
+            null
+        }
+    }
 }
+
+data class UserTasteProfile(
+    val preferredDubbing: String = "latino",
+    val topGenres: Map<String, Double> = emptyMap(),
+    val topDirectors: Map<String, Double> = emptyMap(),
+    val topNarrators: Map<String, Double> = emptyMap(),
+    val lastUpdated: Long = System.currentTimeMillis()
+)
