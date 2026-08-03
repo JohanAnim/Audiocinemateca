@@ -25,6 +25,9 @@ import com.johang.audiocinemateca.MainActivity
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity
 import com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
+import androidx.media3.cast.CastPlayer
+import androidx.media3.cast.SessionAvailabilityListener
+import com.google.android.gms.cast.framework.CastContext
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +61,7 @@ class PlayerService : MediaSessionService() {
     lateinit var contentRepository: com.johang.audiocinemateca.data.repository.ContentRepository
 
     private var mediaSession: MediaSession? = null
+    private lateinit var exoPlayer: ExoPlayer
     private lateinit var player: Player
     private lateinit var playerListener: Player.Listener
     private val serviceJob = SupervisorJob()
@@ -157,23 +161,16 @@ class PlayerService : MediaSessionService() {
 
             when (intent?.action) {
                 ACTION_PLAY_PAUSE -> {
-                    if (remoteClient != null) {
-                        if (remoteClient.isPlaying) {
-                            remoteClient.pause()
-                        } else {
-                            remoteClient.play()
-                        }
+                    if (player.isPlaying) {
+                        serviceScope.launch { savePlaybackProgress(syncToCloud = true) }
+                        player.pause()
                     } else {
-                        if (activePlayer.isPlaying) {
-                            serviceScope.launch { savePlaybackProgress(syncToCloud = true) }
-                            activePlayer.pause()
-                        } else { activePlayer.play() }
+                        player.play()
                     }
                 }
                 ACTION_STOP -> {
                     Log.d("PlayerService", "Cierre forzado solicitado (Botón X).")
-                    val castPos = remoteClient?.approximateStreamPosition ?: -1L
-                    val currentPos = if (castPos >= 0) castPos else if (lastKnownCastPositionMs >= 0) lastKnownCastPositionMs else player.currentPosition
+                    val currentPos = player.currentPosition
                     try {
                         kotlinx.coroutines.runBlocking(Dispatchers.IO) {
                             savePlaybackProgress(position = currentPos, syncToCloud = true)
@@ -181,36 +178,24 @@ class PlayerService : MediaSessionService() {
                     } catch (e: Exception) {
                         Log.e("PlayerService", "Error al guardar progreso síncrono al cerrar con X: ${e.message}")
                     }
-                    remoteClient?.stop()
-                    
                     player.stop()
                     player.clearMediaItems()
                     stopForeground(true)
                     stopSelf()
                 }
                 MainActivity.ACTION_REQUEST_PLAYBACK_STATE -> {
-                    val isCurrentlyPlaying = remoteClient?.isPlaying ?: activePlayer.isPlaying
-                    val responseIntent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply { putExtra(MainActivity.EXTRA_IS_PLAYING, isCurrentlyPlaying) }
-                    LocalBroadcastManager.getInstance(this@PlayerService).sendBroadcast(responseIntent)
+                    val intentResponse = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply {
+                        putExtra(MainActivity.EXTRA_IS_PLAYING, player.isPlaying)
+                    }
+                    LocalBroadcastManager.getInstance(this@PlayerService).sendBroadcast(intentResponse)
                 }
                 MainActivity.ACTION_REQUEST_MINI_PLAYER_STATE -> broadcastMiniPlayerState(MainActivity.ACTION_SHOW_MINI_PLAYER)
                 MainActivity.ACTION_SAVE_PLAYBACK_PROGRESS -> serviceScope.launch { savePlaybackProgress() }
                 MainActivity.ACTION_SEEK_TO_PREVIOUS -> {
-                    if (remoteClient != null) {
-                        remoteClient.seek(0)
-                    } else {
-                        if (activePlayer.hasPreviousMediaItem()) activePlayer.seekToPreviousMediaItem() else activePlayer.seekTo(0)
-                    }
+                    if (player.hasPreviousMediaItem()) player.seekToPreviousMediaItem() else player.seekTo(0)
                 }
                 MainActivity.ACTION_SEEK_TO_NEXT -> {
-                    if (remoteClient != null) {
-                        if (activePlayer.hasNextMediaItem()) {
-                            activePlayer.seekToNextMediaItem()
-                            sendCurrentMediaToCast()
-                        }
-                    } else {
-                        activePlayer.seekToNextMediaItem()
-                    }
+                    if (player.hasNextMediaItem()) player.seekToNextMediaItem()
                 }
                 ACTION_SYNC_JAM_STATE -> {
                     val pos = intent?.getLongExtra(EXTRA_JAM_POSITION, -1L) ?: -1L
@@ -219,7 +204,7 @@ class PlayerService : MediaSessionService() {
                     val contentType = intent?.getStringExtra("extra_content_type")
 
                     if (!contentId.isNullOrBlank()) {
-                        val currentMediaId = activePlayer.currentMediaItem?.mediaMetadata?.extras?.getString("itemId")
+                        val currentMediaId = player.currentMediaItem?.mediaMetadata?.extras?.getString("itemId")
                         if (currentMediaId != contentId) {
                             serviceScope.launch {
                                 loadAndPlayJamContent(contentId, contentType ?: "pelicula", pos, isPlaying)
@@ -229,18 +214,18 @@ class PlayerService : MediaSessionService() {
                     }
 
                     if (pos >= 0) {
-                        val diff = kotlin.math.abs(activePlayer.currentPosition - pos)
+                        val diff = kotlin.math.abs(player.currentPosition - pos)
                         if (diff > 1200) {
-                            activePlayer.seekTo(pos)
+                            player.seekTo(pos)
                         }
                     }
-                    if (activePlayer.playbackState == Player.STATE_IDLE) {
-                        activePlayer.prepare()
+                    if (player.playbackState == Player.STATE_IDLE) {
+                        player.prepare()
                     }
-                    if (isPlaying && !activePlayer.isPlaying) {
-                        activePlayer.play()
-                    } else if (!isPlaying && activePlayer.isPlaying) {
-                        activePlayer.pause()
+                    if (isPlaying && !player.isPlaying) {
+                        player.play()
+                    } else if (!isPlaying && player.isPlaying) {
+                        player.pause()
                     }
                 }
                 com.johang.audiocinemateca.presentation.cast.CastSessionListener.ACTION_CAST_CONNECTED -> {
@@ -248,11 +233,11 @@ class PlayerService : MediaSessionService() {
                 }
                 com.johang.audiocinemateca.presentation.cast.CastSessionListener.ACTION_CAST_DISCONNECTED -> {
                     try {
-                        player.volume = 1f
+                        exoPlayer.volume = 1f
                         val posFromIntent = intent?.getLongExtra(com.johang.audiocinemateca.presentation.cast.CastSessionListener.EXTRA_LAST_CAST_POSITION, -1L) ?: -1L
                         val pos = if (posFromIntent > 0) posFromIntent else if (lastKnownCastPositionMs > 0) lastKnownCastPositionMs else -1L
                         if (pos > 0) {
-                            player.seekTo(pos)
+                            exoPlayer.seekTo(pos)
                             Log.d("PlayerService", "Reanudando reproducción local en pos: $pos ms")
                         }
                         lastKnownCastPositionMs = -1L
@@ -260,20 +245,22 @@ class PlayerService : MediaSessionService() {
                     } catch (e: Exception) {
                         Log.e("PlayerService", "Error al restaurar posición tras desconectar Cast: ${e.message}")
                     }
-                    player.play()
+                    exoPlayer.play()
                 }
             }
         }
-    }
-
-    private fun notifyCastStatusChanged(isPlaying: Boolean, positionMs: Long) {
-        (player as? CastAwareForwardingPlayer)?.notifyCastStatusChanged(isPlaying, positionMs)
     }
 
     private fun sendCurrentMediaToCast() {
         try {
             val castSession = getActiveCastSession() ?: return
             val remoteMediaClient = castSession.remoteMediaClient ?: return
+
+            // 1. Silenciar y pausar ExoPlayer local
+            exoPlayer.volume = 0f
+            if (exoPlayer.isPlaying) {
+                exoPlayer.pause()
+            }
 
             if (!castProgressListenerRegistered) {
                 try {
@@ -307,7 +294,7 @@ class PlayerService : MediaSessionService() {
                 }
             })
 
-            val currentItem = player.currentMediaItem ?: return
+            val currentItem = exoPlayer.currentMediaItem ?: return
             val rawUri = currentItem.localConfiguration?.uri?.toString() ?: return
             val proxiedUrl = com.johang.audiocinemateca.util.AudioProxyUtil.buildCastProxyUrl(rawUri)
 
@@ -316,10 +303,6 @@ class PlayerService : MediaSessionService() {
 
             if (isSameMedia && (remoteMediaClient.isPlaying || remoteMediaClient.isBuffering || remoteMediaClient.isPaused)) {
                 Log.d("PlayerService", "📡 Cast ya está reproduciendo el medio actual. Preservando reproducción remota.")
-                player.volume = 0f
-                if (player.isPlaying) {
-                    player.pause()
-                }
                 return
             }
 
@@ -342,7 +325,7 @@ class PlayerService : MediaSessionService() {
             val currentPos = when {
                 castPos > 0 -> castPos
                 lastKnownCastPositionMs > 0 -> lastKnownCastPositionMs
-                else -> player.currentPosition.coerceAtLeast(0L)
+                else -> exoPlayer.currentPosition.coerceAtLeast(0L)
             }
             lastKnownCastPositionMs = currentPos
 
@@ -352,15 +335,15 @@ class PlayerService : MediaSessionService() {
                 .build()
 
             remoteMediaClient.load(mediaInfo, loadOptions)
-
-            player.volume = 0f
-            if (player.isPlaying) {
-                player.pause()
-            }
-            Log.d("PlayerService", "📡 Audio derivado a Chromecast en pos $currentPos ms con metadata completa: $title ($artist)")
+            notifyCastStatusChanged(true, currentPos)
+            Log.d("PlayerService", "📡 Audio cargado exitosamente en Chromecast (pos $currentPos ms): $title ($artist)")
         } catch (e: Exception) {
             Log.e("PlayerService", "Error al transferir medios a Google Cast: ${e.message}")
         }
+    }
+
+    private fun notifyCastStatusChanged(isPlaying: Boolean, positionMs: Long) {
+        (player as? CastAwareForwardingPlayer)?.notifyCastStatusChanged(isPlaying, positionMs)
     }
 
     inner class CastAwareForwardingPlayer(player: Player) : ForwardingPlayer(player) {
@@ -520,21 +503,20 @@ class PlayerService : MediaSessionService() {
         val dataSourceFactory = DefaultDataSource.Factory(this, httpDataSourceFactory)
         val mediaSourceFactory = DefaultMediaSourceFactory(this).setDataSourceFactory(dataSourceFactory)
 
-        val basePlayer = ExoPlayer.Builder(this)
+        exoPlayer = ExoPlayer.Builder(this)
             .setAudioAttributes(AudioAttributes.DEFAULT, true)
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .setMediaSourceFactory(mediaSourceFactory)
             .build()
             
-        player = CastAwareForwardingPlayer(basePlayer)
+        player = CastAwareForwardingPlayer(exoPlayer)
 
         playerListener = object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 val intent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply { putExtra(MainActivity.EXTRA_IS_PLAYING, isPlaying) }
                 LocalBroadcastManager.getInstance(this@PlayerService).sendBroadcast(intent)
                 
-                // GUARDAR ESTADO PARA OTROS SERVICIOS (FCM)
                 sharedPreferencesManager.saveBoolean("is_currently_playing", isPlaying)
                 if (isPlaying) {
                     serviceScope.launch { savePlaybackProgress() }
@@ -548,7 +530,7 @@ class PlayerService : MediaSessionService() {
             }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 updateSessionActivity()
-                broadcastMiniPlayerState(MainActivity.ACTION_UPDATE_MINI_PLAYER_METADATA)
+                broadcastMiniPlayerState(MainActivity.ACTION_SHOW_MINI_PLAYER)
                 serviceScope.launch { savePlaybackProgress() }
                 try {
                     val castContext = com.google.android.gms.cast.framework.CastContext.getSharedInstance(this@PlayerService)
