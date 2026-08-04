@@ -326,7 +326,12 @@
   - **Eliminación de escrituras de Jam a Firestore cada 2s:** Removida la escritura recurrente cada 2 segundos a `global_chat_jams/current_jam` en `JamRepository.updateJamProgress`. Los avances de tiempo de los Jams se transmiten exclusivamente por HTTP/SSE al servidor Linux Node.js (`$NODE_BASE_URL/update`), reduciendo las escrituras y lecturas de Firestore al 0% durante la reproducción.
   - **Consultas Puntuales con Caché en Inicio:** Reemplazados los snapshot listeners continuos en `app_config/featured_banner` y `global_rankings/curated_collections` por consultas `get().await()` al inicializar la vista con caché en memoria.
 
+## Hito: Corrección de Metadatos Redundantes en Google Cast y Notificaciones ([PlayerFragment.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/player/PlayerFragment.kt), [PlayerService.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/player/PlayerService.kt))
+- **Eliminación de Título/Artista Duplicado:** Ajustado `createMediaItems()` en `PlayerFragment` y `loadAndPlayJamContent()` en `PlayerService`.
+  - Películas de 1 archivo: `title` = Nombre de la película, `artist` = `"Audiocinemateca"` (Cast muestra: *"El Señor de los Anillos de Audiocinemateca"*).
+  - Películas multiparte: `title` = `"Parte N"`, `artist` = Nombre de la película (Cast muestra: *"Parte 1 de El Señor de los Anillos"*).
+  - Series: `title` = `"T1:E1 - Nombre del Capítulo"`, `artist` = Nombre de la Serie.
+
 ## Hito: Permisos de Dispositivos Cercanos y Google Cast en Android 12/13+ ([AndroidManifest.xml](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/AndroidManifest.xml), [MainActivity.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/MainActivity.kt), [SplashActivity.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/SplashActivity.kt))
 - **Declaración en Manifest:** Incorporados permisos `BLUETOOTH_CONNECT`, `BLUETOOTH_SCAN` (`neverForLocation`), `NEARBY_WIFI_DEVICES` (`neverForLocation`), `ACCESS_FINE_LOCATION` y `ACCESS_COARSE_LOCATION` en `AndroidManifest.xml`.
 - **Solicitud Dinámica en Pantalla de Inicio:** Configurado `MainActivity.kt` con `checkAndRequestPermissions()` usando `RequestMultiplePermissions()` para solicitar en la pantalla principal los permisos de dispositivos cercanos y notificaciones en Android 12+ / 13+, manteniendo `SplashActivity.kt` 100% fluida e inmediata.
-

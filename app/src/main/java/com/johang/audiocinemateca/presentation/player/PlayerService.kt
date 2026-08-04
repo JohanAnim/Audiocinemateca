@@ -227,7 +227,9 @@ class PlayerService : MediaSessionService() {
                 catalogItem.enlaces.forEachIndexed { index, urlPath ->
                     val uri = android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${urlPath.removePrefix("/")}")
                     val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "peliculas"); putInt("partIndex", index); putInt("episodeIndex", -1) }
-                    mediaItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().setTitle(catalogItem.title).setExtras(meta).build()).build())
+                    val partTitle = if (catalogItem.enlaces.size > 1) "Parte ${index + 1}" else catalogItem.title
+                    val artist = if (catalogItem.enlaces.size > 1) catalogItem.title else "Audiocinemateca"
+                    mediaItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().setTitle(partTitle).setArtist(artist).setExtras(meta).build()).build())
                 }
             }
             is com.johang.audiocinemateca.data.model.Serie -> {
@@ -243,12 +245,12 @@ class PlayerService : MediaSessionService() {
             is com.johang.audiocinemateca.data.model.Documentary -> {
                 val uri = android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${catalogItem.enlace.removePrefix("/")}")
                 val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "documentales"); putInt("partIndex", 0); putInt("episodeIndex", -1) }
-                mediaItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().setTitle(catalogItem.title).setExtras(meta).build()).build())
+                mediaItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().setTitle(catalogItem.title).setArtist("Audiocinemateca").setExtras(meta).build()).build())
             }
             is com.johang.audiocinemateca.data.model.ShortFilm -> {
                 val uri = android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${catalogItem.enlace.removePrefix("/")}")
                 val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "cortometrajes"); putInt("partIndex", 0); putInt("episodeIndex", -1) }
-                mediaItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().setTitle(catalogItem.title).setExtras(meta).build()).build())
+                mediaItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().setTitle(catalogItem.title).setArtist("Audiocinemateca").setExtras(meta).build()).build())
             }
         }
 

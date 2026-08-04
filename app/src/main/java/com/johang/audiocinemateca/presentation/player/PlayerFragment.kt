@@ -768,7 +768,8 @@ class PlayerFragment : Fragment() {
                     val uri = if (d?.downloadStatus == "COMPLETE" && d.filePath != null) android.net.Uri.parse(d.filePath) else android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${urlPath.removePrefix("/")}")
                     val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "peliculas"); putInt("partIndex", index); putInt("episodeIndex", -1) }
                     val partTitle = if (catalogItem.enlaces.size > 1) "Parte ${index + 1}" else catalogItem.title
-                    resultItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(MediaMetadata.Builder().setTitle(partTitle).setArtist(catalogItem.title).setExtras(meta).build()).build())
+                    val artist = if (catalogItem.enlaces.size > 1) catalogItem.title else "Audiocinemateca"
+                    resultItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(MediaMetadata.Builder().setTitle(partTitle).setArtist(artist).setExtras(meta).build()).build())
                 }
             }
             is Serie -> {
