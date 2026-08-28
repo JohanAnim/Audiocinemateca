@@ -39,6 +39,7 @@ fun ConnectedUsersDialog(
             userId = "AURA_AI",
             displayName = "Aura (IA)",
             email = "Asistente de IA Oficial",
+            deviceInfo = "Audiocinemateca AI",
             online = true
         )
     }
@@ -111,6 +112,13 @@ fun ConnectedUsersDialog(
                                 else -> "Usuario #${user.userId.takeLast(4)}"
                             }
 
+                            val deviceSubtitle = when {
+                                user.userId == "AURA_AI" -> "Asistente Oficial de IA"
+                                !user.deviceInfo.isNullOrBlank() -> "Escuchando en ${user.deviceInfo}"
+                                user.email.isNotBlank() -> user.email
+                                else -> "Escuchando en Android"
+                            }
+
                             Surface(
                                 color = Color(0xFF0F172A),
                                 shape = RoundedCornerShape(14.dp),
@@ -118,7 +126,7 @@ fun ConnectedUsersDialog(
                                     .fillMaxWidth()
                                     .clickable { selectedUserForAction = user.copy(displayName = displayName) }
                                     .audiocinematecaAccessibility(
-                                        label = "Usuario: $displayName. Toca para ver opciones de interacción.",
+                                        label = "Usuario: $displayName. $deviceSubtitle. Toca para ver opciones de interacción.",
                                         role = Role.Button,
                                         onClickAction = { selectedUserForAction = user.copy(displayName = displayName) }
                                     )
@@ -152,15 +160,13 @@ fun ConnectedUsersDialog(
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
-                                        if (user.email.isNotBlank()) {
-                                            Text(
-                                                text = user.email,
-                                                fontSize = 12.sp,
-                                                color = Color(0xFF94A3B8),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
+                                        Text(
+                                            text = deviceSubtitle,
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF94A3B8),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
                                     Box(
                                         modifier = Modifier

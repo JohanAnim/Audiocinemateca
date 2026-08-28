@@ -8,5 +8,6 @@ data class OnlineUser(
     val email: String = "",
     val online: Boolean = false,
     val lastActive: Timestamp? = null,
-    val fcmToken: String? = null
+    val fcmToken: String? = null,
+    val deviceInfo: String? = null
 )

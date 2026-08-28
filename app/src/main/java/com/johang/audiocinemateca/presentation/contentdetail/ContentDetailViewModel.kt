@@ -32,20 +32,27 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import java.text.NumberFormat
 import java.util.Locale
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 
 sealed class ViewAction {
     data class StartDownload(val url: String, val title: String, val contentId: String, val contentType: String, val partIndex: Int, val episodeIndex: Int, val seriesTitle: String? = null) : ViewAction()
     data class ShowDeleteConfirmation(val partIndex: Int, val episodeIndex: Int) : ViewAction()
     data class ShowCancelConfirmation(val partIndex: Int, val episodeIndex: Int) : ViewAction()
+    data class ShowDeleteSeasonConfirmation(val seasonIndex: Int, val seasonName: String) : ViewAction()
+    data class ShowCancelSeasonConfirmation(val seasonIndex: Int, val seasonName: String) : ViewAction()
     data class ShowDownloadFailed(val reason: String) : ViewAction()
     data class ShowError(val message: String) : ViewAction()
     data class ShowMessage(val message: String) : ViewAction()
     data class UpdateFavoriteIcon(val isFavorite: Boolean) : ViewAction()
+    data class ShowSeasonDownloadStarted(val seasonNumber: Int, val count: Int) : ViewAction()
+    data class ShowSeasonAlreadyDownloaded(val seasonNumber: Int) : ViewAction()
     object StopDownloadService : ViewAction()
 }
 
@@ -54,6 +61,12 @@ sealed class DownloadState {
     object Downloading : DownloadState()
     object Downloaded : DownloadState()
     data class Failed(val reason: String) : DownloadState()
+}
+
+sealed class SeasonDownloadState {
+    object NotDownloaded : SeasonDownloadState()
+    data class Downloading(val activeCount: Int) : SeasonDownloadState()
+    object Downloaded : SeasonDownloadState()
 }
 
 @HiltViewModel
@@ -105,6 +118,51 @@ class ContentDetailViewModel @Inject constructor(
     private val _targetedEpisodeIndices = MutableStateFlow<Pair<Int, Int>?>(null)
     val targetedEpisodeIndices: StateFlow<Pair<Int, Int>?> = _targetedEpisodeIndices.asStateFlow()
 
+    private val _selectedSeasonIndex = MutableStateFlow(0)
+    val selectedSeasonIndex: StateFlow<Int> = _selectedSeasonIndex.asStateFlow()
+
+    fun setSelectedSeasonIndex(index: Int) {
+        _selectedSeasonIndex.value = index
+    }
+
+    val seasonDownloadState: StateFlow<SeasonDownloadState> = combine(
+        _contentItem,
+        _selectedSeasonIndex,
+        _episodeDownloadStates
+    ) { item, seasonIndex, states ->
+        if (item !is Serie) {
+            SeasonDownloadState.NotDownloaded
+        } else {
+            val seasons = item.capitulos.keys.sorted()
+            val seasonKey = seasons.getOrNull(seasonIndex)
+            val episodes = if (seasonKey != null) item.capitulos[seasonKey] ?: emptyList() else emptyList()
+
+            if (episodes.isEmpty()) {
+                SeasonDownloadState.NotDownloaded
+            } else {
+                val totalEpisodes = episodes.size
+                var downloadedCount = 0
+                var downloadingCount = 0
+
+                episodes.indices.forEach { epIndex ->
+                    when (states["${seasonIndex}_$epIndex"]) {
+                        is DownloadState.Downloaded -> downloadedCount++
+                        is DownloadState.Downloading -> downloadingCount++
+                        else -> {}
+                    }
+                }
+
+                if (downloadedCount == totalEpisodes) {
+                    SeasonDownloadState.Downloaded
+                } else if (downloadingCount > 0) {
+                    SeasonDownloadState.Downloading(downloadingCount)
+                } else {
+                    SeasonDownloadState.NotDownloaded
+                }
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SeasonDownloadState.NotDownloaded)
+
     private val _viewActions = MutableSharedFlow<com.johang.audiocinemateca.util.Event<ViewAction>>()
     val viewActions: SharedFlow<com.johang.audiocinemateca.util.Event<ViewAction>> = _viewActions.asSharedFlow()
 
@@ -149,7 +207,7 @@ class ContentDetailViewModel @Inject constructor(
                     "documental" -> "documentales"
                     else -> itemType
                 }
-                val item: CatalogItem? = when (pluralItemType) {
+                var item: CatalogItem? = when (pluralItemType) {
                     "peliculas" -> catalog?.movies?.find { it.id == itemId }
                     "series" -> catalog?.series?.find { it.id == itemId }
                     "cortometrajes" -> catalog?.shortFilms?.find { it.id == itemId }
@@ -161,6 +219,39 @@ class ContentDetailViewModel @Inject constructor(
                         ?: cat.documentaries?.find { it.id == itemId }
                         ?: cat.shortFilms?.find { it.id == itemId }
                 }
+
+                if (item == null) {
+                    val downloadedEntities = downloadRepository.getDownloadsForContent(itemId).firstOrNull()
+                    if (!downloadedEntities.isNullOrEmpty()) {
+                        val first = downloadedEntities.first()
+                        item = when (first.contentType) {
+                            "movie" -> Movie(id = first.contentId, title = first.title, enlaces = listOf(first.filePath ?: ""))
+                            "serie" -> {
+                                val chaptersMap = mutableMapOf<String, MutableList<com.johang.audiocinemateca.data.model.Episode>>()
+                                downloadedEntities.forEach { dep ->
+                                    val seasonKey = "Temporada ${dep.partIndex + 1}"
+                                    val list = chaptersMap.getOrPut(seasonKey) { mutableListOf() }
+                                    list.add(
+                                        com.johang.audiocinemateca.data.model.Episode(
+                                            capitulo = (dep.episodeIndex + 1).toString(),
+                                            titulo = dep.title,
+                                            enlace = dep.filePath ?: ""
+                                        )
+                                    )
+                                }
+                                Serie(
+                                    id = first.contentId,
+                                    title = first.title.substringBefore(" - ").substringBefore(":E").ifBlank { first.title },
+                                    capitulos = chaptersMap
+                                )
+                            }
+                            "documentary" -> Documentary(id = first.contentId, title = first.title, enlace = first.filePath ?: "")
+                            "shortfilm" -> ShortFilm(id = first.contentId, title = first.title, enlace = first.filePath ?: "")
+                            else -> null
+                        }
+                    }
+                }
+
                 _contentItem.value = item
                 if (item != null) {
                     // Favoritos ahora funciona siempre (localmente si no hay sesión)
@@ -291,7 +382,7 @@ class ContentDetailViewModel @Inject constructor(
                             val key = "${seasonIndex}_${episodeIndex}"
                             val episodeState = when (entity?.downloadStatus) {
                                 "COMPLETE" -> DownloadState.Downloaded
-                                "DOWNLOADING" -> DownloadState.Downloading
+                                "DOWNLOADING", "QUEUED" -> DownloadState.Downloading
                                 "FAILED" -> DownloadState.Failed(entity.errorMessage ?: "Falló")
                                 else -> DownloadState.NotDownloaded
                             }
@@ -391,6 +482,102 @@ class ContentDetailViewModel @Inject constructor(
             val item = _contentItem.value ?: return@launch
             _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.StopDownloadService))
             downloadRepository.deleteDownload(item.id, partIndex, episodeIndex)
+        }
+    }
+
+    fun downloadSeason(seasonIndex: Int) {
+        viewModelScope.launch {
+            val item = _contentItem.value as? Serie ?: return@launch
+            val seasonKey = item.capitulos.keys.sorted().getOrNull(seasonIndex) ?: return@launch
+            val episodes = item.capitulos[seasonKey] ?: return@launch
+            val baseUrl = "https://audiocinemateca.com/"
+
+            val downloadedEntities = downloadRepository.getDownloadsForContent(item.id).firstOrNull() ?: emptyList()
+
+            var enqueuedCount = 0
+            episodes.forEachIndexed { episodeIndex, episode ->
+                val isCompleted = downloadedEntities.any {
+                    it.partIndex == seasonIndex && it.episodeIndex == episodeIndex && it.downloadStatus == "COMPLETE"
+                }
+                val isDownloading = downloadedEntities.any {
+                    it.partIndex == seasonIndex && it.episodeIndex == episodeIndex && it.downloadStatus == "DOWNLOADING"
+                }
+                if (!isCompleted && !isDownloading) {
+                    val fullUrl = if (episode.enlace.startsWith("http")) episode.enlace else "${baseUrl.removeSuffix("/")}/${episode.enlace.removePrefix("/")}"
+                    _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.StartDownload(
+                        url = fullUrl,
+                        title = "T${seasonIndex + 1}:E${episode.capitulo} - ${episode.titulo}",
+                        contentId = item.id,
+                        contentType = "serie",
+                        partIndex = seasonIndex,
+                        episodeIndex = episodeIndex,
+                        seriesTitle = item.title
+                    )))
+                    enqueuedCount++
+                }
+            }
+
+            if (enqueuedCount > 0) {
+                _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowSeasonDownloadStarted(seasonIndex + 1, enqueuedCount)))
+            } else {
+                _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowSeasonAlreadyDownloaded(seasonIndex + 1)))
+            }
+        }
+    }
+
+    fun onSeasonDownloadAction(seasonIndex: Int) {
+        viewModelScope.launch {
+            val item = _contentItem.value as? Serie ?: return@launch
+            val seasons = item.capitulos.keys.sorted()
+            val seasonName = seasons.getOrNull(seasonIndex) ?: (seasonIndex + 1).toString()
+            val state = seasonDownloadState.value
+
+            when (state) {
+                is SeasonDownloadState.Downloaded -> {
+                    _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowDeleteSeasonConfirmation(seasonIndex, seasonName)))
+                }
+                is SeasonDownloadState.Downloading -> {
+                    _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowCancelSeasonConfirmation(seasonIndex, seasonName)))
+                }
+                is SeasonDownloadState.NotDownloaded -> {
+                    downloadSeason(seasonIndex)
+                }
+            }
+        }
+    }
+
+    fun cancelSeasonDownloads(seasonIndex: Int) {
+        viewModelScope.launch {
+            val item = _contentItem.value as? Serie ?: return@launch
+            val seasonKey = item.capitulos.keys.sorted().getOrNull(seasonIndex) ?: return@launch
+            val episodes = item.capitulos[seasonKey] ?: return@launch
+
+            episodes.indices.forEach { epIndex ->
+                val entity = downloadRepository.getDownload(item.id, seasonIndex, epIndex)
+                if (entity != null && (entity.downloadStatus == "DOWNLOADING" || entity.downloadStatus == "QUEUED")) {
+                    downloadRepository.deleteDownload(item.id, seasonIndex, epIndex)
+                }
+            }
+            _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowMessage("Descargas de la temporada canceladas.")))
+        }
+    }
+
+    fun deleteSeasonDownloads(seasonIndex: Int) {
+        viewModelScope.launch {
+            val item = _contentItem.value as? Serie ?: return@launch
+            val seasonKey = item.capitulos.keys.sorted().getOrNull(seasonIndex) ?: return@launch
+            val episodes = item.capitulos[seasonKey] ?: return@launch
+
+            episodes.indices.forEach { epIndex ->
+                val entity = downloadRepository.getDownload(item.id, seasonIndex, epIndex)
+                if (entity != null) {
+                    if (entity.filePath != null) {
+                        downloadRepository.deleteDownloadedFile(context, entity.filePath)
+                    }
+                    downloadRepository.deleteDownload(item.id, seasonIndex, epIndex)
+                }
+            }
+            _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowMessage("Capítulos descargados de la temporada eliminados.")))
         }
     }
 

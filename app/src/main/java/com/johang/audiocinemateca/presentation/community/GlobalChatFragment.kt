@@ -88,11 +88,9 @@ class GlobalChatFragment : Fragment() {
                 toggleEmojiPicker(false)
                 return
             }
-            viewModel.onAttemptExitCommunity {
-                isEnabled = false
-                requireActivity().onBackPressedDispatcher.onBackPressed()
-                isEnabled = true
-            }
+            isEnabled = false
+            requireActivity().onBackPressedDispatcher.onBackPressed()
+            isEnabled = true
         }
     }
 
@@ -132,12 +130,6 @@ class GlobalChatFragment : Fragment() {
             com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme {
                 val onlineCount by viewModel.onlineCount.collectAsStateWithLifecycle()
                 val onlineUsers by viewModel.onlineUsers.collectAsStateWithLifecycle()
-                val currentJam by viewModel.currentJam.collectAsStateWithLifecycle()
-                val isJoinedJam by viewModel.isJoinedJam.collectAsStateWithLifecycle()
-                val showExitJamConfirmation by viewModel.showExitJamConfirmation.collectAsStateWithLifecycle()
-                val showJamSelectorDialog by viewModel.showJamSelectorDialog.collectAsStateWithLifecycle()
-                val showPinPromptDialog by viewModel.showPinPromptDialog.collectAsStateWithLifecycle()
-                val catalogForJam by viewModel.catalogForJam.collectAsStateWithLifecycle()
                 val showRecommendationsDialog by viewModel.showRecommendationsDialog.collectAsStateWithLifecycle()
 
                 var showConnectedUsersDialog by remember { mutableStateOf(false) }
@@ -154,69 +146,25 @@ class GlobalChatFragment : Fragment() {
                         onlineCount = onlineCount,
                         isAdmin = viewModel.isAdmin,
                         onBackClick = {
-                            viewModel.onAttemptExitCommunity {
-                                findNavController().navigateUp()
-                            }
+                            findNavController().navigateUp()
                         },
                         onHeaderClick = {
                             showConnectedUsersDialog = true
                         },
                         onOptionsClick = {
                             val popup = PopupMenu(requireContext(), binding.composeChatHeader)
-                            if (viewModel.isAdmin) {
-                                popup.menu.add("🎙️ Iniciar Jam en Vivo")
-                            }
                             popup.menu.add("Reglas de la Comunidad")
                             if (viewModel.isAdmin) {
                                 popup.menu.add("Usuarios Sancionados")
                             }
                             popup.setOnMenuItemClickListener { item ->
                                 when (item.title) {
-                                    "🎙️ Iniciar Jam en Vivo" -> viewModel.openJamSelector()
                                     "Reglas de la Comunidad" -> showRulesDialog = true
                                     "Usuarios Sancionados" -> showBannedUsersDialog = true
                                 }
                                 true
                             }
                             popup.show()
-                        }
-                    )
-
-                    com.johang.audiocinemateca.presentation.community.components.LiveJamHeaderCard(
-                        currentJam = currentJam,
-                        isJoined = isJoinedJam,
-                        isHost = viewModel.isAdmin && currentJam?.hostUserId == currentUserId,
-                        onJoinJam = { jam -> viewModel.onAttemptJoinJam(jam) },
-                        onLeaveJam = { viewModel.leaveJamSession() },
-                        onEndJam = { viewModel.endJamSession() },
-                        onOpenJamPlayer = { viewModel.onOpenJamPlayer() }
-                    )
-                }
-
-                if (showJamSelectorDialog) {
-                    com.johang.audiocinemateca.presentation.community.components.JamSelectorDialog(
-                        catalogItems = catalogForJam,
-                        onSelectContentForJam = { item, pin -> viewModel.startJamSession(item, pin) },
-                        onDismiss = { viewModel.dismissJamSelector() }
-                    )
-                }
-
-                showPinPromptDialog?.let { jam ->
-                    com.johang.audiocinemateca.presentation.community.components.PinPromptDialog(
-                        hostName = jam.hostName,
-                        onConfirmPin = { enteredPin -> viewModel.verifyPinAndJoin(enteredPin) },
-                        onDismiss = { viewModel.dismissPinPrompt() }
-                    )
-                }
-
-                if (showExitJamConfirmation) {
-                    com.johang.audiocinemateca.presentation.community.components.ExitJamConfirmationDialog(
-                        hostName = currentJam?.hostName ?: "el Anfitrión",
-                        onStayInJam = { viewModel.cancelExitJam() },
-                        onConfirmExitAndStop = {
-                            viewModel.confirmExitJamAndStop {
-                                findNavController().navigateUp()
-                            }
                         }
                     )
                 }
@@ -559,17 +507,6 @@ class GlobalChatFragment : Fragment() {
                     Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
                     viewModel.clearBanStatusMessage()
                 }
-            }
-        }
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.navigateToPlayerEvent.collect { item ->
-                val jam = viewModel.currentJam.value
-                val bundle = Bundle().apply {
-                    putParcelable("catalogItem", item)
-                    putInt("partIndex", jam?.partIndex ?: 0)
-                    putInt("episodeIndex", jam?.episodeIndex ?: -1)
-                }
-                findNavController().navigate(R.id.action_global_playerFragment, bundle)
             }
         }
     }

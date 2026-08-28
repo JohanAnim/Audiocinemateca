@@ -57,7 +57,7 @@ class SplashActivity : ComponentActivity() {
     @Inject
     lateinit var sharedPreferencesManager: SharedPreferencesManager
 
-    private val splashDurationState = mutableStateOf(2500L)
+    private val splashDurationState = mutableStateOf(1500L)
     private var isFlowStarted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,8 +83,7 @@ class SplashActivity : ComponentActivity() {
         private const val BOOT_ANIMATION_FREQUENCY_KEY = "boot_animation_frequency"
     }
 
-    private fun playBootSoundAndVibrate(): Long {
-        var duration = 2500L
+    private fun playBootSoundAndVibrate() {
         try {
             val appCtx = applicationContext
             bootMediaPlayer?.release()
@@ -96,11 +95,6 @@ class SplashActivity : ComponentActivity() {
             mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
             mediaPlayer.prepare()
             afd.close()
-
-            val mpDuration = mediaPlayer.duration.toLong()
-            if (mpDuration > 0) {
-                duration = mpDuration
-            }
 
             mediaPlayer.start()
             triggerVibration(1500L)
@@ -118,7 +112,6 @@ class SplashActivity : ComponentActivity() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        return duration
     }
 
     private fun triggerVibration(durationMs: Long) {
@@ -147,7 +140,7 @@ class SplashActivity : ComponentActivity() {
                 } else {
                     @Suppress("DEPRECATION")
                     val pattern = longArrayOf(
-                        0, 30, 20, 30, 20, 30, 20, 30, 20, 30, 20, 30, 20, 30, 20, 30, 20, 30, 20, 30
+                        0, 30, 20, 30, 20, 30, 20, 30, 20, 30, 20, 30, 20, 30, 20, 30, 20, 30
                     )
                     vibrator.vibrate(pattern, -1)
                 }
@@ -159,27 +152,10 @@ class SplashActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        cleanupMediaPlayer()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        cleanupMediaPlayer()
-    }
-
-    private fun cleanupMediaPlayer() {
-        try {
-            bootMediaPlayer?.let { mp ->
-                if (mp.isPlaying) {
-                    mp.stop()
-                }
-                mp.release()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            bootMediaPlayer = null
-        }
     }
 
     private fun continueAppFlow() {
@@ -201,10 +177,10 @@ class SplashActivity : ComponentActivity() {
 
         if (shouldPlayBoot) {
             sharedPreferencesManager.saveLong(BOOT_ANIMATION_LAST_TIME_KEY, currentTime)
-            val audioDuration = playBootSoundAndVibrate()
+            playBootSoundAndVibrate()
 
             lifecycleScope.launch {
-                delay(audioDuration.coerceAtLeast(1500L))
+                delay(1500L)
                 navigateToNextScreen()
             }
         } else {
@@ -215,7 +191,6 @@ class SplashActivity : ComponentActivity() {
 
     private fun navigateToNextScreen() {
         if (isFinishing || isDestroyed) return
-        cleanupMediaPlayer()
         lifecycleScope.launch {
             try {
                 if (loginUseCase.isUserLoggedIn()) {

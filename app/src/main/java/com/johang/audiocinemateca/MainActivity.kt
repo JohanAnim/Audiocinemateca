@@ -195,9 +195,7 @@ class MainActivity : AppCompatActivity() {
                     currentPlayingEpisodeIndex = intent.getIntExtra(EXTRA_EPISODE_INDEX, -1)
                     updateMiniPlayerContent(intent.getStringExtra(EXTRA_TITLE), intent.getStringExtra(EXTRA_SUBTITLE), isPlaying)
                     isPlayerActive = isPlaying
-                    if (com.johang.audiocinemateca.presentation.community.GlobalChatState.isJamListener) {
-                        miniPlayerContainer.visibility = View.GONE
-                    } else if (intent.action == ACTION_SHOW_MINI_PLAYER && navController.currentDestination?.id != R.id.playerFragment) {
+                    if (intent.action == ACTION_SHOW_MINI_PLAYER && navController.currentDestination?.id != R.id.playerFragment) {
                         miniPlayerContainer.visibility = View.VISIBLE
                     }
                 }
@@ -445,6 +443,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Permiso de Red Local para descubrimiento Cast en Android 17+ (API 37+)
+        if (Build.VERSION.SDK_INT >= 37 || Build.VERSION.CODENAME.equals("Baklava", true)) {
+            val accessLocalNetwork = "android.permission.ACCESS_LOCAL_NETWORK"
+            if (ContextCompat.checkSelfPermission(this, accessLocalNetwork) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(accessLocalNetwork)
+            }
+        }
+
         if (permissionsToRequest.isNotEmpty()) {
             requestMultiplePermissionsLauncher.launch(permissionsToRequest.toTypedArray())
         }
@@ -654,21 +660,41 @@ class MainActivity : AppCompatActivity() {
     private fun updateMiniPlayerContent(t: String?, s: String?, isP: Boolean) { miniPlayerTitle.text = "Reproduciendo: ${t ?: ""}"; miniPlayerSubtitle.text = s; updateMiniPlayerPlayPauseButton(isP) }
     private fun updateMiniPlayerPlayPauseButton(isP: Boolean) { miniPlayerPlayPauseButton.text = if (isP) "Pausar" else "Reproducir" }
 
+    private var presenceHeartbeatJob: kotlinx.coroutines.Job? = null
+
     override fun onStart() {
         super.onStart()
-        val user = FirebaseAuth.getInstance().currentUser
-        if (user != null) {
-            globalChatRepository.setUserPresence(
-                userId = user.uid,
-                displayName = user.displayName,
-                email = user.email,
-                isOnline = true
-            )
-        }
+        startPresenceHeartbeat()
     }
 
     override fun onStop() {
         super.onStop()
+        stopPresenceHeartbeat()
+    }
+
+    private fun startPresenceHeartbeat() {
+        presenceHeartbeatJob?.cancel()
+        presenceHeartbeatJob = lifecycleScope.launch {
+            while (true) {
+                val user = FirebaseAuth.getInstance().currentUser
+                if (user != null) {
+                    globalChatRepository.setUserPresence(
+                        userId = user.uid,
+                        displayName = user.displayName,
+                        email = user.email,
+                        isOnline = true
+                    )
+                } else {
+                    break
+                }
+                delay(30000L)
+            }
+        }
+    }
+
+    private fun stopPresenceHeartbeat() {
+        presenceHeartbeatJob?.cancel()
+        presenceHeartbeatJob = null
         val user = FirebaseAuth.getInstance().currentUser
         if (user != null) {
             globalChatRepository.setUserPresence(

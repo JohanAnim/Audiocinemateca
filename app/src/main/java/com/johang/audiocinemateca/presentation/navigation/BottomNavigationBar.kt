@@ -85,10 +85,12 @@ fun AudiocinematecaBottomNavigation(navController: NavController) {
                 val onNavigationClick = {
                     if (!isSelected) {
                         try {
+                            val startDestId = navController.graph.startDestinationId
+                            val isStartDest = (item.resourceId == startDestId)
                             val navOptions = NavOptions.Builder()
                                 .setLaunchSingleTop(true)
-                                .setRestoreState(true)
-                                .setPopUpTo(navController.graph.startDestinationId, false, true)
+                                .setRestoreState(!isStartDest)
+                                .setPopUpTo(startDestId, isStartDest, !isStartDest)
                                 .build()
                             
                             navController.navigate(item.resourceId, null, navOptions)

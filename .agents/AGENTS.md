@@ -1,5 +1,21 @@
 # Memoria de Avance del Proyecto
 
+## Hito: Servidor Proxy Local Embebido para Google Cast, Descargas por Temporada y Auto-Play
+- **Servidor Proxy Local Embebido ([LocalCastProxyServer.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/util/LocalCastProxyServer.kt)):**
+  - Creado servidor proxy HTTP embebido que corre en el dispositivo Android sobre la red Wi-Fi local.
+  - Inyecta cabeceras `Access-Control-Allow-Origin: *`, `Accept-Ranges: bytes` y autenticación básica (`Johan-a-g:3tmgs8qd`) para transmitir a bocinas inteligentes Chromecast/Google Home/Nest Audio sin fallos de CORS ni errores 401.
+  - Permite transmitir archivos descargados en el teléfono (`content://` o `file://`) directamente a la bocina a velocidad Wi-Fi local sin consumir datos ni depender del servidor VPS.
+  - Ciclo de vida integrado con `PlayerService.setupPlayer()` y `PlayerService.onDestroy()`.
+- **Blindaje de Transiciones y Desconexión de Cast ([PlayerService.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/player/PlayerService.kt)):**
+  - `updateSavedState()` filtra y preserva únicamente `MediaItem`s locales con `uri` válido, evitando que objetos de `CastPlayer` sin URI sobrescriban la lista de reproducción.
+  - `CastMediaItemConverter` conserva la clave `"mediaItem"` en `customData` y añade fallback seguro para evitar excepciones `JSONException`.
+  - Al desconectar Cast, la reproducción en el teléfono continúa exactamente en el mismo capítulo y segundo sin caídas.
+- **Auto-Play Inmediato en Siguiente / Anterior ([PlayerFragment.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/player/PlayerFragment.kt) & [PlayerService.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/player/PlayerService.kt)):**
+  - Al presionar *"Episodio Siguiente"* o *"Episodio Anterior"* mientras el reproductor está pausado, el nuevo episodio inicia de forma inmediata y automática (`playWhenReady = true` y `play()`).
+- **Sistema de Descargas por Temporada y Presencia en Tiempo Real:**
+  - Botón reactivo inteligente de descargas por temporada (descargar, pausar/cancelar, eliminar).
+  - Presencia instantánea con `addSnapshotListener` de Firestore y detección de dispositivo (`Android 14`, etc.).
+
 ## Hito: Barras Modernas en Compose, Inicio de Sesión y Audio de Arranque
 - **Migración a Compose (Inicio/Registro de Sesión):**
   - Implementados [LoginCloudScreen.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/account/LoginCloudScreen.kt) y [RegisterCloudScreen.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/account/RegisterCloudScreen.kt) en Jetpack Compose.

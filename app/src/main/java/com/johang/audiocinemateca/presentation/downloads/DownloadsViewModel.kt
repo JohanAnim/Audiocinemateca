@@ -75,25 +75,26 @@ class DownloadsViewModel @Inject constructor(
             .groupBy { it.contentId }
             .mapNotNull { (contentId, groupedEntities) ->
                 val firstEntity = groupedEntities.first()
-                val title = if (firstEntity.contentType == "serie") {
+                val seriesTitleFromCatalog = if (firstEntity.contentType == "serie") {
                     catalog?.series?.find { it.id == contentId }?.title
+                } else null
+
+                val title = if (firstEntity.contentType == "serie") {
+                    seriesTitleFromCatalog
+                        ?: firstEntity.title.substringBefore(" - ").substringBefore(":E").ifBlank { firstEntity.title }
                 } else {
                     firstEntity.title
                 }
 
-                if (title != null) {
-                    GroupedDownload(
-                        contentId = contentId,
-                        title = title,
-                        contentType = firstEntity.contentType,
-                        totalSizeMb = groupedEntities.sumOf { it.totalSizeMb },
-                        downloadedAt = groupedEntities.maxOf { it.downloadedAt },
-                        episodes = groupedEntities.sortedWith(compareBy({ it.partIndex }, { it.episodeIndex })),
-                        isExpanded = expandedSeriesIds.contains(contentId)
-                    )
-                } else {
-                    null
-                }
+                GroupedDownload(
+                    contentId = contentId,
+                    title = title,
+                    contentType = firstEntity.contentType,
+                    totalSizeMb = groupedEntities.sumOf { it.totalSizeMb },
+                    downloadedAt = groupedEntities.maxOf { it.downloadedAt },
+                    episodes = groupedEntities.sortedWith(compareBy({ it.partIndex }, { it.episodeIndex })),
+                    isExpanded = expandedSeriesIds.contains(contentId)
+                )
             }
             .sortedByDescending { it.downloadedAt }
         DownloadsUiState.Success(grouped)
@@ -141,21 +142,64 @@ class DownloadsViewModel @Inject constructor(
 
     fun onPlayItem(downloadEntity: DownloadEntity) {
         viewModelScope.launch {
-            val catalog = catalogRepository.getCatalog() ?: return@launch
-            val item = when (downloadEntity.contentType) {
-                "movie" -> catalog.movies?.find { it.id == downloadEntity.contentId }
-                "serie" -> catalog.series?.find { it.id == downloadEntity.contentId }
-                "documentary" -> catalog.documentaries?.find { it.id == downloadEntity.contentId }
-                "shortfilm" -> catalog.shortFilms?.find { it.id == downloadEntity.contentId }
+            val catalog = catalogRepository.getCatalog()
+            val itemFromCatalog = when (downloadEntity.contentType) {
+                "movie" -> catalog?.movies?.find { it.id == downloadEntity.contentId }
+                "serie" -> catalog?.series?.find { it.id == downloadEntity.contentId }
+                "documentary" -> catalog?.documentaries?.find { it.id == downloadEntity.contentId }
+                "shortfilm" -> catalog?.shortFilms?.find { it.id == downloadEntity.contentId }
                 else -> null
             }
 
-            if (item != null) {
+            val effectiveItem = itemFromCatalog ?: when (downloadEntity.contentType) {
+                "movie" -> com.johang.audiocinemateca.data.model.Movie(
+                    id = downloadEntity.contentId,
+                    title = downloadEntity.title,
+                    enlaces = listOf(downloadEntity.filePath ?: "")
+                )
+                "serie" -> {
+                    val downloadedEpisodes = downloadRepository.getDownloadsForContent(downloadEntity.contentId).firstOrNull() ?: listOf(downloadEntity)
+                    val chaptersMap = mutableMapOf<String, MutableList<com.johang.audiocinemateca.data.model.Episode>>()
+                    
+                    downloadedEpisodes.forEach { dep ->
+                        val seasonKey = "Temporada ${dep.partIndex + 1}"
+                        val list = chaptersMap.getOrPut(seasonKey) { mutableListOf() }
+                        list.add(
+                            com.johang.audiocinemateca.data.model.Episode(
+                                capitulo = (dep.episodeIndex + 1).toString(),
+                                titulo = dep.title,
+                                enlace = dep.filePath ?: ""
+                            )
+                        )
+                    }
+                    
+                    com.johang.audiocinemateca.data.model.Serie(
+                        id = downloadEntity.contentId,
+                        title = downloadEntity.title.substringBefore(" - ").substringBefore(":E").ifBlank { downloadEntity.title },
+                        capitulos = chaptersMap
+                    )
+                }
+                "documentary" -> com.johang.audiocinemateca.data.model.Documentary(
+                    id = downloadEntity.contentId,
+                    title = downloadEntity.title,
+                    enlace = downloadEntity.filePath ?: ""
+                )
+                "shortfilm" -> com.johang.audiocinemateca.data.model.ShortFilm(
+                    id = downloadEntity.contentId,
+                    title = downloadEntity.title,
+                    enlace = downloadEntity.filePath ?: ""
+                )
+                else -> null
+            }
+
+            if (effectiveItem != null) {
                 _viewActions.emit(Event(ViewAction.NavigateToPlayer(
-                    catalogItem = item,
+                    catalogItem = effectiveItem,
                     partIndex = downloadEntity.partIndex,
                     episodeIndex = downloadEntity.episodeIndex
                 )))
+            } else {
+                _viewActions.emit(Event(ViewAction.ShowError("No se pudo iniciar la reproducción del archivo descargado.")))
             }
         }
     }

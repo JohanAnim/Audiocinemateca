@@ -92,10 +92,10 @@ class DownloadsAdapter(
             }
 
             infoTextView.text = when (download.downloadStatus) {
-                "QUEUED" -> "En cola"
+                "QUEUED" -> if (!download.errorMessage.isNullOrBlank()) download.errorMessage else "En cola"
                 "DOWNLOADING" -> "Descargando..."
                 "COMPLETE" -> "$contentTypeSpanish | ${String.format("%.2f", item.totalSizeMb)} MB"
-                "FAILED" -> "Error en la descarga"
+                "FAILED" -> if (!download.errorMessage.isNullOrBlank()) "Error: ${download.errorMessage}" else "Error en la descarga"
                 else -> ""
             }
 

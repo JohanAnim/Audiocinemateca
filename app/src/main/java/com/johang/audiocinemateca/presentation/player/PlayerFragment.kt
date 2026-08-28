@@ -685,11 +685,23 @@ class PlayerFragment : Fragment() {
             currentPartIndex = extras?.getInt("partIndex", -1) ?: -1
             currentEpisodeIndex = extras?.getInt("episodeIndex", -1) ?: -1
             viewModel.updateCurrentEpisode(currentPartIndex, currentEpisodeIndex)
+            
             lifecycleScope.launch {
-                val savedProgress = playbackProgressRepository.getPlaybackProgress(currentContentItem!!.id, currentPartIndex, currentEpisodeIndex)
-                if ((savedProgress?.currentPositionMs ?: 0L) > 0) { delay(100); mediaController?.seekTo(savedProgress!!.currentPositionMs) }
+                val contentId = currentContentItem?.id ?: return@launch
+                val savedProgress = playbackProgressRepository.getPlaybackProgress(contentId, currentPartIndex, currentEpisodeIndex)
+                // Si hay un tiempo guardado y el capítulo NO está terminado (lejos del final), se respeta y restaura su posición
+                if (savedProgress != null && !savedProgress.isFinished) {
+                    val pos = savedProgress.currentPositionMs
+                    val dur = savedProgress.totalDurationMs
+                    if (pos > 0 && (dur <= 0 || pos < dur - 15000)) {
+                        delay(100)
+                        mediaController?.seekTo(pos)
+                    }
+                }
             }
-            updateToolbarTitle(); updateNavigationButtonsState(); autoAdvanceTriggeredForCurrentItem = false
+            updateToolbarTitle()
+            updateNavigationButtonsState()
+            autoAdvanceTriggeredForCurrentItem = false
         }
     }
 
@@ -703,6 +715,8 @@ class PlayerFragment : Fragment() {
             putExtra(MainActivity.EXTRA_CURRENT_POSITION, mediaController?.currentPosition ?: 0L)
         }
         LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(intent)
+        mediaController?.playWhenReady = true
+        mediaController?.play()
     }
 
     private fun handleNext() {
@@ -715,6 +729,8 @@ class PlayerFragment : Fragment() {
             putExtra(MainActivity.EXTRA_CURRENT_POSITION, mediaController?.currentPosition ?: 0L)
         }
         LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(intent)
+        mediaController?.playWhenReady = true
+        mediaController?.play()
     }
 
     private fun checkAutoAdvanceAndNotify() {
@@ -728,9 +744,8 @@ class PlayerFragment : Fragment() {
             else -> false 
         }
         if (shouldAuto && sharedPreferencesManager.getBoolean("autoplay", true) && timeLeftSeconds <= 10 && timeLeftSeconds > 0 && !autoAdvanceTriggeredForCurrentItem) {
-            Toast.makeText(requireContext(), "Siguiente en $timeLeftSeconds segundos", Toast.LENGTH_SHORT).show(); autoAdvanceTriggeredForCurrentItem = true
-        } else if (shouldAuto && timeLeftSeconds <= 1 && autoAdvanceTriggeredForCurrentItem) {
-            handleNext(); autoAdvanceTriggeredForCurrentItem = false
+            Toast.makeText(requireContext(), "Siguiente en $timeLeftSeconds segundos", Toast.LENGTH_SHORT).show()
+            autoAdvanceTriggeredForCurrentItem = true
         }
     }
 
@@ -759,42 +774,145 @@ class PlayerFragment : Fragment() {
         }
     }
 
+    private fun parseMediaUri(filePathOrUrl: String): android.net.Uri {
+        val trimmed = filePathOrUrl.trim()
+        return if (trimmed.startsWith("content://") || trimmed.startsWith("file://") || trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            android.net.Uri.parse(trimmed)
+        } else if (trimmed.startsWith("/")) {
+            android.net.Uri.fromFile(java.io.File(trimmed))
+        } else {
+            val fullUrl = if (trimmed.startsWith("http")) trimmed else "${BASE_URL.removeSuffix("/")}/${trimmed.removePrefix("/")}"
+            android.net.Uri.parse(fullUrl)
+        }
+    }
+
     private suspend fun createMediaItems(catalogItem: CatalogItem): List<MediaItem> {
         val resultItems = mutableListOf<MediaItem>()
         when (catalogItem) {
             is Movie -> {
                 catalogItem.enlaces.forEachIndexed { index, urlPath ->
                     val d = downloadRepository.getDownload(catalogItem.id, index, -1)
-                    val uri = if (d?.downloadStatus == "COMPLETE" && d.filePath != null) android.net.Uri.parse(d.filePath) else android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${urlPath.removePrefix("/")}")
-                    val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "peliculas"); putInt("partIndex", index); putInt("episodeIndex", -1) }
+                    val uri = if (d?.downloadStatus == "COMPLETE" && !d.filePath.isNullOrBlank()) {
+                        parseMediaUri(d.filePath)
+                    } else {
+                        parseMediaUri(urlPath)
+                    }
+                    val meta = Bundle().apply { 
+                        putString("itemId", catalogItem.id)
+                        putString("itemType", "peliculas")
+                        putInt("partIndex", index)
+                        putInt("episodeIndex", -1)
+                        putString("remoteUrl", urlPath)
+                    }
                     val partTitle = if (catalogItem.enlaces.size > 1) "Parte ${index + 1}" else catalogItem.title
                     val artist = if (catalogItem.enlaces.size > 1) catalogItem.title else "Audiocinemateca"
-                    resultItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(MediaMetadata.Builder().setTitle(partTitle).setArtist(artist).setExtras(meta).build()).build())
+                    resultItems.add(
+                        MediaItem.Builder()
+                            .setMediaId("${catalogItem.id}_${index}_-1")
+                            .setUri(uri)
+                            .setMimeType("audio/mpeg")
+                            .setMediaMetadata(
+                                MediaMetadata.Builder()
+                                    .setTitle(partTitle)
+                                    .setArtist(artist)
+                                    .setExtras(meta)
+                                    .build()
+                            )
+                            .build()
+                    )
                 }
             }
             is Serie -> {
                 catalogItem.capitulos.keys.sorted().forEachIndexed { sIdx, sKey ->
-                    catalogItem.capitulos[sKey]?.forEach { ep ->
-                        val eIdx = catalogItem.capitulos[sKey]?.indexOf(ep) ?: -1
+                    catalogItem.capitulos[sKey]?.forEachIndexed { eIdx, ep ->
                         val d = downloadRepository.getDownload(catalogItem.id, sIdx, eIdx)
-                        val uri = if (d?.downloadStatus == "COMPLETE" && d.filePath != null) android.net.Uri.parse(d.filePath) else android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${ep.enlace.removePrefix("/")}")
-                        val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "series"); putInt("partIndex", sIdx); putInt("episodeIndex", eIdx) }
+                        val uri = if (d?.downloadStatus == "COMPLETE" && !d.filePath.isNullOrBlank()) {
+                            parseMediaUri(d.filePath)
+                        } else {
+                            parseMediaUri(ep.enlace)
+                        }
+                        val meta = Bundle().apply { 
+                            putString("itemId", catalogItem.id)
+                            putString("itemType", "series")
+                            putInt("partIndex", sIdx)
+                            putInt("episodeIndex", eIdx)
+                            putString("remoteUrl", ep.enlace)
+                        }
                         val epTitle = "T${sIdx + 1}:E${ep.capitulo} - ${ep.titulo}"
-                        resultItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(MediaMetadata.Builder().setTitle(epTitle).setArtist(catalogItem.title).setExtras(meta).build()).build())
+                        resultItems.add(
+                            MediaItem.Builder()
+                                .setMediaId("${catalogItem.id}_${sIdx}_${eIdx}")
+                                .setUri(uri)
+                                .setMimeType("audio/mpeg")
+                                .setMediaMetadata(
+                                    MediaMetadata.Builder()
+                                        .setTitle(epTitle)
+                                        .setArtist(catalogItem.title)
+                                        .setExtras(meta)
+                                        .build()
+                                )
+                                .build()
+                        )
                     }
                 }
             }
             is Documentary -> {
                 val d = downloadRepository.getDownload(catalogItem.id, 0, -1)
-                val uri = if (d?.downloadStatus == "COMPLETE" && d.filePath != null) android.net.Uri.parse(d.filePath) else android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${catalogItem.enlace.removePrefix("/")}")
-                val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "documentales"); putInt("partIndex", 0); putInt("episodeIndex", -1) }
-                resultItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(MediaMetadata.Builder().setTitle(catalogItem.title).setArtist("Audiocinemateca").setExtras(meta).build()).build())
+                val uri = if (d?.downloadStatus == "COMPLETE" && !d.filePath.isNullOrBlank()) {
+                    parseMediaUri(d.filePath)
+                } else {
+                    parseMediaUri(catalogItem.enlace)
+                }
+                val meta = Bundle().apply { 
+                    putString("itemId", catalogItem.id)
+                    putString("itemType", "documentales")
+                    putInt("partIndex", 0)
+                    putInt("episodeIndex", -1)
+                    putString("remoteUrl", catalogItem.enlace)
+                }
+                resultItems.add(
+                    MediaItem.Builder()
+                        .setMediaId("${catalogItem.id}_0_-1")
+                        .setUri(uri)
+                        .setMimeType("audio/mpeg")
+                        .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setTitle(catalogItem.title)
+                                .setArtist("Audiocinemateca")
+                                .setExtras(meta)
+                                .build()
+                        )
+                        .build()
+                )
             }
             is ShortFilm -> {
                 val d = downloadRepository.getDownload(catalogItem.id, 0, -1)
-                val uri = if (d?.downloadStatus == "COMPLETE" && d.filePath != null) android.net.Uri.parse(d.filePath) else android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${catalogItem.enlace.removePrefix("/")}")
-                val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "cortometrajes"); putInt("partIndex", 0); putInt("episodeIndex", -1) }
-                resultItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(MediaMetadata.Builder().setTitle(catalogItem.title).setArtist("Audiocinemateca").setExtras(meta).build()).build())
+                val uri = if (d?.downloadStatus == "COMPLETE" && !d.filePath.isNullOrBlank()) {
+                    parseMediaUri(d.filePath)
+                } else {
+                    parseMediaUri(catalogItem.enlace)
+                }
+                val meta = Bundle().apply { 
+                    putString("itemId", catalogItem.id)
+                    putString("itemType", "cortometrajes")
+                    putInt("partIndex", 0)
+                    putInt("episodeIndex", -1)
+                    putString("remoteUrl", catalogItem.enlace)
+                }
+                resultItems.add(
+                    MediaItem.Builder()
+                        .setMediaId("${catalogItem.id}_0_-1")
+                        .setUri(uri)
+                        .setMimeType("audio/mpeg")
+                        .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setTitle(catalogItem.title)
+                                .setArtist("Audiocinemateca")
+                                .setExtras(meta)
+                                .build()
+                        )
+                        .build()
+                )
             }
         }
         return resultItems

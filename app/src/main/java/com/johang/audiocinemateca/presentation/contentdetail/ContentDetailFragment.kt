@@ -89,6 +89,7 @@ class ContentDetailFragment : Fragment() {
     private lateinit var moviePartsListContainer: LinearLayout
     private lateinit var seriesChaptersContainer: LinearLayout
     private lateinit var seasonSpinner: Spinner
+    private lateinit var btnDownloadSeason: com.google.android.material.button.MaterialButton
     private lateinit var episodesListContainer: LinearLayout
 
     private val progressUpdateHandler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -187,6 +188,7 @@ class ContentDetailFragment : Fragment() {
         moviePartsListContainer = view.findViewById(R.id.movie_parts_list_container)
         seriesChaptersContainer = view.findViewById(R.id.series_chapters_container)
         seasonSpinner = view.findViewById(R.id.season_spinner)
+        btnDownloadSeason = view.findViewById(R.id.btn_download_season)
         episodesListContainer = view.findViewById(R.id.episodes_list_container)
     }
 
@@ -268,9 +270,19 @@ class ContentDetailFragment : Fragment() {
                         }
                         is ViewAction.ShowCancelConfirmation -> showCancelConfirmationDialog(action.partIndex, action.episodeIndex)
                         is ViewAction.ShowDeleteConfirmation -> showDeleteConfirmationDialog(action.partIndex, action.episodeIndex)
+                        is ViewAction.ShowDeleteSeasonConfirmation -> showDeleteSeasonConfirmationDialog(action.seasonIndex, action.seasonName)
+                        is ViewAction.ShowCancelSeasonConfirmation -> showCancelSeasonConfirmationDialog(action.seasonIndex, action.seasonName)
                         is ViewAction.ShowDownloadFailed -> showDownloadFailedDialog(action.reason)
                         is ViewAction.ShowError -> showErrorDialog(action.message)
                         is ViewAction.ShowMessage -> requireView().announceForAccessibility(action.message)
+                        is ViewAction.ShowSeasonDownloadStarted -> {
+                            Toast.makeText(requireContext(), "Iniciando descarga de ${action.count} episodios de la Temporada ${action.seasonNumber}...", Toast.LENGTH_LONG).show()
+                            requireView().announceForAccessibility("Iniciando descarga de ${action.count} episodios de la temporada ${action.seasonNumber}")
+                        }
+                        is ViewAction.ShowSeasonAlreadyDownloaded -> {
+                            Toast.makeText(requireContext(), "Todos los episodios de la Temporada ${action.seasonNumber} ya están descargados.", Toast.LENGTH_SHORT).show()
+                            requireView().announceForAccessibility("Todos los episodios de la temporada ${action.seasonNumber} ya están descargados")
+                        }
                         is ViewAction.StopDownloadService -> {
                             val intent = Intent(requireContext(), com.johang.audiocinemateca.presentation.download.DownloadService::class.java)
                             requireContext().stopService(intent)
@@ -472,6 +484,39 @@ class ContentDetailFragment : Fragment() {
         seasonAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         seasonSpinner.adapter = seasonAdapter
 
+        btnDownloadSeason.setOnClickListener {
+            val selectedSeason = seasonSpinner.selectedItemPosition
+            if (selectedSeason >= 0) {
+                viewModel.onSeasonDownloadAction(selectedSeason)
+            }
+        }
+
+        // Observar estado dinámico de descarga de la temporada seleccionada
+        lifecycleScope.launch {
+            viewModel.seasonDownloadState.collect { state ->
+                val currentPosition = seasonSpinner.selectedItemPosition.coerceAtLeast(0)
+                val seasonName = seasons.getOrNull(currentPosition) ?: (currentPosition + 1).toString()
+
+                when (state) {
+                    is SeasonDownloadState.Downloaded -> {
+                        btnDownloadSeason.text = "Eliminar T$seasonName"
+                        btnDownloadSeason.setIconResource(R.drawable.ic_close)
+                        btnDownloadSeason.contentDescription = "Eliminar todos los capítulos descargados de la temporada $seasonName"
+                    }
+                    is SeasonDownloadState.Downloading -> {
+                        btnDownloadSeason.text = "Descargando T$seasonName..."
+                        btnDownloadSeason.setIconResource(R.drawable.ic_downloads)
+                        btnDownloadSeason.contentDescription = "Descargando temporada $seasonName. Toca para detener las descargas"
+                    }
+                    is SeasonDownloadState.NotDownloaded -> {
+                        btnDownloadSeason.text = "Descargar T$seasonName"
+                        btnDownloadSeason.setIconResource(R.drawable.ic_downloads)
+                        btnDownloadSeason.contentDescription = "Descargar todos los episodios de la temporada $seasonName"
+                    }
+                }
+            }
+        }
+
         // SELECCIÓN INTELIGENTE AL ENTRAR
         lifecycleScope.launch {
             val allProgress = playbackProgressRepository.getPlaybackProgressForContent(serie.id)
@@ -482,11 +527,13 @@ class ContentDetailFragment : Fragment() {
             } else 0
 
             seasonSpinner.setSelection(initialSeasonIndex)
+            viewModel.setSelectedSeasonIndex(initialSeasonIndex)
             updateEpisodeList(serie, seasons[initialSeasonIndex], initialSeasonIndex)
         }
 
         seasonSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                viewModel.setSelectedSeasonIndex(position)
                 updateEpisodeList(serie, seasons[position], position)
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -527,7 +574,9 @@ class ContentDetailFragment : Fragment() {
 
     private fun updateListenNowButtonProgress(item: CatalogItem, allProgress: List<PlaybackProgressEntity>) {
         val latest = allProgress.maxByOrNull { it.lastPlayedTimestamp }
-        if (latest != null && latest.currentPositionMs < latest.totalDurationMs) {
+        val isFinished = latest?.isFinished == true || (latest != null && latest.totalDurationMs > 0 && latest.currentPositionMs >= latest.totalDurationMs - 15000)
+
+        if (latest != null && !isFinished && latest.currentPositionMs < latest.totalDurationMs) {
             val remaining = TimeFormatUtils.formatDuration(latest.totalDurationMs - latest.currentPositionMs)
             val text = if (item is Serie) {
                 val seasonKey = item.capitulos.keys.elementAtOrNull(latest.partIndex)
@@ -537,6 +586,37 @@ class ContentDetailFragment : Fragment() {
             listenNowButton.text = text
             listenNowButton.setOnClickListener {
                 findNavController().navigate(ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(item, latest.partIndex, latest.episodeIndex))
+            }
+        } else if (latest != null && isFinished && item is Serie) {
+            // Si el último capítulo reproducido se terminó, ofrecer inteligentemente el siguiente episodio de la serie
+            val seasonIndex = latest.partIndex.coerceAtLeast(0)
+            val episodeIndex = latest.episodeIndex.coerceAtLeast(0)
+            val seasons = item.capitulos.keys.sorted()
+            val currentSeasonKey = seasons.getOrNull(seasonIndex)
+            val currentSeasonEpisodes = item.capitulos[currentSeasonKey] ?: emptyList()
+
+            val (nextSeason, nextEpisode, nextEpObj) = if (episodeIndex + 1 < currentSeasonEpisodes.size) {
+                Triple(seasonIndex, episodeIndex + 1, currentSeasonEpisodes[episodeIndex + 1])
+            } else if (seasonIndex + 1 < seasons.size) {
+                val nextSeasonKey = seasons[seasonIndex + 1]
+                val nextSeasonEpisodes = item.capitulos[nextSeasonKey] ?: emptyList()
+                if (nextSeasonEpisodes.isNotEmpty()) {
+                    Triple(seasonIndex + 1, 0, nextSeasonEpisodes[0])
+                } else Triple(-1, -1, null)
+            } else {
+                Triple(-1, -1, null)
+            }
+
+            if (nextEpObj != null) {
+                listenNowButton.text = "Siguiente: T${nextSeason + 1}:E${nextEpObj.capitulo} - ${nextEpObj.titulo}"
+                listenNowButton.setOnClickListener {
+                    findNavController().navigate(ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(item, nextSeason, nextEpisode))
+                }
+            } else {
+                listenNowButton.text = "Comenzar de nuevo"
+                listenNowButton.setOnClickListener {
+                    findNavController().navigate(ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(item, 0, 0))
+                }
             }
         } else {
             listenNowButton.text = "Comenzar a oír"
@@ -693,6 +773,30 @@ class ContentDetailFragment : Fragment() {
             .setMessage("¿Estás seguro?")
             .setNegativeButton("No", null)
             .setPositiveButton("Sí, cancelar") { _, _ -> viewModel.cancelDownload(partIndex, episodeIndex) }
+            .show()
+    }
+
+    private fun showDeleteSeasonConfirmationDialog(seasonIndex: Int, seasonName: String) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Eliminar temporada $seasonName")
+            .setMessage("¿Deseas eliminar todos los capítulos descargados de la Temporada $seasonName?")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Eliminar") { dialog, _ ->
+                viewModel.deleteSeasonDownloads(seasonIndex)
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun showCancelSeasonConfirmationDialog(seasonIndex: Int, seasonName: String) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Cancelar descargas de temporada $seasonName")
+            .setMessage("¿Deseas detener y cancelar las descargas en curso de la Temporada $seasonName?")
+            .setNegativeButton("Continuar descargando", null)
+            .setPositiveButton("Detener descargas") { dialog, _ ->
+                viewModel.cancelSeasonDownloads(seasonIndex)
+                dialog.dismiss()
+            }
             .show()
     }
 

@@ -23,3 +23,5 @@ logs.txt
 google-services.json
 /back/
 reglas.txt
+.atl/
+.codegraph/

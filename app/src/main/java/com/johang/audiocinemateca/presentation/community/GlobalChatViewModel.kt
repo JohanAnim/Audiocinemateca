@@ -12,7 +12,6 @@ import com.johang.audiocinemateca.data.repository.SearchRepository
 import com.johang.audiocinemateca.util.RelativeTimeUtils
 import com.johang.audiocinemateca.util.SoundEffectsManager
 import com.johang.audiocinemateca.util.TtsManager
-import com.johang.audiocinemateca.presentation.player.PlayerService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -29,9 +28,6 @@ sealed class ChatListItem {
 class GlobalChatViewModel @Inject constructor(
     application: Application,
     private val repository: GlobalChatRepository,
-    private val jamRepository: com.johang.audiocinemateca.data.repository.JamRepository,
-    private val catalogRepository: com.johang.audiocinemateca.data.local.CatalogRepository,
-    private val contentRepository: com.johang.audiocinemateca.data.repository.ContentRepository,
     private val searchRepository: SearchRepository,
     private val sharedPreferencesManager: com.johang.audiocinemateca.data.local.SharedPreferencesManager,
     private val soundEffectsManager: SoundEffectsManager,
@@ -39,24 +35,6 @@ class GlobalChatViewModel @Inject constructor(
 ) : AndroidViewModel(application) {
 
     private val adminEmail = "gutierrezjohanantonio@gmail.com"
-
-    val currentJam: StateFlow<com.johang.audiocinemateca.data.model.LiveJamSession?> = jamRepository.observeCurrentJam()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-
-    private val _navigateToPlayerEvent = MutableSharedFlow<com.johang.audiocinemateca.domain.model.CatalogItem>()
-    val navigateToPlayerEvent = _navigateToPlayerEvent.asSharedFlow()
-
-    private val _isJoinedJam = MutableStateFlow(false)
-    val isJoinedJam = _isJoinedJam.asStateFlow()
-
-    private val _showExitJamConfirmation = MutableStateFlow(false)
-    val showExitJamConfirmation = _showExitJamConfirmation.asStateFlow()
-
-    private val _showJamSelectorDialog = MutableStateFlow(false)
-    val showJamSelectorDialog = _showJamSelectorDialog.asStateFlow()
-
-    private val _catalogForJam = MutableStateFlow<List<com.johang.audiocinemateca.domain.model.CatalogItem>>(emptyList())
-    val catalogForJam = _catalogForJam.asStateFlow()
 
     private val _chatItems = MutableStateFlow<List<ChatListItem>>(emptyList())
     val chatItems = _chatItems.asStateFlow()
@@ -125,25 +103,6 @@ class GlobalChatViewModel @Inject constructor(
             .launchIn(viewModelScope)
 
         repository.getChatStatus().onEach { _isOpen.value = it }.launchIn(viewModelScope)
-
-        viewModelScope.launch {
-            currentJam.collect { jam ->
-                val currentUserId = auth.currentUser?.uid
-                val isHost = jam != null && jam.hostUserId == currentUserId
-                com.johang.audiocinemateca.presentation.community.GlobalChatState.isJamListener = _isJoinedJam.value && !isHost
-
-                if (_isJoinedJam.value) {
-                    if (jam == null) {
-                        _isJoinedJam.value = false
-                        com.johang.audiocinemateca.presentation.community.GlobalChatState.isJamListener = false
-                        soundEffectsManager.playSound("aura_voice_end")
-                        stopListenerAudio()
-                    } else if (!isHost) {
-                        syncListenerAudioWithJam(jam)
-                    }
-                }
-            }
-        }
     }
 
     private fun startPresenceHeartbeat() {
@@ -462,9 +421,6 @@ class GlobalChatViewModel @Inject constructor(
         return regex.findAll(text).map { it.groupValues[1] }.toList()
     }
 
-    private val _showPinPromptDialog = MutableStateFlow<com.johang.audiocinemateca.data.model.LiveJamSession?>(null)
-    val showPinPromptDialog = _showPinPromptDialog.asStateFlow()
-
     private val _showRecommendationsDialog = MutableStateFlow<List<com.johang.audiocinemateca.presentation.aichat.LinkedContent>?>(null)
     val showRecommendationsDialog = _showRecommendationsDialog.asStateFlow()
 
@@ -476,182 +432,11 @@ class GlobalChatViewModel @Inject constructor(
         _showRecommendationsDialog.value = null
     }
 
-    fun openJamSelector() {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val catalog = catalogRepository.getCatalog()
-            val allItems = mutableListOf<com.johang.audiocinemateca.domain.model.CatalogItem>().apply {
-                catalog?.movies?.let { addAll(it) }
-                catalog?.series?.let { addAll(it) }
-                catalog?.documentaries?.let { addAll(it) }
-                catalog?.shortFilms?.let { addAll(it) }
-            }
-            _catalogForJam.value = allItems
-            _showJamSelectorDialog.value = true
-        }
-    }
-
-    fun dismissJamSelector() {
-        _showJamSelectorDialog.value = false
-    }
-
-    fun startJamSession(item: com.johang.audiocinemateca.domain.model.CatalogItem, pinCode: String = "") {
-        val currentUser = auth.currentUser ?: return
-        val hostName = currentUser.displayName ?: currentUser.email?.substringBefore("@") ?: "Admin"
-        val itemType = when (item) {
-            is com.johang.audiocinemateca.data.model.Serie -> "serie"
-            is com.johang.audiocinemateca.data.model.Movie -> "pelicula"
-            is com.johang.audiocinemateca.data.model.Documentary -> "documental"
-            is com.johang.audiocinemateca.data.model.ShortFilm -> "cortometraje"
-            else -> "pelicula"
-        }
-
-        viewModelScope.launch {
-            _showJamSelectorDialog.value = false
-            jamRepository.startJam(
-                hostUserId = currentUser.uid,
-                hostName = hostName,
-                contentId = item.id,
-                title = item.title,
-                contentType = itemType,
-                pinCode = pinCode
-            )
-            _isJoinedJam.value = true
-            soundEffectsManager.playSound("aura_send")
-            _navigateToPlayerEvent.emit(item)
-        }
-    }
-
-    fun onAttemptJoinJam(jam: com.johang.audiocinemateca.data.model.LiveJamSession) {
-        if (jam.pinCode.isNotBlank() && !isAdmin) {
-            _showPinPromptDialog.value = jam
-        } else {
-            joinJamSession(jam)
-        }
-    }
-
-    fun verifyPinAndJoin(enteredPin: String) {
-        val jam = _showPinPromptDialog.value ?: return
-        if (enteredPin.trim() == jam.pinCode.trim()) {
-            _showPinPromptDialog.value = null
-            joinJamSession(jam)
-        } else {
-            soundEffectsManager.playSound("aura_error")
-            _banStatusMessage.value = "La contraseña o PIN ingresado es incorrecto."
-        }
-    }
-
-    fun dismissPinPrompt() {
-        _showPinPromptDialog.value = null
-    }
-
-    fun joinJamSession(jam: com.johang.audiocinemateca.data.model.LiveJamSession) {
-        viewModelScope.launch {
-            jamRepository.joinJam()
-            _isJoinedJam.value = true
-            soundEffectsManager.playSound("aura_send")
-            syncListenerAudioWithJam(jam)
-        }
-    }
-
-    fun onOpenJamPlayer() {
-        val jam = currentJam.value ?: return
-        val currentUserId = auth.currentUser?.uid
-        // Solo el anfitrión puede abrir el reproductor a pantalla completa
-        if (jam.hostUserId == currentUserId || isAdmin) {
-            viewModelScope.launch {
-                val item = contentRepository.getContentItem(jam.contentId, jam.contentType)
-                if (item != null) {
-                    _navigateToPlayerEvent.emit(item)
-                }
-            }
-        }
-    }
-
-    fun leaveJamSession() {
-        viewModelScope.launch {
-            if (_isJoinedJam.value) {
-                jamRepository.leaveJam()
-                _isJoinedJam.value = false
-                com.johang.audiocinemateca.presentation.community.GlobalChatState.isJamListener = false
-                soundEffectsManager.playSound("aura_voice_end")
-                stopListenerAudio()
-            }
-        }
-    }
-
-    fun endJamSession() {
-        viewModelScope.launch {
-            jamRepository.endJam()
-            _isJoinedJam.value = false
-            com.johang.audiocinemateca.presentation.community.GlobalChatState.isJamListener = false
-            soundEffectsManager.playSound("aura_send")
-            stopListenerAudio()
-        }
-    }
-
-    fun onAttemptExitCommunity(onProceedExit: () -> Unit) {
-        if (_isJoinedJam.value) {
-            _showExitJamConfirmation.value = true
-        } else {
-            onProceedExit()
-        }
-    }
-
-    fun cancelExitJam() {
-        _showExitJamConfirmation.value = false
-    }
-
-    fun confirmExitJamAndStop(onProceedExit: () -> Unit) {
-        leaveJamSession()
-        _showExitJamConfirmation.value = false
-        onProceedExit()
-    }
-
-    private fun syncListenerAudioWithJam(jam: com.johang.audiocinemateca.data.model.LiveJamSession) {
-        val now = System.currentTimeMillis()
-        val elapsed = (now - jam.lastUpdatedTimestamp).coerceAtLeast(0L)
-        val expectedPos = if (jam.isPlaying) jam.positionMs + elapsed else jam.positionMs
-        val context = getApplication<Application>()
-        val intent = android.content.Intent(context, PlayerService::class.java).apply {
-            action = PlayerService.ACTION_SYNC_JAM_STATE
-            putExtra("extra_content_id", jam.contentId)
-            putExtra("extra_content_type", jam.contentType)
-            putExtra(PlayerService.EXTRA_JAM_POSITION, expectedPos)
-            putExtra(PlayerService.EXTRA_JAM_IS_PLAYING, jam.isPlaying)
-        }
-        try {
-            androidx.core.content.ContextCompat.startForegroundService(context, intent)
-        } catch (e: Exception) {
-            Log.e("GlobalChatViewModel", "Error starting PlayerService for Jam sync", e)
-        }
-        androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
-    }
-
-    private fun stopListenerAudio() {
-        val context = getApplication<Application>()
-        val intent = android.content.Intent(context, PlayerService::class.java).apply {
-            action = PlayerService.ACTION_STOP
-        }
-        androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
-    }
-
     override fun onCleared() {
         super.onCleared()
         val uid = auth.currentUser?.uid
         if (uid != null) {
             repository.setUserPresence(uid, isOnline = false)
-            val jam = currentJam.value
-            if (jam != null) {
-                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-                    try {
-                        if (jam.hostUserId == uid) {
-                            jamRepository.endJam()
-                        } else if (_isJoinedJam.value) {
-                            jamRepository.leaveJam()
-                        }
-                    } catch (e: Exception) {}
-                }
-            }
         }
     }
 }

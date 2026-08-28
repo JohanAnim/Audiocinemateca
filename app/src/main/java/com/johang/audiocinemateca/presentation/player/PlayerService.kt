@@ -59,12 +59,6 @@ class PlayerService : MediaSessionService() {
     @Named("AudiocinematecaClient")
     lateinit var okHttpClient: OkHttpClient
 
-    @Inject
-    lateinit var jamRepository: com.johang.audiocinemateca.data.repository.JamRepository
-
-    @Inject
-    lateinit var contentRepository: com.johang.audiocinemateca.data.repository.ContentRepository
-
     private var mediaSession: MediaSession? = null
     private var castPlayer: CastPlayer? = null
     private var exoPlayer: ExoPlayer? = null
@@ -93,15 +87,26 @@ class PlayerService : MediaSessionService() {
     private fun updateSavedState(p: Player = player) {
         try {
             if (p.mediaItemCount > 0) {
-                val items = mutableListOf<MediaItem>()
-                for (i in 0 until p.mediaItemCount) {
-                    items.add(p.getMediaItemAt(i))
-                }
-                savedMediaItems = items
-                savedWindowIndex = p.currentMediaItemIndex
+                val idx = p.currentMediaItemIndex
                 val pos = p.currentPosition
+                if (idx >= 0 && idx < p.mediaItemCount) {
+                    savedWindowIndex = idx
+                }
                 if (pos >= 0) {
                     savedPositionMs = pos
+                }
+                // Solo guardar la lista de MediaItems si provienen del ExoPlayer local con URIs válidos
+                if (p === exoPlayer) {
+                    val items = mutableListOf<MediaItem>()
+                    for (i in 0 until p.mediaItemCount) {
+                        val item = p.getMediaItemAt(i)
+                        if (item.localConfiguration?.uri != null) {
+                            items.add(item)
+                        }
+                    }
+                    if (items.isNotEmpty()) {
+                        savedMediaItems = items
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -115,34 +120,48 @@ class PlayerService : MediaSessionService() {
 
         Log.d("PlayerService", "Transferring playback from ExoPlayer to CastPlayer")
 
+        // Guardar progreso local y en la nube antes de transferir a Cast
+        serviceScope.launch {
+            try {
+                savePlaybackProgress(syncToCloud = true)
+            } catch (e: Exception) {}
+        }
+
         val mediaItems = mutableListOf<MediaItem>()
         val itemCount = localPlayer.mediaItemCount
         for (i in 0 until itemCount) {
-            mediaItems.add(localPlayer.getMediaItemAt(i))
+            val item = localPlayer.getMediaItemAt(i)
+            mediaItems.add(item)
         }
 
         val targetItems = if (mediaItems.isNotEmpty()) mediaItems else savedMediaItems
-        val targetIndex = if (itemCount > 0) localPlayer.currentMediaItemIndex else savedWindowIndex
-        val targetPos = if (itemCount > 0) localPlayer.currentPosition else savedPositionMs
+        val targetIndex = if (itemCount > 0 && localPlayer.currentMediaItemIndex >= 0) localPlayer.currentMediaItemIndex else savedWindowIndex
+        val targetPos = if (itemCount > 0 && localPlayer.currentPosition >= 0) localPlayer.currentPosition else savedPositionMs
         val playWhenReady = localPlayer.playWhenReady || localPlayer.isPlaying
 
         if (targetItems.isNotEmpty()) {
-            savedMediaItems = targetItems.toList()
+            savedMediaItems = targetItems.filter { it.localConfiguration?.uri != null }
             savedWindowIndex = targetIndex
             savedPositionMs = targetPos
 
-            cPlayer.setMediaItems(targetItems, targetIndex, targetPos.coerceAtLeast(0L))
-            cPlayer.prepare()
-            if (playWhenReady) {
-                cPlayer.playWhenReady = true
-                cPlayer.play()
+            try {
+                cPlayer.setMediaItems(targetItems, targetIndex, targetPos.coerceAtLeast(0L))
+                cPlayer.prepare()
+                if (playWhenReady) {
+                    cPlayer.playWhenReady = true
+                    cPlayer.play()
+                }
+            } catch (e: Exception) {
+                Log.e("PlayerService", "Error transferring playback to CastPlayer: ${e.message}", e)
             }
         }
 
         mediaSession?.player = cPlayer
 
-        localPlayer.pause()
-        localPlayer.stop()
+        try {
+            localPlayer.pause()
+            localPlayer.stop()
+        } catch (e: Exception) {}
 
         broadcastMiniPlayerState(MainActivity.ACTION_SHOW_MINI_PLAYER)
     }
@@ -153,27 +172,36 @@ class PlayerService : MediaSessionService() {
 
         Log.d("PlayerService", "Transferring playback from CastPlayer to ExoPlayer")
 
-        val mediaItems = mutableListOf<MediaItem>()
-        val itemCount = cPlayer.mediaItemCount
-        for (i in 0 until itemCount) {
-            mediaItems.add(cPlayer.getMediaItemAt(i))
+        val castIndex = try { cPlayer.currentMediaItemIndex } catch (e: Exception) { -1 }
+        val castPos = try { cPlayer.currentPosition } catch (e: Exception) { -1L }
+
+        val targetIndex = if (castIndex >= 0 && castIndex < savedMediaItems.size) castIndex else savedWindowIndex
+        val targetPos = if (castPos >= 0) castPos else savedPositionMs
+
+        // Guardar progreso del Cast en la nube antes de volver a ExoPlayer
+        serviceScope.launch {
+            try {
+                savePlaybackProgress(position = targetPos, syncToCloud = true)
+            } catch (e: Exception) {}
         }
 
-        val targetItems = if (mediaItems.isNotEmpty()) mediaItems else savedMediaItems
-        val targetIndex = if (itemCount > 0) cPlayer.currentMediaItemIndex else savedWindowIndex
-        val targetPos = if (itemCount > 0) cPlayer.currentPosition else savedPositionMs
-        val playWhenReady = cPlayer.playWhenReady || cPlayer.isPlaying
+        val validItems = savedMediaItems.filter { it.localConfiguration?.uri != null }
+        val playWhenReady = try { cPlayer.playWhenReady || cPlayer.isPlaying } catch (e: Exception) { true }
 
-        if (targetItems.isNotEmpty()) {
-            savedMediaItems = targetItems.toList()
-            savedWindowIndex = targetIndex
+        if (validItems.isNotEmpty()) {
+            val safeIndex = targetIndex.coerceAtLeast(0).coerceAtMost(validItems.size - 1)
+            savedWindowIndex = safeIndex
             savedPositionMs = targetPos
 
-            localPlayer.setMediaItems(targetItems, targetIndex, targetPos.coerceAtLeast(0L))
-            localPlayer.prepare()
-            if (playWhenReady) {
-                localPlayer.playWhenReady = true
-                localPlayer.play()
+            try {
+                localPlayer.setMediaItems(validItems, safeIndex, targetPos.coerceAtLeast(0L))
+                localPlayer.prepare()
+                if (playWhenReady) {
+                    localPlayer.playWhenReady = true
+                    localPlayer.play()
+                }
+            } catch (e: Exception) {
+                Log.e("PlayerService", "Error restoring playback to ExoPlayer: ${e.message}", e)
             }
         }
 
@@ -197,68 +225,8 @@ class PlayerService : MediaSessionService() {
                     updateSavedState()
                     savePlaybackProgress(position = pos, syncToCloud = false)
                 }
-                syncHostJamProgressIfNeeded()
             }
             progressSaveHandler.postDelayed(this, 2000) 
-        }
-    }
-
-    private suspend fun syncHostJamProgressIfNeeded() {
-        try {
-            val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser ?: return
-            val jam = jamRepository.observeCurrentJam().firstOrNull() ?: return
-            if (jam.hostUserId == currentUser.uid) {
-                val activePlayer = mediaSession?.player ?: return
-                jamRepository.updateJamProgress(
-                    positionMs = activePlayer.currentPosition,
-                    isPlaying = activePlayer.isPlaying
-                )
-            }
-        } catch (e: Exception) {}
-    }
-
-    private suspend fun loadAndPlayJamContent(contentId: String, contentType: String, positionMs: Long, isPlaying: Boolean) {
-        val catalogItem = contentRepository.getContentItem(contentId, contentType) ?: return
-        val BASE_URL = "https://audiocinemateca.com/"
-        val mediaItems = mutableListOf<MediaItem>()
-
-        when (catalogItem) {
-            is com.johang.audiocinemateca.data.model.Movie -> {
-                catalogItem.enlaces.forEachIndexed { index, urlPath ->
-                    val uri = android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${urlPath.removePrefix("/")}")
-                    val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "peliculas"); putInt("partIndex", index); putInt("episodeIndex", -1) }
-                    val partTitle = if (catalogItem.enlaces.size > 1) "Parte ${index + 1}" else catalogItem.title
-                    val artist = if (catalogItem.enlaces.size > 1) catalogItem.title else "Audiocinemateca"
-                    mediaItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().setTitle(partTitle).setArtist(artist).setExtras(meta).build()).build())
-                }
-            }
-            is com.johang.audiocinemateca.data.model.Serie -> {
-                catalogItem.capitulos.keys.sorted().forEachIndexed { sIdx, sKey ->
-                    catalogItem.capitulos[sKey]?.forEach { ep ->
-                        val eIdx = catalogItem.capitulos[sKey]?.indexOf(ep) ?: -1
-                        val uri = android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${ep.enlace.removePrefix("/")}")
-                        val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "series"); putInt("partIndex", sIdx); putInt("episodeIndex", eIdx) }
-                        mediaItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().setTitle("T${sIdx + 1}:E${ep.capitulo} - ${ep.titulo}").setArtist(catalogItem.title).setExtras(meta).build()).build())
-                    }
-                }
-            }
-            is com.johang.audiocinemateca.data.model.Documentary -> {
-                val uri = android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${catalogItem.enlace.removePrefix("/")}")
-                val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "documentales"); putInt("partIndex", 0); putInt("episodeIndex", -1) }
-                mediaItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().setTitle(catalogItem.title).setArtist("Audiocinemateca").setExtras(meta).build()).build())
-            }
-            is com.johang.audiocinemateca.data.model.ShortFilm -> {
-                val uri = android.net.Uri.parse("${BASE_URL.removeSuffix("/")}/${catalogItem.enlace.removePrefix("/")}")
-                val meta = Bundle().apply { putString("itemId", catalogItem.id); putString("itemType", "cortometrajes"); putInt("partIndex", 0); putInt("episodeIndex", -1) }
-                mediaItems.add(MediaItem.Builder().setUri(uri).setMimeType("audio/mpeg").setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().setTitle(catalogItem.title).setArtist("Audiocinemateca").setExtras(meta).build()).build())
-            }
-        }
-
-        if (mediaItems.isNotEmpty()) {
-            val targetPos = positionMs.coerceAtLeast(0L)
-            player.setMediaItems(mediaItems, 0, targetPos)
-            player.prepare()
-            if (isPlaying) player.play() else player.pause()
         }
     }
 
@@ -328,48 +296,13 @@ class PlayerService : MediaSessionService() {
             MainActivity.ACTION_SAVE_PLAYBACK_PROGRESS -> serviceScope.launch { savePlaybackProgress() }
             MainActivity.ACTION_SEEK_TO_PREVIOUS -> {
                 if (activePlayer.hasPreviousMediaItem()) activePlayer.seekToPreviousMediaItem() else activePlayer.seekTo(0)
+                activePlayer.playWhenReady = true
+                activePlayer.play()
             }
             MainActivity.ACTION_SEEK_TO_NEXT -> {
                 if (activePlayer.hasNextMediaItem()) activePlayer.seekToNextMediaItem()
-            }
-            ACTION_SYNC_JAM_STATE -> {
-                val pos = safeIntent.getLongExtra(EXTRA_JAM_POSITION, -1L)
-                val isPlaying = safeIntent.getBooleanExtra(EXTRA_JAM_IS_PLAYING, true)
-                val contentId = safeIntent.getStringExtra("extra_content_id")
-                val rawContentType = safeIntent.getStringExtra("extra_content_type") ?: "pelicula"
-
-                val contentType = when (rawContentType.lowercase(java.util.Locale.ROOT)) {
-                    "pelicula", "peliculas", "movie" -> "peliculas"
-                    "serie", "series" -> "series"
-                    "documental", "documentales", "documentary" -> "documentales"
-                    "cortometraje", "cortometrajes", "short", "shortfilm" -> "cortometrajes"
-                    else -> rawContentType
-                }
-
-                if (!contentId.isNullOrBlank()) {
-                    val currentMediaId = activePlayer.currentMediaItem?.mediaMetadata?.extras?.getString("itemId")
-                    if (currentMediaId != contentId || activePlayer.mediaItemCount == 0) {
-                        serviceScope.launch {
-                            loadAndPlayJamContent(contentId, contentType, pos, isPlaying)
-                        }
-                        return
-                    }
-                }
-
-                if (pos >= 0) {
-                    val diff = kotlin.math.abs(activePlayer.currentPosition - pos)
-                    if (diff > 1200) {
-                        activePlayer.seekTo(pos)
-                    }
-                }
-                if (activePlayer.playbackState == Player.STATE_IDLE) {
-                    activePlayer.prepare()
-                }
-                if (isPlaying && !activePlayer.isPlaying) {
-                    activePlayer.play()
-                } else if (!isPlaying && activePlayer.isPlaying) {
-                    activePlayer.pause()
-                }
+                activePlayer.playWhenReady = true
+                activePlayer.play()
             }
         }
     }
@@ -378,8 +311,9 @@ class PlayerService : MediaSessionService() {
     private fun setupPlayer() {
         if (mediaSession != null) return
 
-        val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
-        val mediaSourceFactory = DefaultMediaSourceFactory(this).setDataSourceFactory(dataSourceFactory)
+        val httpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+        val defaultDataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(this, httpDataSourceFactory)
+        val mediaSourceFactory = DefaultMediaSourceFactory(this).setDataSourceFactory(defaultDataSourceFactory)
 
         val localExoPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
@@ -397,14 +331,10 @@ class PlayerService : MediaSessionService() {
                 if (isPlaying) {
                     serviceScope.launch { savePlaybackProgress() }
                 }
-                serviceScope.launch { syncHostJamProgressIfNeeded() }
                 ensureForegroundNotification()
             }
             override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
                 updateSavedState()
-                if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-                    serviceScope.launch { syncHostJamProgressIfNeeded() }
-                }
             }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 updateSavedState()
@@ -434,6 +364,12 @@ class PlayerService : MediaSessionService() {
         localExoPlayer.addListener(playerListener)
 
         try {
+            com.johang.audiocinemateca.util.LocalCastProxyServer.start(this, okHttpClient)
+        } catch (e: Exception) {
+            Log.e("PlayerService", "Error starting LocalCastProxyServer: ${e.message}")
+        }
+
+        try {
             val castContext = CastContext.getSharedInstance(this)
             val cPlayer = CastPlayer(castContext, CastMediaItemConverter())
             cPlayer.setSessionAvailabilityListener(castSessionAvailabilityListener)
@@ -449,8 +385,13 @@ class PlayerService : MediaSessionService() {
             localExoPlayer
         }
 
+        try {
+            mediaSession?.release()
+        } catch (e: Exception) {}
+        mediaSession = null
+
         mediaSession = MediaSession.Builder(this, initialPlayer)
-            .setId("AudiocinematecaPlayerSession")
+            .setId("AudiocinematecaPlayerSession_${System.currentTimeMillis()}")
             .build()
 
         updateSessionActivity()
@@ -461,18 +402,96 @@ class PlayerService : MediaSessionService() {
         private val defaultConverter = DefaultMediaItemConverter()
 
         override fun toMediaQueueItem(mediaItem: MediaItem): MediaQueueItem {
-            val originalUri = mediaItem.localConfiguration?.uri?.toString()
-            val itemToConvert = if (originalUri != null) {
-                val proxiedUrl = AudioProxyUtil.buildCastProxyUrl(originalUri)
-                mediaItem.buildUpon().setUri(android.net.Uri.parse(proxiedUrl)).build()
-            } else {
-                mediaItem
+            val extras = mediaItem.mediaMetadata.extras
+            val originalUri = mediaItem.localConfiguration?.uri?.toString() ?: ""
+            val remoteUrl = extras?.getString("remoteUrl")
+
+            // Construir URL optimizada para Cast mediante el servidor proxy local (con soporte de CORS, Auth y archivos descargados)
+            val streamUrl = com.johang.audiocinemateca.util.LocalCastProxyServer.buildCastUrl(originalUri, remoteUrl)
+
+            val itemToConvert = mediaItem.buildUpon()
+                .setUri(android.net.Uri.parse(streamUrl))
+                .setMimeType("audio/mpeg")
+                .setMediaId(mediaItem.mediaId.ifEmpty { "${extras?.getString("itemId")}_${extras?.getInt("partIndex")}_${extras?.getInt("episodeIndex")}" })
+                .build()
+
+            val queueItem = defaultConverter.toMediaQueueItem(itemToConvert)
+            val mediaInfo = queueItem.media
+            if (mediaInfo != null) {
+                // Preservar el objeto customData original que contiene la clave "mediaItem" requerida por Media3
+                val customJson = mediaInfo.customData ?: org.json.JSONObject()
+                if (extras != null) {
+                    customJson.put("itemId", extras.getString("itemId", ""))
+                    customJson.put("itemType", extras.getString("itemType", "movie"))
+                    customJson.put("partIndex", extras.getInt("partIndex", -1))
+                    customJson.put("episodeIndex", extras.getInt("episodeIndex", -1))
+                    customJson.put("remoteUrl", extras.getString("remoteUrl", ""))
+                }
+                customJson.put("title", mediaItem.mediaMetadata.title?.toString() ?: "")
+                customJson.put("artist", mediaItem.mediaMetadata.artist?.toString() ?: "")
+                customJson.put("originalUri", originalUri)
+
+                val mediaInfoBuilder = com.google.android.gms.cast.MediaInfo.Builder(streamUrl)
+                    .setContentType("audio/mpeg")
+                    .setStreamType(if (mediaInfo.streamType != com.google.android.gms.cast.MediaInfo.STREAM_TYPE_INVALID) mediaInfo.streamType else com.google.android.gms.cast.MediaInfo.STREAM_TYPE_BUFFERED)
+                    .setMetadata(mediaInfo.metadata)
+                    .setCustomData(customJson)
+                return com.google.android.gms.cast.MediaQueueItem.Builder(mediaInfoBuilder.build())
+                    .setAutoplay(queueItem.autoplay)
+                    .setPreloadTime(queueItem.preloadTime)
+                    .setStartTime(queueItem.startTime)
+                    .build()
             }
-            return defaultConverter.toMediaQueueItem(itemToConvert)
+            return queueItem
         }
 
         override fun toMediaItem(mediaQueueItem: MediaQueueItem): MediaItem {
-            return defaultConverter.toMediaItem(mediaQueueItem)
+            val baseMediaItem = try {
+                defaultConverter.toMediaItem(mediaQueueItem)
+            } catch (e: Exception) {
+                // Fallback seguro si customData no incluye la estructura estándar
+                val mediaInfo = mediaQueueItem.media
+                val customData = mediaInfo?.customData
+                val uri = customData?.optString("originalUri")?.ifBlank { null }
+                    ?: mediaInfo?.contentId?.ifBlank { null }
+                    ?: "https://audiocinemateca.com"
+                MediaItem.Builder()
+                    .setUri(android.net.Uri.parse(uri))
+                    .setMediaId(customData?.optString("itemId", "") ?: "")
+                    .build()
+            }
+
+            val customData = mediaQueueItem.media?.customData
+            if (customData != null) {
+                val extras = Bundle().apply {
+                    putString("itemId", customData.optString("itemId", ""))
+                    putString("itemType", customData.optString("itemType", "movie"))
+                    putInt("partIndex", customData.optInt("partIndex", -1))
+                    putInt("episodeIndex", customData.optInt("episodeIndex", -1))
+                    putString("remoteUrl", customData.optString("remoteUrl", ""))
+                }
+                val title = customData.optString("title", baseMediaItem.mediaMetadata.title?.toString() ?: "")
+                val artist = customData.optString("artist", baseMediaItem.mediaMetadata.artist?.toString() ?: "")
+                val originalUri = customData.optString("originalUri", "")
+
+                val reconstructedMetadata = baseMediaItem.mediaMetadata.buildUpon()
+                    .setTitle(title.ifBlank { null })
+                    .setArtist(artist.ifBlank { null })
+                    .setExtras(extras)
+                    .build()
+
+                val builder = baseMediaItem.buildUpon()
+                    .setMediaMetadata(reconstructedMetadata)
+
+                if (originalUri.isNotEmpty()) {
+                    builder.setUri(android.net.Uri.parse(originalUri))
+                } else if (baseMediaItem.localConfiguration?.uri == null && !mediaQueueItem.media?.contentId.isNullOrBlank()) {
+                    builder.setUri(android.net.Uri.parse(mediaQueueItem.media!!.contentId))
+                }
+
+                return builder.build()
+            }
+            return baseMediaItem
         }
     }
 
@@ -486,7 +505,6 @@ class PlayerService : MediaSessionService() {
             addAction(MainActivity.ACTION_SAVE_PLAYBACK_PROGRESS)
             addAction(MainActivity.ACTION_SEEK_TO_PREVIOUS)
             addAction(MainActivity.ACTION_SEEK_TO_NEXT)
-            addAction(ACTION_SYNC_JAM_STATE)
         }
         LocalBroadcastManager.getInstance(this).registerReceiver(playerActionReceiver, playerActionFilter)
     }
@@ -581,8 +599,8 @@ class PlayerService : MediaSessionService() {
         val activePlayer = try { player } catch (e: Exception) { null }
         val currentItem = activePlayer?.currentMediaItem
         val metadata = currentItem?.mediaMetadata
-        val title = metadata?.title?.toString()?.ifBlank { null } ?: "Audiocinemateca - Jam en Vivo"
-        val subtitle = metadata?.artist?.toString()?.ifBlank { null } ?: "Sincronizando reproducción..."
+        val title = metadata?.title?.toString()?.ifBlank { null } ?: "Audiocinemateca"
+        val subtitle = metadata?.artist?.toString()?.ifBlank { null } ?: "Reproduciendo contenido..."
         val pendingIntent = updateSessionActivity()
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -609,15 +627,18 @@ class PlayerService : MediaSessionService() {
     }
 
     private suspend fun savePlaybackProgress(itemId: String? = null, itemType: String? = null, partIndex: Int = -1, episodeIndex: Int = -1, position: Long? = null, syncToCloud: Boolean = true) {
-        val (mediaItem, pos, dur, state) = kotlinx.coroutines.withContext(Dispatchers.Main) {
+        val (mediaItem, pos, dur, state, windowIdx) = kotlinx.coroutines.withContext(Dispatchers.Main) {
             val item = try { player.currentMediaItem } catch (e: Exception) { null }
             val currentPos = position ?: (try { player.currentPosition } catch (e: Exception) { 0L })
             val currentDur = try { player.duration } catch (e: Exception) { 0L }
             val currentState = try { player.playbackState } catch (e: Exception) { Player.STATE_IDLE }
-            arrayOf(item, currentPos, currentDur, currentState)
+            val currentWinIdx = try { player.currentMediaItemIndex } catch (e: Exception) { savedWindowIndex }
+            arrayOf(item, currentPos, currentDur, currentState, currentWinIdx)
         }
-        val item = mediaItem as? MediaItem ?: return
-        val meta = item.mediaMetadata.extras ?: return
+        val item = mediaItem as? MediaItem ?: savedMediaItems.getOrNull(windowIdx as Int) ?: return
+        val meta = item.mediaMetadata.extras 
+            ?: savedMediaItems.getOrNull(windowIdx as Int)?.mediaMetadata?.extras 
+            ?: return
         val id = itemId ?: meta.getString("itemId") ?: return
         val type = itemType ?: meta.getString("itemType") ?: return
         val currentPos = pos as Long
@@ -645,45 +666,18 @@ class PlayerService : MediaSessionService() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
-                if (currentUser != null) {
-                    val jam = jamRepository.observeCurrentJam().firstOrNull()
-                    if (jam != null) {
-                        if (jam.hostUserId == currentUser.uid) {
-                            jamRepository.endJam()
-                        } else {
-                            jamRepository.leaveJam()
-                        }
-                    }
-                }
-            } catch (e: Exception) {}
-        }
     }
 
     override fun onDestroy() {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
-                if (currentUser != null) {
-                    val jam = jamRepository.observeCurrentJam().firstOrNull()
-                    if (jam != null) {
-                        if (jam.hostUserId == currentUser.uid) {
-                            jamRepository.endJam()
-                        } else {
-                            jamRepository.leaveJam()
-                        }
-                    }
-                }
-            } catch (e: Exception) {}
-        }
         serviceScope.cancel(); progressSaveHandler.removeCallbacks(progressSaveRunnable)
         try { 
             exoPlayer?.removeListener(playerListener)
             exoPlayer?.release()
             castPlayer?.removeListener(playerListener)
             castPlayer?.release()
+        } catch (e: Exception) {}
+        try {
+            com.johang.audiocinemateca.util.LocalCastProxyServer.stop()
         } catch (e: Exception) {}
         try {
             mediaSession?.release()
@@ -702,8 +696,5 @@ class PlayerService : MediaSessionService() {
         var equalizer: Equalizer? = null
         const val ACTION_PLAY_PAUSE = "com.johang.audiocinemateca.PLAY_PAUSE"
         const val ACTION_STOP = "com.johang.audiocinemateca.STOP"
-        const val ACTION_SYNC_JAM_STATE = "com.johang.audiocinemateca.SYNC_JAM_STATE"
-        const val EXTRA_JAM_POSITION = "extra_jam_position"
-        const val EXTRA_JAM_IS_PLAYING = "extra_jam_is_playing"
     }
 }

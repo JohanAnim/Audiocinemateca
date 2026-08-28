@@ -349,11 +349,29 @@
                     android:textStyle="bold"
                     android:textSize="18sp" />
 
-                <Spinner
-                    android:id="@+id/season_spinner"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp">
+
+                    <Spinner
+                        android:id="@+id/season_spinner"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_download_season"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        app:icon="@drawable/ic_downloads"
+                        android:text="Descargar temporada"
+                        android:textAllCaps="false" />
+                </LinearLayout>
 
                 <TextView
                     android:layout_width="match_parent"
