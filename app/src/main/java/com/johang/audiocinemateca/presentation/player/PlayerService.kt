@@ -27,6 +27,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.google.android.gms.cast.framework.CastContext
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.MediaStyleNotificationHelper
 import com.johang.audiocinemateca.MainActivity
 import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.util.AudioProxyUtil
@@ -72,14 +73,53 @@ class PlayerService : MediaSessionService() {
     private var savedWindowIndex = 0
     private var savedPositionMs = 0L
 
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
+    private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
+
+    private fun acquireCastLocks() {
+        try {
+            if (wakeLock == null) {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+                wakeLock = powerManager?.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "Audiocinemateca:CastStreamingWakeLock")?.apply {
+                    setReferenceCounted(false)
+                }
+            }
+            if (wakeLock?.isHeld == false) {
+                wakeLock?.acquire(24 * 60 * 60 * 1000L)
+            }
+            if (wifiLock == null) {
+                val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+                wifiLock = wifiManager?.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "Audiocinemateca:CastStreamingWifiLock")?.apply {
+                    setReferenceCounted(false)
+                }
+            }
+            if (wifiLock?.isHeld == false) {
+                wifiLock?.acquire()
+            }
+        } catch (e: Exception) {
+            Log.e("PlayerService", "Error al adquirir bloqueos de energía para Cast: ${e.message}")
+        }
+    }
+
+    private fun releaseCastLocks() {
+        try {
+            if (wakeLock?.isHeld == true) wakeLock?.release()
+            if (wifiLock?.isHeld == true) wifiLock?.release()
+        } catch (e: Exception) {
+            Log.e("PlayerService", "Error al liberar bloqueos de energía: ${e.message}")
+        }
+    }
+
     private val castSessionAvailabilityListener = object : SessionAvailabilityListener {
         override fun onCastSessionAvailable() {
             Log.d("PlayerService", "onCastSessionAvailable: Cast session is now available")
+            acquireCastLocks()
             onCastAvailable()
         }
 
         override fun onCastSessionUnavailable() {
             Log.d("PlayerService", "onCastSessionUnavailable: Cast session is no longer available")
+            releaseCastLocks()
             onCastUnavailable()
         }
     }
@@ -137,7 +177,15 @@ class PlayerService : MediaSessionService() {
         val targetItems = if (mediaItems.isNotEmpty()) mediaItems else savedMediaItems
         val targetIndex = if (itemCount > 0 && localPlayer.currentMediaItemIndex >= 0) localPlayer.currentMediaItemIndex else savedWindowIndex
         val targetPos = if (itemCount > 0 && localPlayer.currentPosition >= 0) localPlayer.currentPosition else savedPositionMs
-        val playWhenReady = localPlayer.playWhenReady || localPlayer.isPlaying
+        val wasPlaying = localPlayer.isPlaying || (localPlayer.playWhenReady && localPlayer.playbackState != Player.STATE_ENDED)
+
+        // Aislar temporalmente el listener local para que pause()/stop() no envíe isPlaying=false a la UI
+        try {
+            localPlayer.removeListener(playerListener)
+            localPlayer.pause()
+            localPlayer.stop()
+            localPlayer.addListener(playerListener)
+        } catch (e: Exception) {}
 
         if (targetItems.isNotEmpty()) {
             savedMediaItems = targetItems.filter { it.localConfiguration?.uri != null }
@@ -145,11 +193,13 @@ class PlayerService : MediaSessionService() {
             savedPositionMs = targetPos
 
             try {
+                cPlayer.playWhenReady = wasPlaying
                 cPlayer.setMediaItems(targetItems, targetIndex, targetPos.coerceAtLeast(0L))
                 cPlayer.prepare()
-                if (playWhenReady) {
-                    cPlayer.playWhenReady = true
+                if (wasPlaying) {
                     cPlayer.play()
+                } else {
+                    cPlayer.pause()
                 }
             } catch (e: Exception) {
                 Log.e("PlayerService", "Error transferring playback to CastPlayer: ${e.message}", e)
@@ -158,11 +208,33 @@ class PlayerService : MediaSessionService() {
 
         mediaSession?.player = cPlayer
 
-        try {
-            localPlayer.pause()
-            localPlayer.stop()
-        } catch (e: Exception) {}
+        // Refuerzo asíncrono para asegurar que el receptor de Google Cast inicie la reproducción de inmediato tras el handshake
+        if (wasPlaying) {
+            serviceScope.launch {
+                kotlinx.coroutines.delay(250)
+                try {
+                    if (cPlayer.isCastSessionAvailable) {
+                        cPlayer.playWhenReady = true
+                        cPlayer.play()
+                    }
+                } catch (e: Exception) {}
+                kotlinx.coroutines.delay(500)
+                try {
+                    if (cPlayer.isCastSessionAvailable) {
+                        cPlayer.playWhenReady = true
+                        cPlayer.play()
+                    }
+                } catch (e: Exception) {}
+            }
+        }
 
+        val playPauseIntent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply {
+            putExtra(MainActivity.EXTRA_IS_PLAYING, wasPlaying)
+        }
+        LocalBroadcastManager.getInstance(this).sendBroadcast(playPauseIntent)
+        sharedPreferencesManager.saveBoolean("is_currently_playing", wasPlaying)
+
+        ensureForegroundNotification()
         broadcastMiniPlayerState(MainActivity.ACTION_SHOW_MINI_PLAYER)
     }
 
@@ -186,7 +258,16 @@ class PlayerService : MediaSessionService() {
         }
 
         val validItems = savedMediaItems.filter { it.localConfiguration?.uri != null }
-        val playWhenReady = try { cPlayer.playWhenReady || cPlayer.isPlaying } catch (e: Exception) { true }
+        val wasPlaying = try { cPlayer.isPlaying || (cPlayer.playWhenReady && cPlayer.playbackState != Player.STATE_ENDED) } catch (e: Exception) { true }
+
+        // Aislar temporalmente el listener de Cast para que stop() no emita isPlaying=false
+        try {
+            cPlayer.removeListener(playerListener)
+            cPlayer.stop()
+            cPlayer.addListener(playerListener)
+        } catch (e: Exception) {
+            Log.e("PlayerService", "Error stopping CastPlayer: ${e.message}")
+        }
 
         if (validItems.isNotEmpty()) {
             val safeIndex = targetIndex.coerceAtLeast(0).coerceAtMost(validItems.size - 1)
@@ -194,11 +275,13 @@ class PlayerService : MediaSessionService() {
             savedPositionMs = targetPos
 
             try {
+                localPlayer.playWhenReady = wasPlaying
                 localPlayer.setMediaItems(validItems, safeIndex, targetPos.coerceAtLeast(0L))
                 localPlayer.prepare()
-                if (playWhenReady) {
-                    localPlayer.playWhenReady = true
+                if (wasPlaying) {
                     localPlayer.play()
+                } else {
+                    localPlayer.pause()
                 }
             } catch (e: Exception) {
                 Log.e("PlayerService", "Error restoring playback to ExoPlayer: ${e.message}", e)
@@ -207,12 +290,13 @@ class PlayerService : MediaSessionService() {
 
         mediaSession?.player = localPlayer
 
-        try {
-            cPlayer.stop()
-        } catch (e: Exception) {
-            Log.e("PlayerService", "Error stopping CastPlayer: ${e.message}")
+        val playPauseIntent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply {
+            putExtra(MainActivity.EXTRA_IS_PLAYING, wasPlaying)
         }
+        LocalBroadcastManager.getInstance(this).sendBroadcast(playPauseIntent)
+        sharedPreferencesManager.saveBoolean("is_currently_playing", wasPlaying)
 
+        ensureForegroundNotification()
         broadcastMiniPlayerState(MainActivity.ACTION_SHOW_MINI_PLAYER)
     }
 
@@ -265,24 +349,42 @@ class PlayerService : MediaSessionService() {
                 }
             }
             ACTION_STOP -> {
-                Log.d("PlayerService", "Cierre forzado solicitado (Botón X).")
+                Log.d("PlayerService", "Cierre solicitado (Botón X del mini reproductor o Notificación).")
                 serviceScope.launch {
                     try {
                         savePlaybackProgress(syncToCloud = true)
                     } catch (e: Exception) {
-                        Log.e("PlayerService", "Error al guardar progreso al cerrar con X: ${e.message}")
+                        Log.e("PlayerService", "Error al guardar progreso al cerrar: ${e.message}")
                     }
                     kotlinx.coroutines.withContext(Dispatchers.Main) {
+                        val isCastActive = castPlayer?.isCastSessionAvailable == true
                         try {
                             activePlayer.stop()
                             activePlayer.clearMediaItems()
                         } catch (e: Exception) {}
-                        try {
-                            mediaSession?.release()
-                        } catch (e: Exception) {}
-                        mediaSession = null
+
+                        savedMediaItems = emptyList()
+                        savedWindowIndex = 0
+                        savedPositionMs = 0L
+
                         stopForeground(STOP_FOREGROUND_REMOVE)
-                        stopSelf()
+                        broadcastMiniPlayerState(MainActivity.ACTION_HIDE_MINI_PLAYER)
+
+                        val playPauseIntent = Intent(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON).apply {
+                            putExtra(MainActivity.EXTRA_IS_PLAYING, false)
+                        }
+                        LocalBroadcastManager.getInstance(this@PlayerService).sendBroadcast(playPauseIntent)
+                        sharedPreferencesManager.saveBoolean("is_currently_playing", false)
+
+                        if (!isCastActive) {
+                            try {
+                                mediaSession?.release()
+                            } catch (e: Exception) {}
+                            mediaSession = null
+                            stopSelf()
+                        } else {
+                            Log.d("PlayerService", "Sesión de Cast activa: Se detuvo el contenido actual y se cerró la UI, pero se mantiene la conexión con el dispositivo de Cast.")
+                        }
                     }
                 }
             }
@@ -437,7 +539,7 @@ class PlayerService : MediaSessionService() {
                     .setMetadata(mediaInfo.metadata)
                     .setCustomData(customJson)
                 return com.google.android.gms.cast.MediaQueueItem.Builder(mediaInfoBuilder.build())
-                    .setAutoplay(queueItem.autoplay)
+                    .setAutoplay(true)
                     .setPreloadTime(queueItem.preloadTime)
                     .setStartTime(queueItem.startTime)
                     .build()
@@ -586,36 +688,116 @@ class PlayerService : MediaSessionService() {
     }
 
     private fun ensureForegroundNotification() {
+        val session = mediaSession ?: return
+        val activePlayer = try { session.player } catch (e: Exception) { null } ?: return
+
+        // Cuando la sesión de Cast está activa, Google Cast gestiona su propia notificación.
+        // Retiramos la notificación del teléfono para evitar notificaciones duplicadas.
+        val isCastActive = castPlayer?.isCastSessionAvailable == true || activePlayer === castPlayer
+        if (isCastActive) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            return
+        }
+
+        val currentItem = activePlayer.currentMediaItem
+        if (currentItem == null && activePlayer.playbackState == Player.STATE_IDLE) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            return
+        }
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Reproductor Audiocinemateca",
                 NotificationManager.IMPORTANCE_LOW
-            )
+            ).apply {
+                description = "Controles de reproducción multimedia"
+                setShowBadge(false)
+                setSound(null, null)
+            }
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
 
-        val activePlayer = try { player } catch (e: Exception) { null }
-        val currentItem = activePlayer?.currentMediaItem
         val metadata = currentItem?.mediaMetadata
         val title = metadata?.title?.toString()?.ifBlank { null } ?: "Audiocinemateca"
-        val subtitle = metadata?.artist?.toString()?.ifBlank { null } ?: "Reproduciendo contenido..."
+        val subtitle = metadata?.artist?.toString()?.ifBlank { null } ?: "Reproduciendo audio..."
+        val isPlaying = activePlayer.isPlaying
         val pendingIntent = updateSessionActivity()
+
+        val prevIntent = PendingIntent.getBroadcast(
+            this,
+            10,
+            Intent(MainActivity.ACTION_SEEK_TO_PREVIOUS),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val playPauseIntent = PendingIntent.getBroadcast(
+            this,
+            20,
+            Intent(ACTION_PLAY_PAUSE),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val nextIntent = PendingIntent.getBroadcast(
+            this,
+            30,
+            Intent(MainActivity.ACTION_SEEK_TO_NEXT),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val stopIntent = PendingIntent.getBroadcast(
+            this,
+            40,
+            Intent(ACTION_STOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val mediaStyle = MediaStyleNotificationHelper.MediaStyle(session)
+            .setShowActionsInCompactView(0, 1, 2)
+
+        val playPauseIcon = if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+        val playPauseTitle = if (isPlaying) "Pausar" else "Reproducir"
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(subtitle)
             .setContentIntent(pendingIntent)
-            .setOngoing(true)
+            .setDeleteIntent(stopIntent)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(isPlaying)
+            .setStyle(mediaStyle)
+            .addAction(
+                NotificationCompat.Action.Builder(
+                    android.R.drawable.ic_media_previous,
+                    "Anterior",
+                    prevIntent
+                ).build()
+            )
+            .addAction(
+                NotificationCompat.Action.Builder(
+                    playPauseIcon,
+                    playPauseTitle,
+                    playPauseIntent
+                ).build()
+            )
+            .addAction(
+                NotificationCompat.Action.Builder(
+                    android.R.drawable.ic_media_next,
+                    "Siguiente",
+                    nextIntent
+                ).build()
+            )
 
         val notification = builder.build()
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            Log.e("PlayerService", "Error al iniciar/actualizar foreground notification: ${e.message}", e)
         }
     }
 
@@ -670,6 +852,7 @@ class PlayerService : MediaSessionService() {
 
     override fun onDestroy() {
         serviceScope.cancel(); progressSaveHandler.removeCallbacks(progressSaveRunnable)
+        releaseCastLocks()
         try { 
             exoPlayer?.removeListener(playerListener)
             exoPlayer?.release()

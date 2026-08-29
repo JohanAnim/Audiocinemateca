@@ -1,7 +1,9 @@
 package com.johang.audiocinemateca.presentation.settings.compose
 
 import androidx.lifecycle.ViewModel
+import com.google.firebase.auth.FirebaseAuth
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
+import com.johang.audiocinemateca.data.repository.GlobalChatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -9,7 +11,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val prefs: SharedPreferencesManager
+    private val prefs: SharedPreferencesManager,
+    private val globalChatRepository: GlobalChatRepository
 ) : ViewModel() {
 
     // General
@@ -60,6 +63,17 @@ class SettingsViewModel @Inject constructor(
             "auto_check_app" -> _autoCheckApp.value = value
             "autoplay" -> _autoplay.value = value
             "sleep_timer_enabled" -> _sleepTimerEnabled.value = value
+            "community_show_presence" -> {
+                val user = FirebaseAuth.getInstance().currentUser
+                if (user != null) {
+                    globalChatRepository.setUserPresence(
+                        userId = user.uid,
+                        displayName = user.displayName,
+                        email = user.email,
+                        isOnline = value
+                    )
+                }
+            }
         }
     }
     

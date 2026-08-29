@@ -146,6 +146,18 @@
                 android:layout_marginTop="8dp"
                 tools:text="Esta es la sinopsis del contenido." />
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_read_sinopsis_tts"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Leer sinopsis con TTS"
+                android:contentDescription="Leer sinopsis con síntesis de voz TTS"
+                app:icon="@drawable/ic_volume_up"
+                app:iconGravity="textStart"
+                android:textSize="14sp" />
+
             <!-- Contenedor para la información general en una cuadrícula -->
             <GridLayout
                 android:id="@+id/general_info_container"

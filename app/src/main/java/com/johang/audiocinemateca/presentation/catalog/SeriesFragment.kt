@@ -25,6 +25,9 @@ class SeriesFragment : Fragment() {
 
     private val viewModel: SeriesViewModel by viewModels()
 
+    @javax.inject.Inject
+    lateinit var geminiRepository: com.johang.audiocinemateca.data.repository.GeminiRepository
+
     private lateinit var progressBar: ProgressBar
     private lateinit var recyclerView: RecyclerView
     private lateinit var seriesAdapter: SeriesAdapter
@@ -59,7 +62,7 @@ class SeriesFragment : Fragment() {
                 viewModel.toggleFavorite(serie, isFavorite)
             },
             onShareClick = { serie ->
-                ShareUtils.shareContent(requireContext(), serie)
+                ShareUtils.shareContent(requireContext(), serie, geminiRepository)
             }
         )
         recyclerView.adapter = seriesAdapter

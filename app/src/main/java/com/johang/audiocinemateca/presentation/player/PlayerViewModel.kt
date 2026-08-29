@@ -9,6 +9,7 @@ import com.johang.audiocinemateca.data.model.Movie
 import com.johang.audiocinemateca.data.model.Serie
 import com.johang.audiocinemateca.data.model.Documentary
 import com.johang.audiocinemateca.data.model.ShortFilm
+import com.johang.audiocinemateca.data.repository.GeminiRepository
 import com.johang.audiocinemateca.data.repository.CommentRepository
 import com.johang.audiocinemateca.domain.usecase.AddCommentUseCase
 import com.johang.audiocinemateca.domain.usecase.IncrementViewCountUseCase
@@ -29,17 +30,33 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+sealed class ChapterSynopsisState {
+    object Initial : ChapterSynopsisState()
+    object Loading : ChapterSynopsisState()
+    data class Success(val synopsis: String) : ChapterSynopsisState()
+    data class Error(val message: String) : ChapterSynopsisState()
+}
+
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val incrementViewCountUseCase: IncrementViewCountUseCase,
     private val manageVoteUseCase: ManageVoteUseCase,
     private val commentRepository: CommentRepository,
     private val addCommentUseCase: AddCommentUseCase,
+    private val geminiRepository: GeminiRepository,
     private val auth: FirebaseAuth
 ) : ViewModel() {
 
     private val _contentItem = MutableStateFlow<CatalogItem?>(null)
     val contentItem: StateFlow<CatalogItem?> = _contentItem
+
+    private val _chapterSynopsisState = MutableStateFlow<ChapterSynopsisState>(ChapterSynopsisState.Initial)
+    val chapterSynopsisState: StateFlow<ChapterSynopsisState> = _chapterSynopsisState.asStateFlow()
+
+    private val _isSynopsisExpanded = MutableStateFlow(false)
+    val isSynopsisExpanded: StateFlow<Boolean> = _isSynopsisExpanded.asStateFlow()
+
+    private val synopsisCache = mutableMapOf<String, String>()
 
     private val _voteStats = MutableStateFlow(VoteStats())
     val voteStats: StateFlow<VoteStats> = _voteStats.asStateFlow()
@@ -78,6 +95,64 @@ class PlayerViewModel @Inject constructor(
     private var currentPartIndex = -1
     private var currentEpisodeIndex = -1
 
+    fun toggleSynopsis() {
+        val nextExpanded = !_isSynopsisExpanded.value
+        _isSynopsisExpanded.value = nextExpanded
+        if (nextExpanded) {
+            val currentState = _chapterSynopsisState.value
+            if (currentState is ChapterSynopsisState.Initial || currentState is ChapterSynopsisState.Error) {
+                loadChapterSynopsis()
+            }
+        }
+    }
+
+    fun loadChapterSynopsis(forceRefresh: Boolean = false) {
+        val item = _contentItem.value ?: return
+        val cacheKey = "${item.id}_${currentPartIndex}_${currentEpisodeIndex}"
+        if (!forceRefresh && synopsisCache.containsKey(cacheKey)) {
+            _chapterSynopsisState.value = ChapterSynopsisState.Success(synopsisCache[cacheKey]!!)
+            return
+        }
+
+        viewModelScope.launch {
+            _chapterSynopsisState.value = ChapterSynopsisState.Loading
+            try {
+                val chapterTitle = when (item) {
+                    is Serie -> {
+                        val sKeys = item.capitulos.keys.sorted()
+                        val sKey = sKeys.getOrNull(currentPartIndex)
+                        val ep = sKey?.let { item.capitulos[it]?.getOrNull(currentEpisodeIndex) }
+                        if (ep != null) "T${currentPartIndex + 1}:E${ep.capitulo} - ${ep.titulo}" else "Capítulo"
+                    }
+                    is Movie -> if (item.enlaces.size > 1) "Parte ${currentPartIndex + 1}" else item.title
+                    is Documentary -> item.title
+                    is ShortFilm -> item.title
+                    else -> "Capítulo actual"
+                }
+
+                val seasonNum = if (item is Serie) currentPartIndex + 1 else null
+                val epNum = if (item is Serie) currentEpisodeIndex + 1 else null
+
+                val synopsis = geminiRepository.generateChapterSynopsis(
+                    title = item.title,
+                    chapterTitle = chapterTitle,
+                    generalDescription = item.sinopsis,
+                    seasonNumber = seasonNum,
+                    episodeNumber = epNum
+                )
+
+                if (!synopsis.isNullOrBlank()) {
+                    synopsisCache[cacheKey] = synopsis
+                    _chapterSynopsisState.value = ChapterSynopsisState.Success(synopsis)
+                } else {
+                    _chapterSynopsisState.value = ChapterSynopsisState.Error("No se pudo generar la sinopsis para este capítulo.")
+                }
+            } catch (e: Exception) {
+                _chapterSynopsisState.value = ChapterSynopsisState.Error("Error al consultar la IA: ${e.message}")
+            }
+        }
+    }
+
     fun updateCurrentEpisode(partIndex: Int, episodeIndex: Int) {
         currentPartIndex = partIndex
         currentEpisodeIndex = episodeIndex
@@ -86,6 +161,15 @@ class PlayerViewModel @Inject constructor(
                 loadVoteStats(it.id)
                 loadCommentsPreview(it.id)
                 loadAllComments(it.id)
+            }
+            val cacheKey = "${it.id}_${currentPartIndex}_${currentEpisodeIndex}"
+            if (synopsisCache.containsKey(cacheKey)) {
+                _chapterSynopsisState.value = ChapterSynopsisState.Success(synopsisCache[cacheKey]!!)
+            } else {
+                _chapterSynopsisState.value = ChapterSynopsisState.Initial
+                if (_isSynopsisExpanded.value) {
+                    loadChapterSynopsis()
+                }
             }
         }
     }
@@ -246,6 +330,15 @@ class PlayerViewModel @Inject constructor(
             loadVoteStats(item.id)
             loadCommentsPreview(item.id)
             loadAllComments(item.id)
+        }
+        val cacheKey = "${item.id}_${currentPartIndex}_${currentEpisodeIndex}"
+        if (synopsisCache.containsKey(cacheKey)) {
+            _chapterSynopsisState.value = ChapterSynopsisState.Success(synopsisCache[cacheKey]!!)
+        } else {
+            _chapterSynopsisState.value = ChapterSynopsisState.Initial
+            if (_isSynopsisExpanded.value) {
+                loadChapterSynopsis()
+            }
         }
     }
 

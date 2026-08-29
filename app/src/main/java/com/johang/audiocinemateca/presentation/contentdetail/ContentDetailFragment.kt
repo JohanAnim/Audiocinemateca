@@ -57,9 +57,22 @@ class ContentDetailFragment : Fragment() {
     lateinit var playbackProgressRepository: PlaybackProgressRepository
 
     @Inject
-    lateinit var downloadManager: DownloadManager
+    lateinit var downloadManager: com.johang.audiocinemateca.domain.DownloadManager
+
+    @Inject
+    lateinit var downloadRepository: com.johang.audiocinemateca.data.repository.DownloadRepository
+
+    @Inject
+    lateinit var ttsManager: com.johang.audiocinemateca.util.TtsManager
+
+    @Inject
+    lateinit var geminiRepository: com.johang.audiocinemateca.data.repository.GeminiRepository
+
+    @Inject
+    lateinit var sharedPreferencesManager: com.johang.audiocinemateca.data.local.SharedPreferencesManager
 
     private var favoriteMenuItem: MenuItem? = null
+    private var isTtsSpeakingSinopsis = false
 
     private val toolbarTitleState = androidx.compose.runtime.mutableStateOf("Detalles del contenido")
 
@@ -85,6 +98,7 @@ class ContentDetailFragment : Fragment() {
     private lateinit var contentLanguage: TextView
     private lateinit var contentFilmaffinity: TextView
     private lateinit var contentSinopsis: TextView
+    private lateinit var btnReadSinopsisTts: com.google.android.material.button.MaterialButton
     private lateinit var moviePartsContainer: LinearLayout
     private lateinit var moviePartsListContainer: LinearLayout
     private lateinit var seriesChaptersContainer: LinearLayout
@@ -184,6 +198,7 @@ class ContentDetailFragment : Fragment() {
         contentLanguage = view.findViewById(R.id.content_language)
         contentFilmaffinity = view.findViewById(R.id.content_filmaffinity)
         contentSinopsis = view.findViewById(R.id.content_sinopsis)
+        btnReadSinopsisTts = view.findViewById(R.id.btn_read_sinopsis_tts)
         moviePartsContainer = view.findViewById(R.id.movie_parts_container)
         moviePartsListContainer = view.findViewById(R.id.movie_parts_list_container)
         seriesChaptersContainer = view.findViewById(R.id.series_chapters_container)
@@ -446,6 +461,39 @@ class ContentDetailFragment : Fragment() {
             setOnClickListener { openFilmaffinity(item) }
         }
         contentSinopsis.text = item.sinopsis
+        setupSinopsisTts(item.sinopsis)
+    }
+
+    private fun setupSinopsisTts(sinopsis: String) {
+        btnReadSinopsisTts.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+            if (isTtsSpeakingSinopsis) {
+                ttsManager.stop()
+                isTtsSpeakingSinopsis = false
+                btnReadSinopsisTts.text = "Leer sinopsis con TTS"
+                btnReadSinopsisTts.contentDescription = "Leer sinopsis con síntesis de voz TTS"
+                btnReadSinopsisTts.setIconResource(R.drawable.ic_volume_up)
+            } else {
+                val textToRead = sinopsis.ifBlank { contentSinopsis.text?.toString() ?: "" }
+                if (textToRead.isNotBlank()) {
+                    isTtsSpeakingSinopsis = true
+                    btnReadSinopsisTts.text = "Detener lectura TTS"
+                    btnReadSinopsisTts.contentDescription = "Detener lectura de la sinopsis"
+                    btnReadSinopsisTts.setIconResource(R.drawable.ic_close)
+                    ttsManager.speak(textToRead, interrupt = true, utteranceId = "SINOPSIS_DETAIL_TTS")
+                    ttsManager.onSpeechFinished = { id ->
+                        if (id == "SINOPSIS_DETAIL_TTS" && isAdded) {
+                            isTtsSpeakingSinopsis = false
+                            btnReadSinopsisTts.text = "Leer sinopsis con TTS"
+                            btnReadSinopsisTts.contentDescription = "Leer sinopsis con síntesis de voz TTS"
+                            btnReadSinopsisTts.setIconResource(R.drawable.ic_volume_up)
+                        }
+                    }
+                } else {
+                    Toast.makeText(requireContext(), "No hay sinopsis disponible para leer", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     private fun setupContentSpecificUI(item: CatalogItem) {
@@ -459,6 +507,37 @@ class ContentDetailFragment : Fragment() {
         }
     }
 
+    private fun playOrShowOfflineWarning(item: CatalogItem, partIndex: Int = 0, episodeIndex: Int = -1) {
+        val isOfflineMode = sharedPreferencesManager.getBoolean("offline_mode", false)
+        if (isOfflineMode) {
+            lifecycleScope.launch {
+                val d = when (item) {
+                    is Movie -> downloadRepository.getDownload(item.id, partIndex.coerceAtLeast(0), -1)
+                    is Serie -> downloadRepository.getDownload(item.id, partIndex.coerceAtLeast(0), episodeIndex.coerceAtLeast(0))
+                    is Documentary -> downloadRepository.getDownload(item.id, 0, -1)
+                    is ShortFilm -> downloadRepository.getDownload(item.id, 0, -1)
+                    else -> null
+                }
+                val isDownloaded = d != null && d.downloadStatus == "COMPLETE" && !d.filePath.isNullOrBlank()
+                if (!isDownloaded) {
+                    if (isAdded) {
+                        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("Modo sin conexión activado")
+                            .setMessage("No es posible reproducir este contenido porque el modo offline total está activado y este título no ha sido descargado en tu dispositivo.\n\nPara escucharlo, descárgalo previamente o desactiva el modo offline en los ajustes.")
+                            .setPositiveButton("Aceptar", null)
+                            .show()
+                    }
+                } else {
+                    val action = ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(item, partIndex, episodeIndex)
+                    findNavController().navigate(action)
+                }
+            }
+        } else {
+            val action = ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(item, partIndex, episodeIndex)
+            findNavController().navigate(action)
+        }
+    }
+
     private fun setupMovieUI(movie: Movie) {
         seriesChaptersContainer.visibility = View.GONE
         if (movie.enlaces.size > 1) {
@@ -466,8 +545,7 @@ class ContentDetailFragment : Fragment() {
             moviePartsListContainer.removeAllViews()
             movie.enlaces.forEachIndexed { index, _ ->
                 val partTextView = createClickableTextView("Parte ${index + 1}: Reproducir ahora", "part_$index") {
-                    val action = ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(movie, index, -1)
-                    findNavController().navigate(action)
+                    playOrShowOfflineWarning(movie, index, -1)
                 }
                 moviePartsListContainer.addView(partTextView)
             }
@@ -550,8 +628,7 @@ class ContentDetailFragment : Fragment() {
             val dButton: View = episodeView.findViewById(R.id.episode_download_button)
             titleText.text = "Episodio ${episode.capitulo}: ${episode.titulo}"
             titleText.setOnClickListener {
-                val action = ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(serie, seasonIndex, episodeIndex)
-                findNavController().navigate(action)
+                playOrShowOfflineWarning(serie, seasonIndex, episodeIndex)
             }
             dButton.setOnClickListener { viewModel.onEpisodeDownloadAction(seasonIndex, episodeIndex) }
             episodesListContainer.addView(episodeView)
@@ -585,7 +662,7 @@ class ContentDetailFragment : Fragment() {
             } else "Continuar escuchando ($remaining restantes)"
             listenNowButton.text = text
             listenNowButton.setOnClickListener {
-                findNavController().navigate(ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(item, latest.partIndex, latest.episodeIndex))
+                playOrShowOfflineWarning(item, latest.partIndex, latest.episodeIndex)
             }
         } else if (latest != null && isFinished && item is Serie) {
             // Si el último capítulo reproducido se terminó, ofrecer inteligentemente el siguiente episodio de la serie
@@ -610,20 +687,18 @@ class ContentDetailFragment : Fragment() {
             if (nextEpObj != null) {
                 listenNowButton.text = "Siguiente: T${nextSeason + 1}:E${nextEpObj.capitulo} - ${nextEpObj.titulo}"
                 listenNowButton.setOnClickListener {
-                    findNavController().navigate(ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(item, nextSeason, nextEpisode))
+                    playOrShowOfflineWarning(item, nextSeason, nextEpisode)
                 }
             } else {
                 listenNowButton.text = "Comenzar de nuevo"
                 listenNowButton.setOnClickListener {
-                    findNavController().navigate(ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(item, 0, 0))
+                    playOrShowOfflineWarning(item, 0, 0)
                 }
             }
         } else {
             listenNowButton.text = "Comenzar a oír"
             listenNowButton.setOnClickListener {
-                val action = if (item is Serie) ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(item, 0, 0)
-                else ContentDetailFragmentDirections.actionContentDetailFragmentToPlayerFragment(item)
-                findNavController().navigate(action)
+                playOrShowOfflineWarning(item, 0, if (item is Serie) 0 else -1)
             }
         }
     }
@@ -661,6 +736,11 @@ class ContentDetailFragment : Fragment() {
     }
 
     private fun showRatingDialog() {
+        if (sharedPreferencesManager.getBoolean("offline_mode", false)) {
+            Toast.makeText(requireContext(), "No puedes calificar contenidos en modo offline", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_rating, null)
         val ratingBar = dialogView.findViewById<android.widget.RatingBar>(R.id.rating_bar)
         val currentRating = viewModel.ratingStats.value.userRating
@@ -702,29 +782,7 @@ class ContentDetailFragment : Fragment() {
 
     private fun shareContent() {
         val item = viewModel.contentItem.value ?: return
-        val type = when (item) {
-            is Movie -> "película"
-            is Serie -> "serie"
-            is Documentary -> "documental"
-            is ShortFilm -> "cortometraje"
-            else -> "contenido"
-        }
-        val article = when (type) {
-            "película", "serie" -> "esta increíble $type"
-            else -> "este increíble $type"
-        }
-        val callWord = when (type) {
-            "película", "serie" -> "llamada"
-            else -> "llamado"
-        }
-        val message = "¡Oye! Estoy escuchando $article $callWord '${item.title}' en la Audiocinemateca. ¡Seguro que a ti también te podría gustar! Da clic en este enlace para que lo escuches en la app."
-        val typeSlug = when (item) { is Movie -> "pelicula"; is Serie -> "serie"; is Documentary -> "documental"; is ShortFilm -> "cortometraje"; else -> "contenido" }
-        val url = "https://audiocinemateca.com/$typeSlug?id=${item.id}"
-        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            this.type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, "$message\n\n$url")
-        }
-        startActivity(Intent.createChooser(shareIntent, "Compartir contenido"))
+        com.johang.audiocinemateca.util.ShareUtils.shareContent(requireContext(), item, geminiRepository)
     }
 
     private fun createClickableTextView(text: String, tag: String, onClick: () -> Unit): TextView {
@@ -833,10 +891,21 @@ class ContentDetailFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         progressUpdateHandler.removeCallbacks(progressUpdateRunnable)
+        if (isTtsSpeakingSinopsis) {
+            ttsManager.stop()
+            isTtsSpeakingSinopsis = false
+            btnReadSinopsisTts.text = "Leer sinopsis con TTS"
+            btnReadSinopsisTts.contentDescription = "Leer sinopsis con síntesis de voz TTS"
+            btnReadSinopsisTts.setIconResource(R.drawable.ic_volume_up)
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        if (isTtsSpeakingSinopsis) {
+            ttsManager.stop()
+            isTtsSpeakingSinopsis = false
+        }
         LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(playbackUpdateReceiver)
         (activity as? AppCompatActivity)?.supportActionBar?.title = getString(R.string.app_name)
         (activity as? AppCompatActivity)?.supportActionBar?.subtitle = null

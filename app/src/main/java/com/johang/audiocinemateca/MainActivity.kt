@@ -677,12 +677,20 @@ class MainActivity : AppCompatActivity() {
         presenceHeartbeatJob = lifecycleScope.launch {
             while (true) {
                 val user = FirebaseAuth.getInstance().currentUser
-                if (user != null) {
+                val showPresence = sharedPreferencesManager.getBoolean("community_show_presence", true)
+                if (user != null && showPresence) {
                     globalChatRepository.setUserPresence(
                         userId = user.uid,
                         displayName = user.displayName,
                         email = user.email,
                         isOnline = true
+                    )
+                } else if (user != null && !showPresence) {
+                    globalChatRepository.setUserPresence(
+                        userId = user.uid,
+                        displayName = user.displayName,
+                        email = user.email,
+                        isOnline = false
                     )
                 } else {
                     break

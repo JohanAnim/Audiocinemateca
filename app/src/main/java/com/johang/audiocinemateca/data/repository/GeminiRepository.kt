@@ -104,6 +104,77 @@ class GeminiRepository @Inject constructor(
         }
     }
 
+    suspend fun generateChapterSynopsis(
+        title: String,
+        chapterTitle: String,
+        generalDescription: String,
+        seasonNumber: Int? = null,
+        episodeNumber: Int? = null
+    ): String? = withContext(Dispatchers.IO) {
+        if (!initialize()) return@withContext null
+        if (apiKey.isBlank()) return@withContext null
+        try {
+            val contextInfo = if (seasonNumber != null && episodeNumber != null) {
+                "Temporada $seasonNumber, Episodio $episodeNumber ('$chapterTitle') de la serie '$title'"
+            } else {
+                "Obra: '$title' ($chapterTitle)"
+            }
+            val prompt = """
+                [DIRECTIVA: SINOPSIS_CAPITULO]
+                Eres un redactor y crítico cinematográfico profesional para la plataforma accesible Audiocinemateca.
+                Genera una sinopsis precisa, atractiva, elegante y profesional (de 2 a 4 oraciones) para el siguiente capítulo u obra:
+                - Obra y Capítulo: $contextInfo
+                - Sinopsis general de la obra: '$generalDescription'
+                
+                REGLAS FUNDAMENTALES:
+                1. CERO SPOILERS: No reveles desenlaces, muertes, giros sorpresa ni resoluciones clave de la trama.
+                2. Enfoque profesional y atmósfera cautivadora: Plantea el conflicto principal y el contexto del capítulo sin arruinar la experiencia auditiva.
+                3. Responde ÚNICAMENTE con el texto de la sinopsis en español neutro, sin títulos extras, sin comillas envolventes ni introducciones.
+            """.trimIndent()
+            val res = generateContent(prompt)
+            if (res.isSuccess) {
+                res.getOrNull()?.trim()
+            } else null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    suspend fun generateMotivationalShareMessage(
+        title: String,
+        itemType: String,
+        sinopsis: String
+    ): String? = withContext(Dispatchers.IO) {
+        if (!initialize()) return@withContext null
+        if (apiKey.isBlank()) return@withContext null
+        try {
+            val prompt = """
+                [DIRECTIVA: COMPARTIR_CONTENIDO_MOTIVACIONAL]
+                Eres Aura, la asistente cinematográfica apasionada y entusiasta de Audiocinemateca.
+                Un usuario está a punto de compartir la obra '$title' (tipo: $itemType) con sus amigos o redes.
+                Genera un mensaje de recomendación cálido, entusiasta, cinematográfico y persuasivo (máximo 2 oraciones) invitando a escuchar esta obra en la app Audiocinemateca.
+                
+                Contexto:
+                - Título: '$title'
+                - Tipo: $itemType
+                - Sinopsis: '$sinopsis'
+                
+                REGLAS ESTRICTAS:
+                1. CERO SPOILERS: No cuentes finales ni giros clave. Destaca la emoción, intriga o belleza de la obra.
+                2. NO agregues enlaces ni URLs en tu respuesta (el enlace se agregará automáticamente al final).
+                3. Responde ÚNICAMENTE con el texto de la recomendación en español cálido y natural, sin comillas envolventes.
+            """.trimIndent()
+            val res = generateContent(prompt)
+            if (res.isSuccess) {
+                res.getOrNull()?.trim()
+            } else null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     fun startChat() { chatHistory.clear() }
 
     fun getHistory(): List<Content> = chatHistory.toList()

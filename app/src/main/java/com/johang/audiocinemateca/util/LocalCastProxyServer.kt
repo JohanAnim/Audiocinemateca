@@ -92,13 +92,13 @@ object LocalCastProxyServer {
      */
     fun buildCastUrl(originalUri: String, remoteUrl: String? = null): String {
         val target = when {
+            originalUri.startsWith("content://") || originalUri.startsWith("file://") || originalUri.startsWith("/") -> originalUri
             !remoteUrl.isNullOrBlank() -> remoteUrl
             originalUri.startsWith("http://", ignoreCase = true) || originalUri.startsWith("https://", ignoreCase = true) -> originalUri
-            originalUri.startsWith("content://") || originalUri.startsWith("file://") || originalUri.startsWith("/") -> originalUri
             else -> "${BASE_CATALOG_URL.removeSuffix("/")}/${originalUri.removePrefix("/")}"
         }
 
-        val ip = localIpAddress ?: getLocalIpAddress()
+        val ip = getLocalIpAddress() ?: localIpAddress
         if (isRunning && !ip.isNullOrBlank() && localPort > 0) {
             val encodedTarget = URLEncoder.encode(target, "UTF-8")
             return "http://$ip:$localPort/cast_stream?target=$encodedTarget"
@@ -110,7 +110,9 @@ object LocalCastProxyServer {
 
     private fun handleClient(socket: Socket) {
         try {
-            socket.soTimeout = 30000
+            socket.keepAlive = true
+            socket.tcpNoDelay = true
+            socket.soTimeout = 0 // Sin timeout artificial para streaming progresivo de audio
             val input = socket.getInputStream()
             val output = socket.getOutputStream()
 
@@ -169,10 +171,19 @@ object LocalCastProxyServer {
         try {
             if (fileUriOrPath.startsWith("content://")) {
                 val uri = Uri.parse(fileUriOrPath)
-                ctx.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
-                    totalLength = pfd.statSize
+                try {
+                    ctx.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                        totalLength = pfd.statSize
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "No se pudo obtener statSize de openFileDescriptor: ${e.message}")
                 }
                 inputStream = ctx.contentResolver.openInputStream(uri)
+                if (totalLength <= 0 && inputStream != null) {
+                    try {
+                        totalLength = inputStream.available().toLong()
+                    } catch (e: Exception) {}
+                }
             } else {
                 val path = if (fileUriOrPath.startsWith("file://")) fileUriOrPath.removePrefix("file://") else fileUriOrPath
                 val file = File(path)
@@ -183,6 +194,7 @@ object LocalCastProxyServer {
             }
 
             if (inputStream == null || totalLength <= 0) {
+                Log.e(TAG, "streamLocalFile error: inputStream es null o totalLength ($totalLength) <= 0 para $fileUriOrPath")
                 sendErrorResponse(output, 404, "File Not Found")
                 return
             }
@@ -258,6 +270,13 @@ object LocalCastProxyServer {
         val okClient = client ?: return
         val fullUrl = if (remoteUrl.startsWith("http", ignoreCase = true)) remoteUrl else "${BASE_CATALOG_URL.removeSuffix("/")}/${remoteUrl.removePrefix("/")}"
 
+        val streamingClient = okClient.newBuilder()
+            .readTimeout(0, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .writeTimeout(0, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .callTimeout(0, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+
         val requestBuilder = Request.Builder()
             .url(fullUrl)
             .addHeader("User-Agent", "Audiocinemateca-Cast/1.0")
@@ -267,7 +286,7 @@ object LocalCastProxyServer {
         }
 
         try {
-            val response = okClient.newCall(requestBuilder.build()).execute()
+            val response = streamingClient.newCall(requestBuilder.build()).execute()
             val code = response.code
             val body = response.body
 

@@ -242,23 +242,118 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="8dp"
         android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/vote_container" />
 
-    <!-- Sección de Comentarios (Vista Previa) -->
+    <!-- Sección de Sinopsis del Capítulo por IA (Expandible) -->
+    <LinearLayout
+        android:id="@+id/ai_synopsis_container"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_vote_pill"
+        android:orientation="vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/compose_ai_content_rating">
+
+        <!-- Botón / Encabezado Expandible -->
+        <LinearLayout
+            android:id="@+id/btn_toggle_ai_synopsis"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:contentDescription="Sinopsis (IA)"
+            android:background="?attr/selectableItemBackground">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="✨"
+                android:textSize="15sp"
+                android:layout_marginEnd="6dp"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:id="@+id/tv_ai_synopsis_button_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Sinopsis (IA)"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:importantForAccessibility="no" />
+
+            <ImageView
+                android:id="@+id/iv_ai_synopsis_chevron"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_next"
+                android:rotation="90"
+                app:tint="#CCFFFFFF"
+                android:importantForAccessibility="no" />
+        </LinearLayout>
+
+        <!-- Contenedor del Texto / Indicador de Carga -->
+        <LinearLayout
+            android:id="@+id/ai_synopsis_content_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginTop="6dp">
+
+            <ProgressBar
+                android:id="@+id/pb_ai_synopsis_loading"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_margin="6dp"
+                android:indeterminateTint="@color/white" />
+
+            <TextView
+                android:id="@+id/tv_ai_synopsis_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#E6FFFFFF"
+                android:textSize="13sp"
+                android:lineSpacingExtra="3dp"
+                android:textIsSelectable="true"
+                tools:text="Sinopsis del capítulo generada con IA..." />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Sección de Comentarios (Vista Previa Compacta) -->
     <LinearLayout
         android:id="@+id/comments_preview_container"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="96dp" 
+        android:layout_marginBottom="40dp" 
         android:background="@drawable/bg_vote_pill"
         android:orientation="vertical"
-        android:padding="32dp" 
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp" 
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -281,7 +376,7 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackground"
-                android:textSize="20sp" />
+                android:textSize="16sp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_open_comments"
@@ -291,9 +386,11 @@
                 android:text="Comentar"
                 android:textColor="@android:color/white"
                 app:strokeColor="#4DFFFFFF"
-                android:textSize="14sp"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
+                android:textSize="12sp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
                 android:minWidth="0dp"
                 android:minHeight="0dp" />
 
@@ -304,12 +401,12 @@
             android:id="@+id/latest_comment_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp" 
+            android:layout_marginTop="4dp" 
             android:text="Nadie ha comentado esto aún."
             android:textColor="#CCFFFFFF"
             android:maxLines="2"
             android:ellipsize="end"
-            android:textSize="16sp" />
+            android:textSize="13sp" />
 
     </LinearLayout>
 

@@ -26,6 +26,9 @@ class DocumentalesFragment : Fragment() {
 
     private val viewModel: DocumentalesViewModel by viewModels()
 
+    @javax.inject.Inject
+    lateinit var geminiRepository: com.johang.audiocinemateca.data.repository.GeminiRepository
+
     private lateinit var progressBar: ProgressBar
     private lateinit var recyclerView: RecyclerView
     private lateinit var documentalesAdapter: DocumentalesAdapter
@@ -60,7 +63,7 @@ class DocumentalesFragment : Fragment() {
                 viewModel.toggleFavorite(documental, isFavorite)
             },
             onShareClick = { documental ->
-                ShareUtils.shareContent(requireContext(), documental)
+                ShareUtils.shareContent(requireContext(), documental, geminiRepository)
             }
         )
         recyclerView.adapter = documentalesAdapter

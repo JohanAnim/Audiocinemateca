@@ -28,6 +28,9 @@ class PeliculasFragment : Fragment() {
 
     private val viewModel: PeliculasViewModel by viewModels()
 
+    @javax.inject.Inject
+    lateinit var geminiRepository: com.johang.audiocinemateca.data.repository.GeminiRepository
+
     private lateinit var progressBar: ProgressBar
     private lateinit var recyclerView: RecyclerView
     private lateinit var movieAdapter: MovieAdapter
@@ -62,7 +65,7 @@ class PeliculasFragment : Fragment() {
                 viewModel.toggleFavorite(movie, isFavorite)
             },
             onShareClick = { movie ->
-                ShareUtils.shareContent(requireContext(), movie)
+                ShareUtils.shareContent(requireContext(), movie, geminiRepository)
             }
         )
         recyclerView.adapter = movieAdapter

@@ -43,6 +43,7 @@ fun AiSettingsScreen(
     }
 
     var aiContentRating by remember { mutableStateOf(viewModel.getBoolean("ai_content_rating_enabled", true)) }
+    var aiMotivationalShare by remember { mutableStateOf(viewModel.getBoolean("ai_share_motivational_message", false)) }
 
     CategorySettingsScreen(
         title = "Inteligencia Artificial",
@@ -98,6 +99,16 @@ fun AiSettingsScreen(
             onCheckedChange = { 
                 aiContentRating = it
                 viewModel.updateBoolean("ai_content_rating_enabled", it)
+            }
+        )
+
+        SettingsSwitchItem(
+            title = "Generar mensaje de motivación al compartir",
+            summary = "La IA redacta una invitación personalizada y entusiasta con el enlace al compartir contenido.",
+            checked = aiMotivationalShare,
+            onCheckedChange = { 
+                aiMotivationalShare = it
+                viewModel.updateBoolean("ai_share_motivational_message", it)
             }
         )
 

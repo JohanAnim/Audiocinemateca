@@ -1,35 +1,47 @@
-# Versión 3.1.1
+# Versión 3.3.0
 
-¡Hoola a todos! Esta nueva actualización trae importantes mejoras de estabilidad, accesibilidad y fluidez para que sigas disfrutando del mejor cine accesible.
+¡Hola a todos! Les doy una calurosa bienvenida a la **versión 3.3.0** de Audiocinemateca. He dedicado mucho cariño, tiempo y esfuerzo a esta actualización para que disfrutes de una experiencia de cine accesible mucho más completa, fluida y cómoda en tu día a día.
 
-## 🌟 Novedades y Mejoras en v3.1.1
-*   **🔊 Ecualizador Restaurado:** Se ha corregido el acceso al ecualizador en el reproductor. ¡Ya puedes personalizar el sonido de tus películas y series favoritas!
-*   **🎤 Dictado por Voz Mejorado:** El dictado por voz ahora es compatible con Android 11 y versiones superiores, incluyendo dispositivos Samsung.
-*   **🛡️ Estabilidad en Android 15:** Corregido un fallo crítico que cerraba la app al salir de la pantalla de búsqueda en dispositivos con Android 15.
-*   **🚀 Mejoras en Actualizaciones:** El proceso de actualización de la app es ahora más inteligente y te guiará paso a paso, incluso si necesitas activar permisos del sistema.
-*   **🤖 IA Más Viva:** Ahora puedes configurar y validar tu clave de Gemini al instante desde los ajustes, con carga dinámica de modelos.
-*   **🔐 Inicio de Sesión Moderno:** Hemos eliminado las referencias a la fase beta y añadido instrucciones claras para validar cuentas nuevas.
-*   **💖 Nuevas Formas de Apoyar:** Hemos renovado la sección de donaciones con opciones más directas para que puedas ayudarnos a mantener vivo este proyecto.
-
-# Versión 3.1.0
-
-¡Hoola a todos! Estoy muy emocionado de presentarte la **versión 3** de Audiocinemateca. Esta actualización no es solo una mejora, es una evolución total de cómo se vive el cine accesible.
-
-Quiero dar una calurosa bienvenida a todos los usuarios que se unen hoy. Hasta ahora, Audiocinemateca había crecido gracias a la dedicación de mis valientes beta testers en Telegram. Hoy, abro las puertas a todo el público para que disfruten de la mejor experiencia de cine accesible.
-
-## ⚠️ NOTA IMPORTANTE DE MIGRACIÓN
-Si vienes de la **Versión 2**, es **obligatorio desinstalar la versión anterior** antes de instalar esta nueva versión 3. Debido a los profundos cambios internos realizados para optimizar y modernizar la app, las versiones no son retrocompatibles. ¡Hacer una instalación limpia te asegura la mejor experiencia sin errores!
-
-## 🌟 Lo más destacado (Cambios de v2 a v3)
-Enlistar todos los cambios sería infinito, pero aquí tienes lo más relevante que he construido para ti:
-
-*   **🌐 Cuentas y Sincronización:** Ahora puedes vincular tu cuenta de correo o usar tu cuenta de Google. Esto desbloquea funciones sociales y permite que tus preferencias te sigan a cualquier dispositivo.
-*   **💬 Chat Global Comunitario:** ¡Habla con otros cinéfilos! He creado un espacio de encuentro para discutir sobre cine accesible y compartir momentos con la comunidad directamente desde la app.
-*   **✍️ Comentarios y Opiniones:** Ahora puedes dejar tu huella en tus títulos favoritos. Comenta lo que te pareció una película o serie para que otros se animen a escucharla también.
-*   **⭐ Valoración y Popularidad:** Dale "Me Gusta", califica con estrellas y ayuda a que los mejores títulos suban en popularidad. Estoy registrando las reproducciones para que, en el futuro, la pantalla de inicio te presente de forma dinámica lo más nuevo y mejor valorado.
-*   **🤖 Aura: Tu Nueva Asistente con IA:** He integrado a **Aura**, un agente inteligente que conoce mi catálogo a la perfección. Puedes pedirle recomendaciones, opiniones sobre contenido o consultarle cualquier duda de forma natural.
-*   **🎨 Interfaz y Fluidez:** He refinado el diseño, mejorado la navegación y corregido cientos de pequeños errores para que la app se sienta más rápida y moderna que nunca.
-*   **📁 Gestión de Logs y Soporte:** Ahora es más fácil ayudarme a mejorar. Si algo falla, puedes generar y compartir reportes de error directamente conmigo (el desarrollador) desde los ajustes.
+Aquí te cuento todo lo nuevo que preparé para ti:
 
 ---
-¡Gracias por ser parte de esta aventura! Disfruta de la nueva era de Audiocinemateca.
+
+## 📥 1. Descargas Completas por Temporada y Cine sin Internet
+*   **Descarga temporadas completas con un toque:** Ya no tienes que bajar episodio por episodio. Ahora puedes descargar una temporada entera de tu serie favorita de una sola vez, viendo en todo momento cuánto espacio ocupará y cómo avanza la descarga.
+*   **Tú decides dónde guardar:** Puedes elegir fácilmente si prefieres guardar tus películas y series en la memoria del teléfono o en tu tarjeta micro SD.
+*   **Control total de tus descargas:** Puedes pausar, reanudar o eliminar capítulos individuales o temporadas completas cuando quieras.
+*   **Escucha sin conexión:** Lleva tus películas y series a donde vayas sin preocuparte por tener internet ni gastar tus datos móviles.
+
+---
+
+## 📺 2. Conexión a Bocinas Inteligentes y Smart TV (Google Cast)
+*   **Transmite tus descargas a tu bocina o TV:** Ahora puedes enviar tus películas y series descargadas directamente a tu Chromecast, Google Home, Nest Audio o Smart TV a través de tu Wi-Fi de casa, ¡sin gastar internet ni datos!
+*   **Conexión fija y sin cortes:** Hice mejoras profundas para que las series y las películas sigan sonando en tu bocina de forma continua, incluso si bloqueas la pantalla de tu teléfono o usas otras aplicaciones.
+*   **Control multimedia en tu pantalla de bloqueo:** Ahora cuentas con una barra de control clara y accesible en tus notificaciones y pantalla de bloqueo para pausar, avanzar o retroceder fácilmente.
+*   **audio inteligente:** Si estás en pausa y te conectas a tu bocina, no empezará a sonar de golpe; tú decides cuándo darle a reproducir.
+
+---
+
+## 🤖 3. Novedades con Inteligencia Artificial y Lectura por Voz (TTS)
+*   **✨ Resumen del capítulo con IA (Sin Spoilers):** En el reproductor encontrarás un nuevo botón que te redactará un resumen breve, interesante y cinematográfico de lo que estás a punto de escuchar, con la regla estricta de nunca arruinarte el final ni darte spoilers.
+*   **🔊 Escuchar la sinopsis en voz alta:** En la pantalla de información de cada película o serie agregué un botón para que el lector de voz de la app te lea la sinopsis completa, con la voz y velocidad que tengas configurada.
+*   **💌 Invitaciones personalizadas al compartir:** Si lo activas en los ajustes de IA, al compartir una película o serie con tus amigos, la IA redactará una recomendación alegre y entusiasta invitándolos a escucharla junto con el enlace directo.
+
+---
+
+## 👥 4. Comunidad, Chat y Privacidad
+*   **🔒 Modo Oculto en el Chat:** Si prefieres escuchar en privado o no quieres que otros vean que estás conectado, añadí una opción en los ajustes de Comunidad para ocultar tu presencia en la lista de conectados.
+*   **Lista de conectados real y al día:** Corregí el sistema para que solo aparezcan las personas que realmente están dentro de la aplicación en ese momento.
+*   **Reglas de la Comunidad al alcance:** Puedes consultar las normas de convivencia del chat en cualquier momento desde un menú limpio y accesible.
+
+---
+
+## ⚡ 5. Más Rapidez, Accesibilidad y Detalles
+*   **Pasa al siguiente capítulo sin pausas:** Al presionar "Siguiente" o "Anterior", el nuevo capítulo comenzará a sonar de inmediato sin que tengas que volver a pulsar reproducir.
+*   **Inicio mucho más rápido:** La pantalla principal ahora abre de forma instantánea y suave.
+*   **TalkBack más limpio:** Eliminé lecturas repetidas de botones para que navegar con el lector de pantalla sea una experiencia mucho más cómoda y natural.
+*   **Sobre las sesiones compartidas (Jam en Vivo):** Retiré temporalmente la función de escuchar en grupo en tiempo real para perfeccionarla y garantizar que el reproductor funcione siempre al 100%. ¡La traeré de vuelta más adelante en una versión futura mucho más pulida!
+
+---
+
+¡Muchas gracias de todo corazón por usar Audiocinemateca y por ser parte de esta gran comunidad! Espero que disfrutes al máximo de esta nueva versión 3.3.0.

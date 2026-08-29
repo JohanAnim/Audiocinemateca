@@ -26,6 +26,9 @@ class CortometrajesFragment : Fragment() {
 
     private val viewModel: CortometrajesViewModel by viewModels()
 
+    @javax.inject.Inject
+    lateinit var geminiRepository: com.johang.audiocinemateca.data.repository.GeminiRepository
+
     private lateinit var progressBar: ProgressBar
     private lateinit var recyclerView: RecyclerView
     private lateinit var cortometrajesAdapter: CortometrajesAdapter
@@ -60,7 +63,7 @@ class CortometrajesFragment : Fragment() {
                 viewModel.toggleFavorite(corto, isFavorite)
             },
             onShareClick = { corto ->
-                ShareUtils.shareContent(requireContext(), corto)
+                ShareUtils.shareContent(requireContext(), corto, geminiRepository)
             }
         )
         recyclerView.adapter = cortometrajesAdapter

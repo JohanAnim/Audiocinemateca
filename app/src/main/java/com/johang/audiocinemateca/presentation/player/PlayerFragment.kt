@@ -18,11 +18,15 @@ import android.view.ViewGroup
 import android.view.accessibility.AccessibilityEvent
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
+import androidx.core.view.AccessibilityDelegateCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -148,6 +152,8 @@ class PlayerFragment : Fragment() {
         observeVoteStats()
         observeCommentsPreview()
         observeAiContentRating()
+        setupAiChapterSynopsis()
+        observeAiChapterSynopsis()
 
         val filter = IntentFilter(MainActivity.ACTION_UPDATE_PLAY_PAUSE_BUTTON)
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(playerStateReceiver, filter)
@@ -473,8 +479,9 @@ class PlayerFragment : Fragment() {
         
         val voteContainer = binding.exoplayerView.findViewById<View>(R.id.vote_container)
         val commentsContainer = binding.exoplayerView.findViewById<View>(R.id.comments_preview_container)
+        val isOfflineMode = sharedPreferencesManager.getBoolean("offline_mode", false)
 
-        if (!viewModel.isUserLoggedIn) {
+        if (!viewModel.isUserLoggedIn || isOfflineMode) {
             voteContainer?.visibility = View.GONE
             commentsContainer?.visibility = View.GONE
         } else {
@@ -617,18 +624,49 @@ class PlayerFragment : Fragment() {
         }, MoreExecutors.directExecutor())
     }
 
+    private suspend fun isContentDownloaded(catalogItem: CatalogItem, partIndex: Int, episodeIndex: Int): Boolean {
+        val d = when (catalogItem) {
+            is Movie -> downloadRepository.getDownload(catalogItem.id, partIndex.coerceAtLeast(0), -1)
+            is Serie -> downloadRepository.getDownload(catalogItem.id, partIndex.coerceAtLeast(0), episodeIndex.coerceAtLeast(0))
+            is Documentary -> downloadRepository.getDownload(catalogItem.id, 0, -1)
+            is ShortFilm -> downloadRepository.getDownload(catalogItem.id, 0, -1)
+            else -> null
+        }
+        return d != null && d.downloadStatus == "COMPLETE" && !d.filePath.isNullOrBlank()
+    }
+
     private fun prepareAndPlay() {
         val catalogItem = currentContentItem ?: return
-        val activeItemId = mediaController?.currentMediaItem?.mediaMetadata?.extras?.getString("itemId")
-        if (activeItemId == catalogItem.id) {
-            setPlayerControlsEnabled(true)
-            updateToolbarTitle()
-            updateNavigationButtonsState()
-            return
-        }
+        val isOfflineMode = sharedPreferencesManager.getBoolean("offline_mode", false)
 
-        setPlayerControlsEnabled(true)
         viewLifecycleOwner.lifecycleScope.launch {
+            if (isOfflineMode) {
+                val isDownloaded = isContentDownloaded(catalogItem, currentPartIndex, currentEpisodeIndex)
+                if (!isDownloaded) {
+                    if (isAdded) {
+                        AlertDialog.Builder(requireContext())
+                            .setTitle("Modo sin conexión activado")
+                            .setMessage("No es posible reproducir este contenido porque el modo offline total está activado y este título no ha sido descargado en tu dispositivo.\n\nPara escucharlo, descárgalo previamente o desactiva el modo offline en los ajustes.")
+                            .setPositiveButton("Aceptar") { dialog, _ ->
+                                dialog.dismiss()
+                                findNavController().popBackStack()
+                            }
+                            .setCancelable(false)
+                            .show()
+                    }
+                    return@launch
+                }
+            }
+
+            val activeItemId = mediaController?.currentMediaItem?.mediaMetadata?.extras?.getString("itemId")
+            if (activeItemId == catalogItem.id) {
+                setPlayerControlsEnabled(true)
+                updateToolbarTitle()
+                updateNavigationButtonsState()
+                return@launch
+            }
+
+            setPlayerControlsEnabled(true)
             val mediaItems = createMediaItems(catalogItem)
             if (mediaItems.isEmpty()) return@launch
             var startIndex = 0
@@ -681,6 +719,24 @@ class PlayerFragment : Fragment() {
             LocalBroadcastManager.getInstance(requireContext()).sendBroadcast(playPauseIntent)
         }
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            val isOfflineMode = sharedPreferencesManager.getBoolean("offline_mode", false)
+            val uriStr = mediaItem?.localConfiguration?.uri?.toString() ?: ""
+            if (isOfflineMode && (uriStr.startsWith("http://", ignoreCase = true) || uriStr.startsWith("https://", ignoreCase = true))) {
+                mediaController?.pause()
+                if (isAdded) {
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("Modo sin conexión activado")
+                        .setMessage("No es posible reproducir este episodio porque el modo offline total está activado y este título no ha sido descargado en tu dispositivo.\n\nPara escucharlo, descárgalo previamente o desactiva el modo offline en los ajustes.")
+                        .setPositiveButton("Aceptar") { dialog, _ ->
+                            dialog.dismiss()
+                            findNavController().popBackStack()
+                        }
+                        .setCancelable(false)
+                        .show()
+                }
+                return
+            }
+
             val extras = mediaItem?.mediaMetadata?.extras
             currentPartIndex = extras?.getInt("partIndex", -1) ?: -1
             currentEpisodeIndex = extras?.getInt("episodeIndex", -1) ?: -1
@@ -702,6 +758,20 @@ class PlayerFragment : Fragment() {
             updateToolbarTitle()
             updateNavigationButtonsState()
             autoAdvanceTriggeredForCurrentItem = false
+        }
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            val isOfflineMode = sharedPreferencesManager.getBoolean("offline_mode", false)
+            if (isOfflineMode && isAdded) {
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Modo sin conexión activado")
+                    .setMessage("No es posible reproducir este contenido sin conexión porque no está descargado en tu dispositivo.")
+                    .setPositiveButton("Aceptar") { dialog, _ ->
+                        dialog.dismiss()
+                        findNavController().popBackStack()
+                    }
+                    .setCancelable(false)
+                    .show()
+            }
         }
     }
 
@@ -924,27 +994,17 @@ class PlayerFragment : Fragment() {
 
     private fun shareContent() {
         val item = currentContentItem ?: return
-        val typeName = when (item) { is Movie -> "película"; is Serie -> "serie"; is Documentary -> "documental"; is ShortFilm -> "cortometraje"; else -> "contenido" }
-        
-        val article = when (typeName) {
-            "película", "serie" -> "esta increíble $typeName"
-            else -> "este increíble $typeName"
-        }
-        
-        val message = "¡Oye! Estoy escuchando $article '${item.title}' en la Audiocinemateca. ¡Seguro que a ti también te podría gustar! Da clic en este enlace para que lo escuches en la app."
-        val typeSlug = when (item) { is Movie -> "pelicula"; is Serie -> "serie"; is Documentary -> "documental"; is ShortFilm -> "cortometraje"; else -> "contenido" }
-        val url = "https://audiocinemateca.com/$typeSlug?id=${item.id}"
-        val shareIntent = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "$message\n\n$url") }
-        startActivity(Intent.createChooser(shareIntent, "Compartir contenido"))
+        com.johang.audiocinemateca.util.ShareUtils.shareContent(requireContext(), item, geminiRepository)
     }
 
     private fun observeAiContentRating() {
         val item = currentContentItem ?: return
+        val isOfflineMode = sharedPreferencesManager.getBoolean("offline_mode", false)
         val enabled = sharedPreferencesManager.getBoolean("ai_content_rating_enabled", true)
         val apiKey = sharedPreferencesManager.getString("gemini_api_key", "") ?: ""
         
         val composeView = binding.exoplayerView.findViewById<androidx.compose.ui.platform.ComposeView>(R.id.compose_ai_content_rating)
-        if (!enabled || apiKey.isBlank()) {
+        if (isOfflineMode || !enabled || apiKey.isBlank()) {
             composeView?.visibility = View.GONE
             return
         }
@@ -967,6 +1027,88 @@ class PlayerFragment : Fragment() {
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    private fun setupAiChapterSynopsis() {
+        val toggleBtn = binding.exoplayerView.findViewById<View>(R.id.btn_toggle_ai_synopsis)
+        toggleBtn?.setOnClickListener {
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+            viewModel.toggleSynopsis()
+        }
+    }
+
+    private fun observeAiChapterSynopsis() {
+        val isOfflineMode = sharedPreferencesManager.getBoolean("offline_mode", false)
+        val apiKey = sharedPreferencesManager.getString("gemini_api_key", "") ?: ""
+        val synopsisContainer = binding.exoplayerView.findViewById<View>(R.id.ai_synopsis_container)
+        
+        if (isOfflineMode || apiKey.isBlank()) {
+            synopsisContainer?.visibility = View.GONE
+            return
+        } else {
+            synopsisContainer?.visibility = View.VISIBLE
+        }
+
+        val buttonLabel = binding.exoplayerView.findViewById<TextView>(R.id.tv_ai_synopsis_button_label)
+        val chevron = binding.exoplayerView.findViewById<ImageView>(R.id.iv_ai_synopsis_chevron)
+        val contentLayout = binding.exoplayerView.findViewById<View>(R.id.ai_synopsis_content_layout)
+        val progressBar = binding.exoplayerView.findViewById<ProgressBar>(R.id.pb_ai_synopsis_loading)
+        val synopsisText = binding.exoplayerView.findViewById<TextView>(R.id.tv_ai_synopsis_text)
+        val toggleBtn = binding.exoplayerView.findViewById<View>(R.id.btn_toggle_ai_synopsis)
+
+        buttonLabel?.text = "Sinopsis (IA)"
+        toggleBtn?.contentDescription = "Sinopsis (IA)"
+
+        lifecycleScope.launch {
+            viewModel.isSynopsisExpanded.collect { isExpanded ->
+                val stateText = if (isExpanded) "Expandido" else "Contraído"
+                val actionLabel = if (isExpanded) "Contraer" else "Expandir"
+
+                chevron?.animate()?.rotation(if (isExpanded) 270f else 90f)?.setDuration(200)?.start()
+                contentLayout?.visibility = if (isExpanded) View.VISIBLE else View.GONE
+
+                toggleBtn?.let { host ->
+                    ViewCompat.setStateDescription(host, stateText)
+                    ViewCompat.setAccessibilityDelegate(host, object : AccessibilityDelegateCompat() {
+                        override fun onInitializeAccessibilityNodeInfo(v: View, info: AccessibilityNodeInfoCompat) {
+                            super.onInitializeAccessibilityNodeInfo(v, info)
+                            info.addAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat(
+                                AccessibilityNodeInfoCompat.ACTION_CLICK,
+                                actionLabel
+                            ))
+                        }
+                    })
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.chapterSynopsisState.collect { state ->
+                when (state) {
+                    is ChapterSynopsisState.Initial -> {
+                        progressBar?.visibility = View.GONE
+                        synopsisText?.visibility = View.GONE
+                    }
+                    is ChapterSynopsisState.Loading -> {
+                        progressBar?.visibility = View.VISIBLE
+                        synopsisText?.visibility = View.GONE
+                    }
+                    is ChapterSynopsisState.Success -> {
+                        progressBar?.visibility = View.GONE
+                        synopsisText?.visibility = View.VISIBLE
+                        synopsisText?.text = state.synopsis
+                        if (viewModel.isSynopsisExpanded.value) {
+                            binding.exoplayerView.announceForAccessibility("Sinopsis: ${state.synopsis}")
+                        }
+                    }
+                    is ChapterSynopsisState.Error -> {
+                        progressBar?.visibility = View.GONE
+                        synopsisText?.visibility = View.VISIBLE
+                        synopsisText?.text = state.message
+                    }
+                }
             }
         }
     }

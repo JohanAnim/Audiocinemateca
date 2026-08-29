@@ -109,12 +109,20 @@ class GlobalChatViewModel @Inject constructor(
         viewModelScope.launch {
             while (true) {
                 val currentUser = auth.currentUser
-                if (currentUser != null) {
+                val showPresence = sharedPreferencesManager.getBoolean("community_show_presence", true)
+                if (currentUser != null && showPresence) {
                     repository.setUserPresence(
                         userId = currentUser.uid,
                         displayName = currentUser.displayName,
                         email = currentUser.email,
                         isOnline = true
+                    )
+                } else if (currentUser != null && !showPresence) {
+                    repository.setUserPresence(
+                        userId = currentUser.uid,
+                        displayName = currentUser.displayName,
+                        email = currentUser.email,
+                        isOnline = false
                     )
                 }
                 delay(30000L) // Heartbeat cada 30 segundos
