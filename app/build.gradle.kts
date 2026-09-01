@@ -21,7 +21,7 @@ android {
         applicationId = "com.johang.audiocinemateca"
         minSdk = 25
         targetSdk = 37
-        versionCode = 3
+        versionCode =6
         versionName = "3.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
