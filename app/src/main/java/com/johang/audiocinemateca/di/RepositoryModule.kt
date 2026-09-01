@@ -61,9 +61,10 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideDownloadRepository(
-        downloadDao: DownloadDao
+        downloadDao: DownloadDao,
+        sharedPreferencesManager: SharedPreferencesManager
     ): DownloadRepository {
-        return DownloadRepository(downloadDao)
+        return DownloadRepository(downloadDao, sharedPreferencesManager)
     }
 
     @Provides

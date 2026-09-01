@@ -4,7 +4,8 @@ on:
   push:
     tags:
       - 'v*'
-      - '2.*'
+      - '[0-9]*'
+      - '*.*.*'
 
 permissions:
   contents: write
@@ -13,24 +14,25 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: "Checkout del código"
+        uses: actions/checkout@v4
 
       - name: "Buscar APK local"
         id: find_apk
         run: |
-          # Buscamos cualquier archivo .apk que empiece por Audiocinemateca en app/release/
-          APK_FILE=$(find app/release/ -name "Audiocinemateca*.apk" | head -n 1)
+          # Buscamos cualquier archivo .apk en app/release/
+          APK_FILE=$(find app/release/ -name "*.apk" | head -n 1)
           if [ -z "$APK_FILE" ]; then
-            echo "Error: No se encontró ningún archivo APK de Audiocinemateca en app/release/"
+            echo "Error: No se encontró ningún archivo APK en app/release/"
             exit 1
           fi
           echo "apk_path=$APK_FILE" >> $GITHUB_OUTPUT
           echo "Se encontró el APK: $APK_FILE"
 
       - name: "Crear GitHub Release"
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          name: "Nueva versión de Audiocinemateca: ${{ github.ref_name }}"
+          name: "Nueva versión disponible de la Audiocinemateca: ${{ github.ref_name }}"
           body_path: changelog.md
           files: ${{ steps.find_apk.outputs.apk_path }}
           draft: false

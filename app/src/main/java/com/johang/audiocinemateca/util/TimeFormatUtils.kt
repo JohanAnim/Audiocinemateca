@@ -39,4 +39,37 @@ object TimeFormatUtils {
             else -> parts.joinToString(", ") // Fallback for unexpected cases
         }
     }
+
+    fun formatSpeed(speedBytesPerSec: Long): String {
+        return when {
+            speedBytesPerSec >= 1024 * 1024 -> String.format(java.util.Locale.getDefault(), "%.1f MB/s", speedBytesPerSec / (1024.0 * 1024.0))
+            speedBytesPerSec >= 1024 -> String.format(java.util.Locale.getDefault(), "%.0f KB/s", speedBytesPerSec / 1024.0)
+            speedBytesPerSec > 0 -> "$speedBytesPerSec B/s"
+            else -> "0 KB/s"
+        }
+    }
+
+    fun formatRemainingTime(seconds: Long): String {
+        if (seconds <= 0) return "calculando..."
+        val hours = seconds / 3600
+        val mins = (seconds % 3600) / 60
+        val secs = seconds % 60
+        return when {
+            hours > 0 -> "${hours}h ${mins}m"
+            mins > 0 -> "${mins} min ${secs}s"
+            else -> "${secs}s"
+        }
+    }
+
+    fun formatRemainingTimeAccessibility(seconds: Long): String {
+        if (seconds <= 0) return "calculando tiempo restante"
+        val hours = seconds / 3600
+        val mins = (seconds % 3600) / 60
+        val secs = seconds % 60
+        val parts = mutableListOf<String>()
+        if (hours > 0) parts.add("$hours ${if (hours == 1L) "hora" else "horas"}")
+        if (mins > 0) parts.add("$mins ${if (mins == 1L) "minuto" else "minutos"}")
+        if (secs > 0 && hours == 0L) parts.add("$secs ${if (secs == 1L) "segundo" else "segundos"}")
+        return if (parts.isEmpty()) "menos de un segundo" else parts.joinToString(" con ")
+    }
 }

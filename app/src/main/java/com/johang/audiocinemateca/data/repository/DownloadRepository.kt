@@ -1,14 +1,23 @@
 package com.johang.audiocinemateca.data.repository
 
+import android.content.Context
+import android.net.Uri
+import android.os.Environment
+import android.provider.MediaStore
+import android.util.Log
 import com.johang.audiocinemateca.data.local.dao.DownloadDao
 import com.johang.audiocinemateca.data.local.entities.DownloadEntity
+import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import kotlinx.coroutines.flow.Flow
+import java.io.File
+import java.io.FileNotFoundException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class DownloadRepository @Inject constructor(
-    private val downloadDao: DownloadDao
+    private val downloadDao: DownloadDao,
+    private val sharedPreferencesManager: SharedPreferencesManager
 ) {
 
     fun getAllDownloads(): Flow<List<DownloadEntity>> {
@@ -41,54 +50,122 @@ class DownloadRepository @Inject constructor(
         data class Failure(val exception: Exception) : FileDeletionResult()
     }
 
-    fun getFilePathFromUri(context: android.content.Context, uri: android.net.Uri): String? {
+    fun getFilePathFromUri(context: Context, uri: Uri): String? {
         var filePath: String? = null
-        val projection = arrayOf(android.provider.MediaStore.MediaColumns.DATA)
-        context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                val columnIndex = cursor.getColumnIndexOrThrow(android.provider.MediaStore.MediaColumns.DATA)
-                filePath = cursor.getString(columnIndex)
+        val projection = arrayOf(MediaStore.MediaColumns.DATA)
+        try {
+            context.contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val columnIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                    filePath = cursor.getString(columnIndex)
+                }
             }
+        } catch (e: Exception) {
+            Log.e("DownloadRepository", "Error getting file path from URI: ${e.message}")
         }
         return filePath
     }
 
     fun deleteEmptyDirectory(filePath: String) {
         try {
-            val file = java.io.File(filePath)
+            val file = File(filePath)
             val parentDir = file.parentFile
-            if (parentDir != null && parentDir.isDirectory && parentDir.listFiles()?.isEmpty() == true) {
-                parentDir.delete()
-            }
+            cleanupDirectoryIfEmpty(parentDir)
         } catch (e: Exception) {
-            // Log error, but don't crash
-            android.util.Log.e("DownloadRepository", "Error deleting empty directory", e)
+            Log.e("DownloadRepository", "Error deleting empty directory: ${e.message}")
         }
     }
 
-    fun deleteDownloadedFile(context: android.content.Context, fileUriString: String): FileDeletionResult {
+    fun deleteSeriesDirectoryIfEmpty(seriesTitle: String) {
+        try {
+            val safeSeriesTitle = seriesTitle.replace(Regex("[\\/:*?\"<>|]"), "_")
+            val rawLocation = sharedPreferencesManager.getString("download_location", "") ?: ""
+
+            // 1. Directorio público estándar (Music/Audiocinemateca/Series/{safeSeriesTitle})
+            val defaultMusicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+            val seriesDir1 = File(File(defaultMusicDir, "Audiocinemateca/Series"), safeSeriesTitle)
+            cleanupDirectoryIfEmpty(seriesDir1)
+
+            // 2. Directorio personalizado si está configurado en SharedPreferences
+            if (rawLocation.isNotBlank() && rawLocation.startsWith("/")) {
+                val seriesDir2 = File(File(File(rawLocation, "Music/Audiocinemateca"), "Series"), safeSeriesTitle)
+                cleanupDirectoryIfEmpty(seriesDir2)
+            }
+        } catch (e: Exception) {
+            Log.e("DownloadRepository", "Error deleting series directory: ${e.message}")
+        }
+    }
+
+    fun cleanupDirectoryIfEmpty(dir: File?) {
+        try {
+            if (dir != null && dir.exists() && dir.isDirectory) {
+                val contents = dir.listFiles()
+                val nonTmpFiles = contents?.filter { !it.name.endsWith(".tmp") } ?: emptyList()
+                if (nonTmpFiles.isEmpty()) {
+                    contents?.forEach { it.delete() }
+                    dir.delete()
+                    Log.d("DownloadRepository", "Directorio eliminado por estar vacío: ${dir.absolutePath}")
+
+                    val parent = dir.parentFile
+                    if (parent != null && parent.isDirectory && (parent.name == "Series" || parent.name == "Peliculas" || parent.name == "Documentales" || parent.name == "Cortometrajes") && parent.listFiles().isNullOrEmpty()) {
+                        parent.delete()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("DownloadRepository", "Error cleaning directory: ${e.message}")
+        }
+    }
+
+    fun cleanupAllEmptyDirectories() {
+        try {
+            val defaultMusicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+            val audioCinematecaDir = File(defaultMusicDir, "Audiocinemateca")
+            if (audioCinematecaDir.exists() && audioCinematecaDir.isDirectory) {
+                audioCinematecaDir.walkBottomUp().forEach { file ->
+                    if (file.isDirectory && file.listFiles().isNullOrEmpty()) {
+                        file.delete()
+                    }
+                }
+            }
+            val rawLocation = sharedPreferencesManager.getString("download_location", "") ?: ""
+            if (rawLocation.isNotBlank() && rawLocation.startsWith("/")) {
+                val customDir = File(rawLocation, "Music/Audiocinemateca")
+                if (customDir.exists() && customDir.isDirectory) {
+                    customDir.walkBottomUp().forEach { file ->
+                        if (file.isDirectory && file.listFiles().isNullOrEmpty()) {
+                            file.delete()
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("DownloadRepository", "Error cleaning all empty directories: ${e.message}")
+        }
+    }
+
+    fun deleteDownloadedFile(context: Context, fileUriString: String): FileDeletionResult {
         return try {
-            val fileUri = android.net.Uri.parse(fileUriString)
-            // A reliable way to check for existence with content URIs is to try to open a stream.
-            // If it fails with FileNotFoundException, we know it's gone.
-            android.util.Log.d("DownloadRepository", "Attempting to delete file with URI: $fileUriString")
+            val fileUri = Uri.parse(fileUriString)
+            Log.d("DownloadRepository", "Attempting to delete file with URI: $fileUriString")
+            val filePath = getFilePathFromUri(context, fileUri)
             context.contentResolver.openInputStream(fileUri)?.close()
 
             val rowsDeleted = context.contentResolver.delete(fileUri, null, null)
-            android.util.Log.d("DownloadRepository", "MediaStore.delete returned $rowsDeleted rows affected for URI: $fileUriString")
+            Log.d("DownloadRepository", "MediaStore.delete returned $rowsDeleted rows affected for URI: $fileUriString")
+
+            if (filePath != null) {
+                deleteEmptyDirectory(filePath)
+            }
 
             if (rowsDeleted > 0) {
                 FileDeletionResult.Success
             } else {
-                // This case is tricky, delete might return 0 if the row was already gone,
-                // but we already confirmed existence. So this is a legitimate failure.
                 FileDeletionResult.Failure(Exception("MediaStore.delete devolvió 0 filas afectadas."))
             }
-        } catch (e: java.io.FileNotFoundException) {
-            // The file does not exist, which is a success condition for our purpose.
+        } catch (e: FileNotFoundException) {
             FileDeletionResult.FileDoesNotExist
         } catch (e: Exception) {
-            // Any other exception is a failure.
             FileDeletionResult.Failure(e)
         }
     }

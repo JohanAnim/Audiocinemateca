@@ -31,12 +31,12 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            tools:text="Descargar"
+            tools:text="Eliminar de descargas"
             app:icon="@drawable/ic_downloads"
             app:iconGravity="textStart"
-            android:minWidth="120dp"
-            android:paddingLeft="12dp"
-            android:paddingRight="12dp"/>
+            android:minWidth="130dp"
+            android:paddingLeft="8dp"
+            android:paddingRight="8dp"/>
 
     </LinearLayout>
 
@@ -48,5 +48,18 @@
         android:visibility="gone"
         tools:visibility="visible"
         tools:progress="30"/>
+
+    <TextView
+        android:id="@+id/episode_download_info_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textSize="12sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:focusable="true"
+        android:importantForAccessibility="yes"
+        android:visibility="gone"
+        tools:visibility="visible"
+        tools:text="45% • 1.2 MB/s • Quedan 20 seg" />
 
 </LinearLayout>

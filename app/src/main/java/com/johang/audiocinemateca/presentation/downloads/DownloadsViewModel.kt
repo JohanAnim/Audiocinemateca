@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.johang.audiocinemateca.data.local.CatalogRepository
 import com.johang.audiocinemateca.data.local.entities.DownloadEntity
 import com.johang.audiocinemateca.data.repository.DownloadRepository
+import com.johang.audiocinemateca.domain.DownloadManager
 import com.johang.audiocinemateca.domain.model.CatalogItem
 import com.johang.audiocinemateca.util.Event
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,6 +51,7 @@ sealed class DownloadsUiState {
 class DownloadsViewModel @Inject constructor(
     private val downloadRepository: DownloadRepository,
     private val catalogRepository: CatalogRepository,
+    private val downloadManager: DownloadManager,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -238,15 +240,14 @@ class DownloadsViewModel @Inject constructor(
     fun deleteAllDownloads() {
         viewModelScope.launch {
             val allDownloads = _allDownloads.first()
-            // First, delete all the files
             allDownloads.forEach { entity ->
+                downloadManager.cancelDownload(entity.contentId, entity.partIndex, entity.episodeIndex)
                 entity.filePath?.let {
-                    // We don't need to handle the result here as we are about to wipe the DB anyway
                     downloadRepository.deleteDownloadedFile(context, it)
                 }
             }
-            // After deleting files, clear the entire database table
             downloadRepository.deleteAllDownloads()
+            downloadRepository.cleanupAllEmptyDirectories()
         }
     }
 
@@ -258,26 +259,23 @@ class DownloadsViewModel @Inject constructor(
                 group?.episodes?.forEach { episode ->
                     deleteEpisode(episode)
                 }
-                // Attempt to delete the parent directory for older Android versions
-                if (android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.P) {
-                    group?.episodes?.firstOrNull()?.filePath?.let { firstEpisodeFilePath ->
-                        val absolutePath = downloadRepository.getFilePathFromUri(context, android.net.Uri.parse(firstEpisodeFilePath))
-                        if (absolutePath != null) {
-                            downloadRepository.deleteEmptyDirectory(absolutePath)
-                        }
-                    }
+                group?.let {
+                    downloadRepository.deleteSeriesDirectoryIfEmpty(it.title)
                 }
             } else {
                 val entityToDelete = downloadRepository.getDownload(contentId, partIndex, episodeIndex)
                 if (entityToDelete != null) {
                     if (entityToDelete.contentType != "serie") {
-                        // It's a movie, documentary, or short film. Delete all parts.
                         downloadRepository.getDownloadsForContent(contentId).firstOrNull()?.forEach { downloadPart ->
                             deleteEpisode(downloadPart)
                         }
                     } else {
-                        // It's a single episode of a series. Delete only this one.
                         deleteEpisode(entityToDelete)
+                        val remaining = downloadRepository.getDownloadsForContent(contentId).firstOrNull() ?: emptyList()
+                        if (remaining.none { it.partIndex == partIndex && it.episodeIndex == episodeIndex && it.downloadStatus == "COMPLETE" }) {
+                            val seriesTitle = entityToDelete.title.substringBefore(" - ").substringBefore(":E").ifBlank { entityToDelete.title }
+                            downloadRepository.deleteSeriesDirectoryIfEmpty(seriesTitle)
+                        }
                     }
                 } else {
                     _viewActions.emit(Event(ViewAction.ShowError("No se encontró la descarga para eliminar.")))
@@ -287,6 +285,7 @@ class DownloadsViewModel @Inject constructor(
     }
 
     private suspend fun deleteEpisode(episode: DownloadEntity) {
+        downloadManager.cancelDownload(episode.contentId, episode.partIndex, episode.episodeIndex)
         episode.filePath?.let {
             when (val result = downloadRepository.deleteDownloadedFile(context, it)) {
                 is DownloadRepository.FileDeletionResult.Success,
@@ -298,7 +297,6 @@ class DownloadsViewModel @Inject constructor(
                 }
             }
         } ?: run {
-            // If filePath is null, just delete the DB record
             downloadRepository.deleteDownload(episode.contentId, episode.partIndex, episode.episodeIndex)
         }
     }

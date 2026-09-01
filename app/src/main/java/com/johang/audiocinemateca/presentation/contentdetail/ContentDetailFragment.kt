@@ -82,7 +82,9 @@ class ContentDetailFragment : Fragment() {
     private lateinit var listenNowButton: Button
     private lateinit var downloadContainer: LinearLayout
     private lateinit var downloadButton: com.google.android.material.button.MaterialButton
+    private lateinit var singleDownloadProgressLayout: LinearLayout
     private lateinit var downloadProgressBar: com.google.android.material.progressindicator.LinearProgressIndicator
+    private lateinit var downloadProgressInfoText: TextView
     private lateinit var contentViewCount: TextView
     private lateinit var contentYear: TextView
     private lateinit var contentGenre: TextView
@@ -104,15 +106,11 @@ class ContentDetailFragment : Fragment() {
     private lateinit var seriesChaptersContainer: LinearLayout
     private lateinit var seasonSpinner: Spinner
     private lateinit var btnDownloadSeason: com.google.android.material.button.MaterialButton
+    private lateinit var seasonProgressContainer: LinearLayout
+    private lateinit var seasonProgressTitle: TextView
+    private lateinit var seasonProgressBar: com.google.android.material.progressindicator.LinearProgressIndicator
+    private lateinit var seasonProgressInfoText: TextView
     private lateinit var episodesListContainer: LinearLayout
-
-    private val progressUpdateHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private val progressUpdateRunnable = object : Runnable {
-        override fun run() {
-            updateProgressDisplay()
-            progressUpdateHandler.postDelayed(this, 1000)
-        }
-    }
 
     private val playbackUpdateReceiver = object : android.content.BroadcastReceiver() {
         override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
@@ -124,6 +122,7 @@ class ContentDetailFragment : Fragment() {
                         Log.d("ContentDetail", "Sincronizando spinner con reproducción: Temporada $seasonIndex")
                         seasonSpinner.setSelection(seasonIndex)
                     }
+                    updateProgressDisplay()
                 }
             }
         }
@@ -182,7 +181,9 @@ class ContentDetailFragment : Fragment() {
         listenNowButton = view.findViewById(R.id.listen_now_button)
         downloadContainer = view.findViewById(R.id.download_container)
         downloadButton = view.findViewById(R.id.download_button)
+        singleDownloadProgressLayout = view.findViewById(R.id.single_download_progress_layout)
         downloadProgressBar = view.findViewById(R.id.download_progress_bar)
+        downloadProgressInfoText = view.findViewById(R.id.download_progress_info_text)
         contentViewCount = view.findViewById(R.id.content_view_count)
         contentYear = view.findViewById(R.id.content_year)
         contentGenre = view.findViewById(R.id.content_genre)
@@ -204,6 +205,10 @@ class ContentDetailFragment : Fragment() {
         seriesChaptersContainer = view.findViewById(R.id.series_chapters_container)
         seasonSpinner = view.findViewById(R.id.season_spinner)
         btnDownloadSeason = view.findViewById(R.id.btn_download_season)
+        seasonProgressContainer = view.findViewById(R.id.season_progress_container)
+        seasonProgressTitle = view.findViewById(R.id.season_progress_title)
+        seasonProgressBar = view.findViewById(R.id.season_progress_bar)
+        seasonProgressInfoText = view.findViewById(R.id.season_progress_info_text)
         episodesListContainer = view.findViewById(R.id.episodes_list_container)
     }
 
@@ -316,20 +321,22 @@ class ContentDetailFragment : Fragment() {
                 viewModel.downloadState,
                 viewModel.episodeDownloadStates,
                 viewModel.targetedEpisodeIndices,
-                viewModel.downloadProgress
-            ) { item, singleState, episodeStates, targetIndices, progress ->
-                object { val item = item
+                viewModel.seasonProgressState
+            ) { item, singleState, episodeStates, targetIndices, seasonProgress ->
+                object {
+                    val item = item
                     val singleState = singleState
                     val episodeStates = episodeStates
                     val targetIndices = targetIndices
-                    val progress = progress
+                    val seasonProgress = seasonProgress
                 }
             }.collect { data ->
                 val item = data.item ?: return@collect
                 val singleState = data.singleState
                 val episodeStates = data.episodeStates
                 val targetIndices = data.targetIndices
-                val progress = data.progress
+                val isSeasonBatchActive = data.seasonProgress?.isDownloading == true
+                val currentSeasonIndex = viewModel.selectedSeasonIndex.value
 
                 downloadContainer.visibility = View.VISIBLE
                 downloadButton.isEnabled = true
@@ -343,86 +350,140 @@ class ContentDetailFragment : Fragment() {
 
                     when (singleState) {
                         is DownloadState.Downloading -> {
-                            downloadButton.text = "Descargando $baseText"
-                            downloadButton.icon = null
-                            downloadProgressBar.visibility = View.VISIBLE
-                            downloadProgressBar.progress = progress
+                            downloadButton.text = "Cancelar $baseText"
+                            downloadButton.setIconResource(R.drawable.ic_close)
+                            downloadButton.contentDescription = "Cancelar descarga del episodio $baseText"
                         }
                         is DownloadState.Downloaded -> {
-                            downloadButton.text = "Eliminar descarga $baseText"
+                            downloadButton.text = "Eliminar de descargas ($baseText)"
                             downloadButton.setIconResource(R.drawable.ic_close)
-                            downloadProgressBar.visibility = View.INVISIBLE
+                            downloadButton.contentDescription = "Eliminar de descargas el episodio $baseText"
                         }
                         is DownloadState.Failed -> {
                             downloadButton.text = "Reintentar $baseText"
                             downloadButton.setIconResource(R.drawable.ic_downloads)
-                            downloadProgressBar.visibility = View.INVISIBLE
+                            downloadButton.contentDescription = "Reintentar descarga del episodio $baseText"
                         }
                         else -> {
                             downloadButton.text = "Descargar $baseText"
                             downloadButton.setIconResource(R.drawable.ic_downloads)
-                            downloadProgressBar.visibility = View.INVISIBLE
+                            downloadButton.contentDescription = "Descargar episodio $baseText"
                         }
                     }
                 } else if (item !is Serie) {
                     when (singleState) {
                         is DownloadState.Downloading -> {
-                            downloadButton.text = "Descargando..."
-                            downloadButton.icon = null
-                            downloadProgressBar.visibility = View.VISIBLE
-                            downloadProgressBar.progress = progress
+                            downloadButton.text = "Cancelar descarga"
+                            downloadButton.setIconResource(R.drawable.ic_close)
+                            downloadButton.contentDescription = "Cancelar descarga de ${item.title}"
                         }
                         is DownloadState.Downloaded -> {
-                            downloadButton.text = "Descargado"
+                            downloadButton.text = "Eliminar de descargas"
                             downloadButton.setIconResource(R.drawable.ic_close)
-                            downloadProgressBar.visibility = View.INVISIBLE
+                            downloadButton.contentDescription = "Eliminar de descargas ${item.title}"
                         }
                         is DownloadState.Failed -> {
-                            downloadButton.text = "Reintentar"
+                            downloadButton.text = "Reintentar descarga"
                             downloadButton.setIconResource(R.drawable.ic_downloads)
-                            downloadProgressBar.visibility = View.INVISIBLE
+                            downloadButton.contentDescription = "Reintentar descarga de ${item.title}"
                         }
                         else -> {
                             downloadButton.text = "Descargar"
                             downloadButton.setIconResource(R.drawable.ic_downloads)
-                            downloadProgressBar.visibility = View.INVISIBLE
+                            downloadButton.contentDescription = "Descargar ${item.title}"
                         }
                     }
                 }
 
-                // Update Episode List Items if necessary
-                if (item is Serie) {
-                    val selectedSeasonIndex = seasonSpinner.selectedItemPosition
-                    if (selectedSeasonIndex >= 0) {
-                        val seasons = item.capitulos.keys.sorted()
-                        val selectedSeasonKey = seasons[selectedSeasonIndex]
+                // Update Episode List Items
+                if (item is Serie && currentSeasonIndex >= 0) {
+                    val seasons = item.capitulos.keys.sorted()
+                    val selectedSeasonKey = seasons.getOrNull(currentSeasonIndex)
+                    if (selectedSeasonKey != null) {
                         item.capitulos[selectedSeasonKey]?.forEachIndexed { epIndex, episode ->
-                            val epView = episodesListContainer.findViewWithTag<View?>("episode_view_${selectedSeasonIndex}_$epIndex")
+                            val epView = episodesListContainer.findViewWithTag<View?>("episode_view_${currentSeasonIndex}_$epIndex")
                             epView?.let {
                                 val dButton: com.google.android.material.button.MaterialButton = it.findViewById(R.id.episode_download_button)
                                 val pBar: com.google.android.material.progressindicator.LinearProgressIndicator = it.findViewById(R.id.episode_download_progress_bar)
-                                val state = episodeStates["${selectedSeasonIndex}_$epIndex"]
+                                val infoText: TextView? = it.findViewById(R.id.episode_download_info_text)
+                                val state = episodeStates["${currentSeasonIndex}_$epIndex"]
+
                                 when (state) {
                                     is DownloadState.Downloading -> {
                                         dButton.text = "Cancelar"
                                         dButton.icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_close)
-                                        pBar.visibility = View.VISIBLE
-                                        pBar.progress = progress
+                                        dButton.contentDescription = "Cancelar descarga del episodio ${episode.capitulo}: ${episode.titulo}"
+                                        if (isSeasonBatchActive) {
+                                            // Cuando la temporada se descarga en conjunto, el progreso total se muestra arriba en la temporada
+                                            pBar.visibility = View.GONE
+                                            infoText?.visibility = View.GONE
+                                        } else {
+                                            pBar.visibility = View.VISIBLE
+                                            infoText?.visibility = View.GONE
+                                        }
                                     }
                                     is DownloadState.Downloaded -> {
-                                        dButton.text = "Eliminar"
+                                        dButton.text = "Eliminar de descargas"
                                         dButton.icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_close)
+                                        dButton.contentDescription = "Eliminar de descargas el episodio ${episode.capitulo}: ${episode.titulo}"
                                         pBar.visibility = View.GONE
+                                        infoText?.visibility = View.GONE
                                     }
                                     else -> {
                                         dButton.text = "Descargar"
                                         dButton.icon = ContextCompat.getDrawable(requireContext(), R.drawable.ic_downloads)
+                                        dButton.contentDescription = "Descargar episodio ${episode.capitulo}: ${episode.titulo}"
                                         pBar.visibility = View.GONE
+                                        infoText?.visibility = View.GONE
                                     }
                                 }
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // Observar progreso en tiempo real de película / documental / corto individual
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.singleDownloadProgress.collect { info ->
+                if (info != null && info.totalBytes > 0) {
+                    singleDownloadProgressLayout.visibility = View.VISIBLE
+                    downloadProgressBar.progress = info.progress
+                    val speed = TimeFormatUtils.formatSpeed(info.speedBytesPerSec)
+                    val remaining = TimeFormatUtils.formatRemainingTime(info.remainingSeconds)
+                    val displayText = "${info.progress}% • $speed • Quedan $remaining"
+                    downloadProgressInfoText.text = displayText
+
+                    val accessibleRemaining = TimeFormatUtils.formatRemainingTimeAccessibility(info.remainingSeconds)
+                    val desc = "Progreso de descarga: ${info.progress} por ciento. Velocidad: $speed. Tiempo restante estimado: $accessibleRemaining."
+                    singleDownloadProgressLayout.contentDescription = desc
+                    downloadProgressInfoText.contentDescription = desc
+                } else {
+                    singleDownloadProgressLayout.visibility = View.GONE
+                }
+            }
+        }
+
+        // Observar progreso en tiempo real de la temporada completa
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.seasonProgressState.collect { seasonInfo ->
+                if (seasonInfo != null && seasonInfo.isDownloading) {
+                    seasonProgressContainer.visibility = View.VISIBLE
+                    val currentEpNumber = (seasonInfo.downloadedEpisodes + 1).coerceAtMost(seasonInfo.totalEpisodes)
+                    seasonProgressTitle.text = "Descargando Temporada ${seasonInfo.seasonIndex + 1} (Episodio $currentEpNumber de ${seasonInfo.totalEpisodes})"
+                    seasonProgressBar.progress = seasonInfo.overallProgress
+                    val speed = TimeFormatUtils.formatSpeed(seasonInfo.speedBytesPerSec)
+                    val remaining = TimeFormatUtils.formatRemainingTime(seasonInfo.remainingSeconds)
+                    val displayText = "${seasonInfo.overallProgress}% total • $speed • Tiempo restante: $remaining"
+                    seasonProgressInfoText.text = displayText
+
+                    val accessibleRemaining = TimeFormatUtils.formatRemainingTimeAccessibility(seasonInfo.remainingSeconds)
+                    val desc = "Descargando temporada ${seasonInfo.seasonIndex + 1}. Progreso total: ${seasonInfo.overallProgress} por ciento. Episodio $currentEpNumber de ${seasonInfo.totalEpisodes}. Velocidad: $speed. Tiempo restante estimado: $accessibleRemaining."
+                    seasonProgressContainer.contentDescription = desc
+                    seasonProgressInfoText.contentDescription = desc
+                } else {
+                    seasonProgressContainer.visibility = View.GONE
                 }
             }
         }
@@ -563,7 +624,7 @@ class ContentDetailFragment : Fragment() {
         seasonSpinner.adapter = seasonAdapter
 
         btnDownloadSeason.setOnClickListener {
-            val selectedSeason = seasonSpinner.selectedItemPosition
+            val selectedSeason = viewModel.selectedSeasonIndex.value
             if (selectedSeason >= 0) {
                 viewModel.onSeasonDownloadAction(selectedSeason)
             }
@@ -572,8 +633,12 @@ class ContentDetailFragment : Fragment() {
         // Observar estado dinámico de descarga de la temporada seleccionada
         lifecycleScope.launch {
             viewModel.seasonDownloadState.collect { state ->
-                val currentPosition = seasonSpinner.selectedItemPosition.coerceAtLeast(0)
-                val seasonName = seasons.getOrNull(currentPosition) ?: (currentPosition + 1).toString()
+                val seasonIndex = when (state) {
+                    is SeasonDownloadState.NotDownloaded -> state.seasonIndex
+                    is SeasonDownloadState.Downloading -> state.seasonIndex
+                    is SeasonDownloadState.Downloaded -> state.seasonIndex
+                }
+                val seasonName = seasons.getOrNull(seasonIndex) ?: (seasonIndex + 1).toString()
 
                 when (state) {
                     is SeasonDownloadState.Downloaded -> {
@@ -582,9 +647,9 @@ class ContentDetailFragment : Fragment() {
                         btnDownloadSeason.contentDescription = "Eliminar todos los capítulos descargados de la temporada $seasonName"
                     }
                     is SeasonDownloadState.Downloading -> {
-                        btnDownloadSeason.text = "Descargando T$seasonName..."
-                        btnDownloadSeason.setIconResource(R.drawable.ic_downloads)
-                        btnDownloadSeason.contentDescription = "Descargando temporada $seasonName. Toca para detener las descargas"
+                        btnDownloadSeason.text = "Cancelar T$seasonName"
+                        btnDownloadSeason.setIconResource(R.drawable.ic_close)
+                        btnDownloadSeason.contentDescription = "Cancelar descarga de la temporada $seasonName completa"
                     }
                     is SeasonDownloadState.NotDownloaded -> {
                         btnDownloadSeason.text = "Descargar T$seasonName"
@@ -885,12 +950,11 @@ class ContentDetailFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        progressUpdateHandler.post(progressUpdateRunnable)
+        updateProgressDisplay()
     }
 
     override fun onPause() {
         super.onPause()
-        progressUpdateHandler.removeCallbacks(progressUpdateRunnable)
         if (isTtsSpeakingSinopsis) {
             ttsManager.stop()
             isTtsSpeakingSinopsis = false

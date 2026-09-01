@@ -34,11 +34,6 @@ class WhatsNewDialogFragment : DialogFragment() {
             dismiss()
         }
 
-        binding.donateExternalButton.setOnClickListener {
-            openUrl("https://audiocinemateca.com/donar")
-            dismiss()
-        }
-
         return MaterialAlertDialogBuilder(requireContext())
             .setView(binding.root)
             .create()

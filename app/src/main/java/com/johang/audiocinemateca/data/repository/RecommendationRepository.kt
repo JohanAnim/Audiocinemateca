@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import java.util.Random
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,25 +49,31 @@ class RecommendationRepository @Inject constructor(
 ) {
 
     companion object {
-        private const val PREF_RECOMMENDATION_CACHE = "user_recommendations_cache_v6"
+        private const val PREF_RECOMMENDATION_CACHE = "user_recommendations_cache_v7"
         private const val ONE_WEEK_MS = 7L * 24L * 60L * 60L * 1000L // 7 días en ms
         private const val MAX_RECOMMENDATIONS = 20
+
+        private val STOP_WORDS = setOf(
+            "el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "a", "al", "en", "para", "por",
+            "con", "sin", "sobre", "entre", "tras", "durante", "hasta", "hacia", "desde", "contra", "segun", "bajo",
+            "y", "e", "ni", "o", "u", "pero", "mas", "que", "como", "cuando", "donde", "quien", "cual", "cuyo",
+            "su", "sus", "mi", "mis", "tu", "tus", "nuestro", "nuestra", "nuestros", "nuestras", "este", "esta",
+            "estos", "estas", "ese", "esa", "esos", "esas", "aquel", "aquella", "aquellos", "aquellas", "todo",
+            "toda", "todos", "todas", "otro", "otra", "otros", "otras", "mismo", "misma", "mismos", "mismas",
+            "pelicula", "serie", "capitulo", "episodio", "temporada", "historia", "vida", "ano", "anos", "parte",
+            "audio", "doblaje", "latino", "castellano", "espanol", "official", "version", "completa", "alta", "calidad",
+            "the", "and", "of", "to", "in", "for", "with", "on", "at", "from", "by", "about", "as", "into"
+        )
     }
 
     /**
-     * Motor Ultra-Preciso v5.0 (Calificaciones con Estrellas + Votos + Favoritos + Retención):
-     * 1. Calificaciones del Usuario (1 a 5 Estrellas):
-     *    - ⭐⭐⭐⭐⭐ (5 Estrellas): Máximo impacto (+14.0 al contenido, +8.0 a sus géneros, directores y narradores).
-     *    - ⭐⭐⭐⭐ (4 Estrellas): Impacto alto (+8.0 al contenido, +5.0 a metadatos).
-     *    - ⭐⭐⭐ (3 Estrellas): Impacto leve (+2.0).
-     *    - ⭐⭐ (2 Estrellas): Penalización (-10.0 al contenido, -4.0 a metadatos).
-     *    - ⭐ (1 Estrella): Penalización extrema (-20.0 al contenido, -8.0 a metadatos).
-     * 2. Votos Explícitos "Me gusta" (+10.0) / "No me gusta" (-15.0) en Firebase.
-     * 3. Ponderación por Favoritos (+8.0).
-     * 4. Granularidad por Episodios y Retención de Reproducción.
-     * 5. Lógica Secuencial de Secuelas (Parte N -> N+1).
-     * 6. Filtro de Doblaje Preferido & Desduplicación Estricta (Latino vs Castellano).
-     * 7. Caché Local de 1 Semana y Sincronización en la Nube con Firestore (`taste_profile`).
+     * Motor Ultra-Preciso v6.0 (Hábitos Semánticos + Clusters Temáticos + Cero Contenido Ya Visto):
+     * 1. Extracción Temática Profunda: Aprende hábitos específicos (Anime, Aviación, Ciencia Ficción Espacial, Bélico, etc.)
+     *    analizando géneros, palabras clave en títulos, sinopsis y países.
+     * 2. Exclusión Estricta de Todo Contenido Visto / En Progreso: Descarta películas iniciadas (>1 min o >15%), series con
+     *    episodios iniciados y obras calificadas.
+     * 3. Depuración Instantánea: Si el usuario empieza o termina una obra recomendada, se purga de inmediato del caché.
+     * 4. Rotación Dinámica Semanal: Distribución balanceada por afinidad con semilla semanal para variedad constante.
      */
     suspend fun getRecommendations(
         userId: String = "guest",
@@ -85,37 +92,17 @@ class RecommendationRepository @Inject constructor(
         val activeUserId = userId.ifBlank { "guest" }
         val now = System.currentTimeMillis()
 
-        // 1. Verificar Caché Local de 1 Semana
-        if (!forceRefresh) {
-            val cachedJson = prefsManager.getString(PREF_RECOMMENDATION_CACHE)
-            if (!cachedJson.isNullOrEmpty()) {
-                try {
-                    val typeToken = object : TypeToken<RecommendationCachePayload>() {}.type
-                    val cachePayload: RecommendationCachePayload? = gson.fromJson(cachedJson, typeToken)
-
-                    if (cachePayload != null &&
-                        cachePayload.userId == activeUserId &&
-                        (now - cachePayload.timestamp) < ONE_WEEK_MS &&
-                        cachePayload.itemReferences.isNotEmpty()
-                    ) {
-                        val cachedItems = cachePayload.itemReferences.mapNotNull { ref ->
-                            allCatalogItems.find { it.id.equals(ref.id, ignoreCase = true) }
-                        }
-                        if (cachedItems.size >= 5) {
-                            return@withContext cachedItems.take(MAX_RECOMMENDATIONS)
-                        }
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }
-
-        // 2. Obtener Historial, Favoritos, Votos y Calificaciones por Estrellas
+        // 1. Obtener Historial de Reproducción, Calificaciones, Votos y Favoritos
         val playbackList: List<PlaybackProgressEntity> = try {
             playbackProgressRepository.getAllPlaybackProgress().firstOrNull() ?: emptyList()
         } catch (e: Exception) {
             emptyList()
+        }
+
+        val userRatingsMap: Map<String, Int> = try {
+            ratingRepository.getUserRatings()
+        } catch (e: Exception) {
+            emptyMap()
         }
 
         val favoritesList: List<FavoriteEntity> = try {
@@ -130,29 +117,69 @@ class RecommendationRepository @Inject constructor(
             emptyMap()
         }
 
-        val userRatingsMap: Map<String, Int> = try {
-            ratingRepository.getUserRatings()
-        } catch (e: Exception) {
-            emptyMap()
-        }
-
         val cloudTasteProfile: UserTasteProfile? = try {
             cloudRepository.getUserTasteProfile()
         } catch (e: Exception) {
             null
         }
 
-        val favoriteIds = favoritesList.map { it.contentId.lowercase(Locale.ROOT) }.toSet()
-        val finishedItemIds = mutableSetOf<String>()
+        // 2. Identificar Contenidos Ya Vistos o Iniciados (DESCALIFICADOS)
+        val disqualifiedItemIds = mutableSetOf<String>()
         val franchiseMaxWatchedPart = mutableMapOf<String, Int>()
 
-        var latinoCount = 0
-        var castellanoCount = 0
+        playbackList.forEach { progress ->
+            val idLower = progress.contentId.lowercase(Locale.ROOT)
+            val isPlayed = progress.isFinished ||
+                    progress.currentPositionMs > 60_000L ||
+                    (progress.totalDurationMs > 0 && (progress.currentPositionMs.toDouble() / progress.totalDurationMs.toDouble()) >= 0.15)
 
+            if (isPlayed) {
+                disqualifiedItemIds.add(idLower)
+            }
+        }
+
+        userRatingsMap.keys.forEach { ratedId ->
+            disqualifiedItemIds.add(ratedId.lowercase(Locale.ROOT))
+        }
+
+        // 3. Verificar Caché Local con Evicción Inmediata de Contenido Visto
+        if (!forceRefresh) {
+            val cachedJson = prefsManager.getString(PREF_RECOMMENDATION_CACHE)
+            if (!cachedJson.isNullOrEmpty()) {
+                try {
+                    val typeToken = object : TypeToken<RecommendationCachePayload>() {}.type
+                    val cachePayload: RecommendationCachePayload? = gson.fromJson(cachedJson, typeToken)
+
+                    if (cachePayload != null &&
+                        cachePayload.userId == activeUserId &&
+                        (now - cachePayload.timestamp) < ONE_WEEK_MS &&
+                        cachePayload.itemReferences.isNotEmpty()
+                    ) {
+                        val validCachedItems = cachePayload.itemReferences.mapNotNull { ref ->
+                            allCatalogItems.find { it.id.equals(ref.id, ignoreCase = true) }
+                        }.filter { item ->
+                            !disqualifiedItemIds.contains(item.id.lowercase(Locale.ROOT))
+                        }
+
+                        if (validCachedItems.size >= 8) {
+                            return@withContext validCachedItems.take(MAX_RECOMMENDATIONS)
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+
+        // 4. Construcción del Perfil de Hábitos y Afinidad Temática
         val genreWeights = mutableMapOf<String, Double>()
+        val keywordWeights = mutableMapOf<String, Double>()
         val typeWeights = mutableMapOf<String, Double>()
         val directorWeights = mutableMapOf<String, Double>()
         val narratorWeights = mutableMapOf<String, Double>()
+
+        var latinoCount = 0
+        var castellanoCount = 0
 
         // Fusionar perfil de la nube
         cloudTasteProfile?.let { profile ->
@@ -168,18 +195,19 @@ class RecommendationRepository @Inject constructor(
             }
         }
 
+        val twoWeeksAgo = now - (14L * 24L * 60L * 60L * 1000L)
         val fourWeeksAgo = now - (28L * 24L * 60L * 60L * 1000L)
 
-        // 3. Procesar Calificaciones por Estrellas (1 a 5 ⭐)
+        // A) Procesar Calificaciones por Estrellas (1 a 5 ⭐)
         userRatingsMap.forEach { (contentId, stars) ->
             val matchedItem = allCatalogItems.find { it.id.equals(contentId, ignoreCase = true) }
             if (matchedItem != null) {
                 val weight = when (stars) {
-                    5 -> 8.0
-                    4 -> 5.0
-                    3 -> 1.5
-                    2 -> -4.0
-                    1 -> -8.0
+                    5 -> 9.0
+                    4 -> 6.0
+                    3 -> 2.0
+                    2 -> -6.0
+                    1 -> -12.0
                     else -> 0.0
                 }
                 val type = getItemTypeForItem(matchedItem)
@@ -188,6 +216,11 @@ class RecommendationRepository @Inject constructor(
                 parseTokens(matchedItem.genero).forEach { genre ->
                     genreWeights[genre] = (genreWeights[genre] ?: 0.0) + weight
                 }
+
+                extractSemanticKeywords(matchedItem).forEach { kw ->
+                    keywordWeights[kw] = (keywordWeights[kw] ?: 0.0) + (weight * 1.5)
+                }
+
                 if (matchedItem.director.isNotBlank()) {
                     val director = matchedItem.director.trim().lowercase(Locale.ROOT)
                     directorWeights[director] = (directorWeights[director] ?: 0.0) + weight
@@ -200,17 +233,22 @@ class RecommendationRepository @Inject constructor(
             }
         }
 
-        // 4. Procesar Votos Explícitos "Me gusta" (+1) / "No me gusta" (-1)
+        // B) Procesar Votos Explícitos "Me gusta" (+1) / "No me gusta" (-1)
         userVotesMap.forEach { (contentId, voteType) ->
             val matchedItem = allCatalogItems.find { it.id.equals(contentId, ignoreCase = true) }
             if (matchedItem != null) {
-                val weight = if (voteType == 1) 6.0 else -4.0
+                val weight = if (voteType == 1) 7.0 else -6.0
                 val type = getItemTypeForItem(matchedItem)
                 typeWeights[type] = (typeWeights[type] ?: 0.0) + weight
 
                 parseTokens(matchedItem.genero).forEach { genre ->
                     genreWeights[genre] = (genreWeights[genre] ?: 0.0) + weight
                 }
+
+                extractSemanticKeywords(matchedItem).forEach { kw ->
+                    keywordWeights[kw] = (keywordWeights[kw] ?: 0.0) + (weight * 1.5)
+                }
+
                 if (matchedItem.director.isNotBlank()) {
                     val director = matchedItem.director.trim().lowercase(Locale.ROOT)
                     directorWeights[director] = (directorWeights[director] ?: 0.0) + weight
@@ -223,13 +261,8 @@ class RecommendationRepository @Inject constructor(
             }
         }
 
-        // 5. Procesar Historial de Reproducción
+        // C) Procesar Historial de Reproducción con Ponderación de Retención
         playbackList.forEach { progress ->
-            val itemIdLower = progress.contentId.lowercase(Locale.ROOT)
-            if (progress.isFinished) {
-                finishedItemIds.add(itemIdLower)
-            }
-
             val matchedItem = allCatalogItems.find { it.id.equals(progress.contentId, ignoreCase = true) }
             if (matchedItem != null) {
                 val franchiseInfo = parseFranchiseInfo(matchedItem.title)
@@ -245,31 +278,40 @@ class RecommendationRepository @Inject constructor(
 
                 val progressRatio = if (progress.totalDurationMs > 0) {
                     (progress.currentPositionMs.toDouble() / progress.totalDurationMs.toDouble()).coerceIn(0.1, 1.0)
-                } else 0.5
+                } else 0.6
 
                 val episodeBonus = (progress.partIndex * 1.2) + (progress.episodeIndex * 0.8) + 1.0
-                val recencyMultiplier = if (progress.lastPlayedTimestamp > fourWeeksAgo) 1.8 else 1.0
+                val recencyMultiplier = if (progress.lastPlayedTimestamp > twoWeeksAgo) 2.2
+                else if (progress.lastPlayedTimestamp > fourWeeksAgo) 1.5
+                else 1.0
+
                 val weightFactor = progressRatio * episodeBonus * recencyMultiplier
 
                 val type = getItemTypeForItem(matchedItem)
-                typeWeights[type] = (typeWeights[type] ?: 0.0) + (1.5 * weightFactor)
+                typeWeights[type] = (typeWeights[type] ?: 0.0) + (1.8 * weightFactor)
 
                 parseTokens(matchedItem.genero).forEach { genre ->
-                    genreWeights[genre] = (genreWeights[genre] ?: 0.0) + (2.5 * weightFactor)
+                    genreWeights[genre] = (genreWeights[genre] ?: 0.0) + (3.0 * weightFactor)
                 }
+
+                extractSemanticKeywords(matchedItem).forEach { kw ->
+                    keywordWeights[kw] = (keywordWeights[kw] ?: 0.0) + (3.8 * weightFactor)
+                }
+
                 if (matchedItem.director.isNotBlank()) {
                     val director = matchedItem.director.trim().lowercase(Locale.ROOT)
-                    directorWeights[director] = (directorWeights[director] ?: 0.0) + (1.8 * weightFactor)
+                    directorWeights[director] = (directorWeights[director] ?: 0.0) + (2.0 * weightFactor)
                 }
                 if (matchedItem.narracion.isNotBlank()) {
                     parseTokens(matchedItem.narracion).forEach { narrator ->
-                        narratorWeights[narrator] = (narratorWeights[narrator] ?: 0.0) + (1.8 * weightFactor)
+                        narratorWeights[narrator] = (narratorWeights[narrator] ?: 0.0) + (2.0 * weightFactor)
                     }
                 }
             }
         }
 
-        // 6. Procesar FAVORITOS
+        // D) Procesar FAVORITOS
+        val favoriteIds = favoritesList.map { it.contentId.lowercase(Locale.ROOT) }.toSet()
         favoritesList.forEach { fav ->
             val matchedItem = allCatalogItems.find { it.id.equals(fav.contentId, ignoreCase = true) }
             if (matchedItem != null) {
@@ -277,18 +319,23 @@ class RecommendationRepository @Inject constructor(
                 if (lang == "latino") latinoCount += 3 else if (lang == "castellano") castellanoCount += 3
 
                 val type = getItemTypeForItem(matchedItem)
-                typeWeights[type] = (typeWeights[type] ?: 0.0) + 4.0
+                typeWeights[type] = (typeWeights[type] ?: 0.0) + 4.5
 
                 parseTokens(matchedItem.genero).forEach { genre ->
-                    genreWeights[genre] = (genreWeights[genre] ?: 0.0) + 5.0
+                    genreWeights[genre] = (genreWeights[genre] ?: 0.0) + 5.5
                 }
+
+                extractSemanticKeywords(matchedItem).forEach { kw ->
+                    keywordWeights[kw] = (keywordWeights[kw] ?: 0.0) + 6.0
+                }
+
                 if (matchedItem.director.isNotBlank()) {
                     val director = matchedItem.director.trim().lowercase(Locale.ROOT)
-                    directorWeights[director] = (directorWeights[director] ?: 0.0) + 3.5
+                    directorWeights[director] = (directorWeights[director] ?: 0.0) + 4.0
                 }
                 if (matchedItem.narracion.isNotBlank()) {
                     parseTokens(matchedItem.narracion).forEach { narrator ->
-                        narratorWeights[narrator] = (narratorWeights[narrator] ?: 0.0) + 3.5
+                        narratorWeights[narrator] = (narratorWeights[narrator] ?: 0.0) + 4.0
                     }
                 }
             }
@@ -310,11 +357,10 @@ class RecommendationRepository @Inject constructor(
             e.printStackTrace()
         }
 
-        // 7. Filtrar Candidatos y Calcular Puntaje Ultra-Preciso
+        // 5. Filtrar Candidatos Estrictamente No Vistos
         val candidateItems = allCatalogItems.filter { item ->
             val itemIdLower = item.id.lowercase(Locale.ROOT)
-            
-            if (finishedItemIds.contains(itemIdLower)) return@filter false
+            if (disqualifiedItemIds.contains(itemIdLower)) return@filter false
 
             val franchiseInfo = parseFranchiseInfo(item.title)
             if (franchiseInfo != null) {
@@ -328,10 +374,12 @@ class RecommendationRepository @Inject constructor(
             true
         }
 
+        // 6. Calcular Puntaje con Afinidades Temáticas Semánticas
         val scoredCandidates = candidateItems.map { item ->
             val itemIdLower = item.id.lowercase(Locale.ROOT)
             val itemType = getItemTypeForItem(item)
             val parsedGenres = parseTokens(item.genero)
+            val itemKeywords = extractSemanticKeywords(item)
             val itemDubbing = getDubbingCategory(item)
             val itemDirector = item.director.trim().lowercase(Locale.ROOT)
             val parsedNarrators = parseTokens(item.narracion)
@@ -343,56 +391,43 @@ class RecommendationRepository @Inject constructor(
             var score = officialRating * 1.5
 
             if (itemDubbing == preferredDubbing) {
-                score += 3.5
+                score += 4.0
             }
 
             if (favoriteIds.contains(itemIdLower)) {
                 score += 8.0
             }
 
-            // Impacto Directo de Calificaciones por Estrellas (1 a 5 ⭐)
-            val userStars = userRatingsMap[itemIdLower] ?: userRatingsMap[item.id] ?: 0
-            when (userStars) {
-                5 -> score += 14.0 // ⭐⭐⭐⭐⭐ Le encantó (Impacto Máximo Supremo)
-                4 -> score += 8.0  // ⭐⭐⭐⭐ Muy buena
-                3 -> score += 2.0  // ⭐⭐⭐ Promedio
-                2 -> score -= 10.0 // ⭐⭐ Mala (Penalización)
-                1 -> score -= 20.0 // ⭐ Pésima (Penalización Extrema)
-            }
+            score += (typeWeights[itemType] ?: 0.0) * 1.5
 
-            // Impacto Directo de Votos en Firebase ("ME GUSTA" vs "NO ME GUSTA")
-            val userVote = userVotesMap[itemIdLower] ?: userVotesMap[item.id] ?: 0
-            if (userVote == 1) {
-                score += 10.0
-            } else if (userVote == -1) {
-                score -= 15.0
+            // Impacto de Afinidad Temática Semántica (ej. anime, aviones, bélico, espacio)
+            itemKeywords.forEach { kw ->
+                score += (keywordWeights[kw] ?: 0.0) * 3.5
             }
-
-            score += (typeWeights[itemType] ?: 0.0) * 1.4
 
             parsedGenres.forEach { genre ->
                 score += (genreWeights[genre] ?: 0.0) * 2.8
             }
 
             if (itemDirector.isNotEmpty() && directorWeights.containsKey(itemDirector)) {
-                score += (directorWeights[itemDirector] ?: 0.0) * 2.0
+                score += (directorWeights[itemDirector] ?: 0.0) * 2.5
             }
 
             parsedNarrators.forEach { narrator ->
                 if (narratorWeights.containsKey(narrator)) {
-                    score += (narratorWeights[narrator] ?: 0.0) * 2.0
+                    score += (narratorWeights[narrator] ?: 0.0) * 2.2
                 }
             }
 
             Pair(item, score)
         }
 
-        // 8. Desduplicar Títulos por Doblaje Estricto
+        // 7. Desduplicar Títulos por Doblaje Estricto
         val groupedByBaseTitle = scoredCandidates.groupBy { pair ->
             normalizeTitle(pair.first.title)
         }
 
-        val deduplicatedItems = mutableListOf<CatalogItem>()
+        val deduplicatedItems = mutableListOf<Pair<CatalogItem, Double>>()
         for ((_, candidatePairs) in groupedByBaseTitle) {
             val preferredMatches = candidatePairs.filter { pair ->
                 getDubbingCategory(pair.first) == preferredDubbing
@@ -402,15 +437,33 @@ class RecommendationRepository @Inject constructor(
                 ?: candidatePairs.maxByOrNull { it.second }
 
             if (chosenPair != null) {
-                deduplicatedItems.add(chosenPair.first)
+                deduplicatedItems.add(chosenPair)
             }
         }
 
-        val sortedFinalList = deduplicatedItems.sortedByDescending { item ->
-            scoredCandidates.find { it.first.id == item.id }?.second ?: 0.0
-        }.distinctBy { it.id }
+        // 8. Rotación Semanal Dinámica y Balance de Categorías
+        val weeklySeed = (now / (7L * 24L * 60L * 60L * 1000L)).toInt()
+        val sortedByScore = deduplicatedItems.sortedByDescending { it.second }
 
-        val finalRecommendations = sortedFinalList.take(MAX_RECOMMENDATIONS)
+        val topThemeMatches = sortedByScore.filter { it.second > 15.0 }
+        val freshDiscoveries = sortedByScore.filter { it.second <= 15.0 }
+
+        val finalSelection = mutableListOf<CatalogItem>()
+
+        // 50% Afición Temática Principal, 30% Afinidad Secundaria, 20% Descubrimientos de Alta Calidad
+        val random = Random(weeklySeed.toLong())
+        val topPicks = topThemeMatches.take(12).shuffled(random)
+        finalSelection.addAll(topPicks.map { it.first })
+
+        val remainingCount = MAX_RECOMMENDATIONS - finalSelection.size
+        if (remainingCount > 0) {
+            val nextBest = sortedByScore.filter { pair -> finalSelection.none { it.id == pair.first.id } }
+                .take(remainingCount)
+                .map { it.first }
+            finalSelection.addAll(nextBest)
+        }
+
+        val finalRecommendations = finalSelection.distinctBy { it.id }.take(MAX_RECOMMENDATIONS)
 
         // 9. Guardar Caché Local con Timestamp
         try {
@@ -428,6 +481,111 @@ class RecommendationRepository @Inject constructor(
         }
 
         finalRecommendations
+    }
+
+    private fun extractSemanticKeywords(item: CatalogItem): Set<String> {
+        val keywords = mutableSetOf<String>()
+
+        parseTokens(item.genero).forEach { g ->
+            val clean = normalizeWord(g)
+            if (clean.length > 2 && clean !in STOP_WORDS) keywords.add(clean)
+        }
+
+        val rawPais = when (item) {
+            is Movie -> item.pais
+            is Serie -> item.pais
+            is Documentary -> item.pais
+            is ShortFilm -> item.pais
+            else -> ""
+        }
+        parseTokens(rawPais).forEach { p ->
+            val clean = normalizeWord(p)
+            if (clean.length > 2 && clean !in STOP_WORDS) {
+                keywords.add(clean)
+                if (clean == "japon" || clean == "japan") {
+                    keywords.add("anime")
+                    keywords.add("manga")
+                }
+            }
+        }
+
+        val rawTitle = item.title
+        val rawSinopsis = when (item) {
+            is Movie -> item.sinopsis
+            is Serie -> item.sinopsis
+            is Documentary -> item.sinopsis
+            is ShortFilm -> item.sinopsis
+            else -> ""
+        }
+
+        val combinedText = normalizeText("$rawTitle $rawSinopsis ${item.genero} $rawPais")
+
+        // Detección de clusters temáticos profundos:
+        if (combinedText.contains("anime") || combinedText.contains("manga") || combinedText.contains("otaku") ||
+            (combinedText.contains("animacion") && (combinedText.contains("japon") || combinedText.contains("japones")))) {
+            keywords.add("anime")
+            keywords.add("animacion_japonesa")
+        }
+        if (combinedText.contains("avion") || combinedText.contains("aviones") || combinedText.contains("aviacion") ||
+            combinedText.contains("vuelo") || combinedText.contains("piloto") || combinedText.contains("aereo") ||
+            combinedText.contains("aeropuerto") || combinedText.contains("catastrofes aereas") || combinedText.contains("mayday")) {
+            keywords.add("aviacion")
+            keywords.add("aviones")
+            keywords.add("aereo")
+        }
+        if (combinedText.contains("espacio") || combinedText.contains("espacial") || combinedText.contains("galaxia") ||
+            combinedText.contains("extraterrestre") || combinedText.contains("alien") || combinedText.contains("astronomo") ||
+            combinedText.contains("astronauta")) {
+            keywords.add("espacio")
+            keywords.add("ciencia_ficcion_espacial")
+        }
+        if (combinedText.contains("guerra") || combinedText.contains("militar") || combinedText.contains("ejercito") ||
+            combinedText.contains("soldado") || combinedText.contains("batalla") || combinedText.contains("belico")) {
+            keywords.add("belico")
+            keywords.add("militar")
+        }
+        if (combinedText.contains("zombi") || combinedText.contains("apocalipsis") || combinedText.contains("infectados") ||
+            combinedText.contains("supervivencia")) {
+            keywords.add("zombies")
+            keywords.add("apocalipsis")
+        }
+        if (combinedText.contains("superheroe") || combinedText.contains("mutante") || combinedText.contains("marvel") ||
+            combinedText.contains("dc comics") || combinedText.contains("vengadores") || combinedText.contains("batman")) {
+            keywords.add("superheroes")
+        }
+        if (combinedText.contains("crimen") || combinedText.contains("policia") || combinedText.contains("detective") ||
+            combinedText.contains("asesino") || combinedText.contains("mafia") || combinedText.contains("investigacion")) {
+            keywords.add("crimen_policial")
+            keywords.add("misterio")
+        }
+        if (combinedText.contains("terror") || combinedText.contains("miedo") || combinedText.contains("paranormal") ||
+            combinedText.contains("fantasmas") || combinedText.contains("posesion")) {
+            keywords.add("terror")
+        }
+
+        extractMeaningfulWords(rawTitle).forEach { word ->
+            if (word.length >= 4 && word !in STOP_WORDS) {
+                keywords.add(word)
+            }
+        }
+
+        return keywords
+    }
+
+    private fun normalizeWord(word: String): String {
+        return java.text.Normalizer.normalize(word.lowercase(Locale.ROOT).trim(), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+            .replace(Regex("[^a-z0-9_]"), "")
+    }
+
+    private fun normalizeText(text: String): String {
+        return java.text.Normalizer.normalize(text.lowercase(Locale.ROOT), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+    }
+
+    private fun extractMeaningfulWords(text: String): List<String> {
+        val clean = normalizeText(text)
+        return clean.split(Regex("[^a-z0-9]+")).filter { it.length > 2 && it !in STOP_WORDS }
     }
 
     private fun getDubbingCategory(item: CatalogItem): String {
@@ -499,8 +657,8 @@ class RecommendationRepository @Inject constructor(
     private fun parseTokens(rawText: String): List<String> {
         if (rawText.isBlank()) return emptyList()
         return rawText.split(".", "|", ",", "/", "-", ";")
-            .map { it.trim().lowercase(Locale.ROOT) }
-            .filter { it.isNotEmpty() && it.length > 2 }
+            .map { normalizeWord(it) }
+            .filter { it.isNotEmpty() && it.length > 2 && it !in STOP_WORDS }
     }
 
     private fun getItemTypeForItem(item: CatalogItem): String {

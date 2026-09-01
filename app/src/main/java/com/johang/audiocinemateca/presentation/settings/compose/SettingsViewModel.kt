@@ -25,6 +25,9 @@ class SettingsViewModel @Inject constructor(
     private val _startupTab = MutableStateFlow(prefs.getString("startup_tab", "home") ?: "home")
     val startupTab: StateFlow<String> = _startupTab
 
+    private val _hideHomeFeed = MutableStateFlow(prefs.getBoolean("hide_home_feed", false))
+    val hideHomeFeed: StateFlow<Boolean> = _hideHomeFeed
+
     private val _defaultContentTab = MutableStateFlow(prefs.getString("default_content_tab", "peliculas") ?: "peliculas")
     val defaultContentTab: StateFlow<String> = _defaultContentTab
 
@@ -59,6 +62,12 @@ class SettingsViewModel @Inject constructor(
     fun updateBoolean(key: String, value: Boolean) {
         prefs.saveBoolean(key, value)
         when(key) {
+            "hide_home_feed" -> {
+                _hideHomeFeed.value = value
+                if (value && _startupTab.value == "home") {
+                    updateString("startup_tab", "catalog")
+                }
+            }
             "auto_check_catalog" -> _autoCheckCatalog.value = value
             "auto_check_app" -> _autoCheckApp.value = value
             "autoplay" -> _autoplay.value = value

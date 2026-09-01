@@ -220,7 +220,7 @@ class MainActivity : AppCompatActivity() {
         val composeBottomNav = findViewById<ComposeView>(R.id.compose_bottom_nav)
         composeBottomNav.setContent {
             AudiocinematecaTheme {
-                AudiocinematecaBottomNavigation(navController)
+                AudiocinematecaBottomNavigation(navController, sharedPreferencesManager)
             }
         }
 
@@ -228,6 +228,9 @@ class MainActivity : AppCompatActivity() {
         // setupActionBarWithNavController(navController, appBarConfiguration) // Deshabilitado para usar barras 100% personalizadas en Compose
         navView.setupWithNavController(navController)
         
+        val hideHomeFeed = sharedPreferencesManager.getBoolean("hide_home_feed", false)
+        navView.menu.findItem(R.id.homeFragment)?.isVisible = !hideHomeFeed
+
         // Navegación automática según la pestaña de inicio configurada por el usuario en Ajustes
         if (savedInstanceState == null) {
             // MIGRACIÓN ÚNICA AUTOMÁTICA PARA USUARIOS CON CONFIGURACIÓN ANTIGUA (Cambia "catalog" -> "home")
@@ -236,12 +239,17 @@ class MainActivity : AppCompatActivity() {
                 sharedPreferencesManager.saveBoolean("migrated_startup_tab_to_home_v3", true)
             }
 
-            val startupTab = sharedPreferencesManager.getString("startup_tab", "home")
+            var startupTab = sharedPreferencesManager.getString("startup_tab", if (hideHomeFeed) "catalog" else "home")
+            if (hideHomeFeed && startupTab == "home") {
+                startupTab = "catalog"
+                sharedPreferencesManager.saveString("startup_tab", "catalog")
+            }
+
             val targetDestination = when (startupTab) {
                 "catalog" -> R.id.catalogFragment
                 "mylists" -> R.id.myListsFragment
                 "account" -> R.id.accountFragment
-                else -> R.id.homeFragment
+                else -> if (hideHomeFeed) R.id.catalogFragment else R.id.homeFragment
             }
             if (targetDestination != R.id.homeFragment) {
                 try {
@@ -258,6 +266,9 @@ class MainActivity : AppCompatActivity() {
         drawerLayout.addDrawerListener(object : DrawerLayout.DrawerListener {
             override fun onDrawerSlide(drawerView: View, slideOffset: Float) {}
             override fun onDrawerOpened(drawerView: View) {
+                val hideHome = sharedPreferencesManager.getBoolean("hide_home_feed", false)
+                navView.menu.findItem(R.id.homeFragment)?.isVisible = !hideHome
+
                 // Forzar la marca visual correcta según el fragmento actual
                 val currentId = navController.currentDestination?.id
                 if (currentId != null) {
@@ -265,7 +276,9 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 ttsManager.speak("Menú lateral abierto.", interrupt = true)
-                }            override fun onDrawerClosed(drawerView: View) { 
+            }
+
+            override fun onDrawerClosed(drawerView: View) { 
                 ttsManager.speak("Menú lateral cerrado", interrupt = true) 
             }
             override fun onDrawerStateChanged(newState: Int) {}

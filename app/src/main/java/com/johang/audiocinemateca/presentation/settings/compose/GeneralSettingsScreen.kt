@@ -24,6 +24,7 @@ fun GeneralSettingsScreen(
     val currentTheme by viewModel.theme.collectAsState()
     val bootFrequency by viewModel.bootAnimationFrequency.collectAsState()
     val startupTab by viewModel.startupTab.collectAsState()
+    val hideHomeFeed by viewModel.hideHomeFeed.collectAsState()
     val defaultContentTab by viewModel.defaultContentTab.collectAsState()
     val defaultFilter by viewModel.defaultFilter.collectAsState()
     val autoCheckCatalog by viewModel.autoCheckCatalog.collectAsState()
@@ -36,8 +37,24 @@ fun GeneralSettingsScreen(
     val bootEntries = stringArrayResource(id = R.array.boot_animation_frequency_entries).toList()
     val bootValues = stringArrayResource(id = R.array.boot_animation_frequency_values).toList()
     
-    val startupEntries = stringArrayResource(id = R.array.startup_tab_entries).toList()
-    val startupValues = stringArrayResource(id = R.array.startup_tab_values).toList()
+    val rawStartupEntries = stringArrayResource(id = R.array.startup_tab_entries).toList()
+    val rawStartupValues = stringArrayResource(id = R.array.startup_tab_values).toList()
+
+    val (startupEntries, startupValues) = remember(hideHomeFeed, rawStartupEntries, rawStartupValues) {
+        if (hideHomeFeed) {
+            val entries = mutableListOf<String>()
+            val values = mutableListOf<String>()
+            rawStartupValues.forEachIndexed { index, value ->
+                if (value != "home") {
+                    entries.add(rawStartupEntries.getOrElse(index) { value })
+                    values.add(value)
+                }
+            }
+            Pair(entries, values)
+        } else {
+            Pair(rawStartupEntries, rawStartupValues)
+        }
+    }
 
     val contentEntries = stringArrayResource(id = R.array.default_content_tab_entries).toList()
     val contentValues = stringArrayResource(id = R.array.default_content_tab_values).toList()
@@ -72,17 +89,26 @@ fun GeneralSettingsScreen(
             onValueChange = { viewModel.updateString("boot_animation_frequency", it) }
         )
 
-        // 2. Pestaña de inicio
+        // 3. Pestaña de inicio
+        val currentStartupIndex = startupValues.indexOf(startupTab).takeIf { it >= 0 } ?: 0
         SettingsListItem(
             title = "Pestaña de inicio",
-            summary = startupEntries[startupValues.indexOf(startupTab).coerceAtLeast(0)],
+            summary = startupEntries.getOrElse(currentStartupIndex) { "Explorar (Catálogo)" },
             entries = startupEntries,
             entryValues = startupValues,
-            currentValue = startupTab,
+            currentValue = if (startupValues.contains(startupTab)) startupTab else startupValues.firstOrNull() ?: "catalog",
             onValueChange = { viewModel.updateString("startup_tab", it) }
         )
 
-        // 3. Pestaña de contenido predeterminada
+        // 4. Ocultar Feed y Pestaña de Inicio
+        SettingsSwitchItem(
+            title = "Ocultar por completo la pestaña de inicio y el feed",
+            summary = "Oculta la pestaña de Inicio de la barra inferior y muestra directamente la sección de Explorar al abrir la app.",
+            checked = hideHomeFeed,
+            onCheckedChange = { viewModel.updateBoolean("hide_home_feed", it) }
+        )
+
+        // 5. Pestaña de contenido predeterminada
         SettingsListItem(
             title = "Pestaña de contenido predeterminada",
             summary = contentEntries[contentValues.indexOf(defaultContentTab).coerceAtLeast(0)],

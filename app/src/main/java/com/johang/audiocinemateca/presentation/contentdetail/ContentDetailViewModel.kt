@@ -20,26 +20,18 @@ import com.johang.audiocinemateca.domain.usecase.GetContentStatsUseCase
 import com.johang.audiocinemateca.domain.usecase.GetRatingUseCase
 import com.johang.audiocinemateca.domain.usecase.SetRatingUseCase
 import com.johang.audiocinemateca.data.repository.RatingStats
+import com.johang.audiocinemateca.domain.DownloadManager
+import com.johang.audiocinemateca.domain.DownloadRequest
+import com.johang.audiocinemateca.domain.model.DownloadProgressInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import java.text.NumberFormat
 import java.util.Locale
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
 
 sealed class ViewAction {
     data class StartDownload(val url: String, val title: String, val contentId: String, val contentType: String, val partIndex: Int, val episodeIndex: Int, val seriesTitle: String? = null) : ViewAction()
@@ -64,16 +56,29 @@ sealed class DownloadState {
 }
 
 sealed class SeasonDownloadState {
-    object NotDownloaded : SeasonDownloadState()
-    data class Downloading(val activeCount: Int) : SeasonDownloadState()
-    object Downloaded : SeasonDownloadState()
+    data class NotDownloaded(val seasonIndex: Int = 0) : SeasonDownloadState()
+    data class Downloading(val seasonIndex: Int = 0, val activeCount: Int = 0) : SeasonDownloadState()
+    data class Downloaded(val seasonIndex: Int = 0) : SeasonDownloadState()
 }
+
+data class SeasonProgressInfo(
+    val seasonIndex: Int,
+    val totalEpisodes: Int,
+    val downloadedEpisodes: Int,
+    val downloadingEpisodes: Int,
+    val currentDownloadingEpisodeTitle: String?,
+    val overallProgress: Int, // 0..100
+    val speedBytesPerSec: Long,
+    val remainingSeconds: Long,
+    val isDownloading: Boolean
+)
 
 @HiltViewModel
 class ContentDetailViewModel @Inject constructor(
     private val catalogRepository: CatalogRepository,
     private val playbackProgressRepository: PlaybackProgressRepository,
     private val downloadRepository: DownloadRepository,
+    private val downloadManager: DownloadManager,
     private val progressFlow: MutableStateFlow<Int>,
     private val addFavoriteUseCase: AddFavoriteUseCase,
     private val removeFavoriteUseCase: RemoveFavoriteUseCase,
@@ -125,20 +130,40 @@ class ContentDetailViewModel @Inject constructor(
         _selectedSeasonIndex.value = index
     }
 
-    val seasonDownloadState: StateFlow<SeasonDownloadState> = combine(
+    val singleDownloadProgress: StateFlow<DownloadProgressInfo?> = combine(
+        _contentItem,
+        _targetedEpisodeIndices,
+        downloadManager.activeProgressFlow
+    ) { item, targetIndices, progressMap ->
+        if (item == null) {
+            null
+        } else if (item is Serie) {
+            if (targetIndices != null) {
+                val (seasonIndex, episodeIndex) = targetIndices
+                progressMap["${item.id}_${seasonIndex}_${episodeIndex}"]
+            } else {
+                null
+            }
+        } else {
+            progressMap["${item.id}_0_-1"]
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val seasonProgressState: StateFlow<SeasonProgressInfo?> = combine(
         _contentItem,
         _selectedSeasonIndex,
-        _episodeDownloadStates
-    ) { item, seasonIndex, states ->
+        _episodeDownloadStates,
+        downloadManager.activeProgressFlow
+    ) { item, seasonIndex, states, activeMap ->
         if (item !is Serie) {
-            SeasonDownloadState.NotDownloaded
+            null
         } else {
             val seasons = item.capitulos.keys.sorted()
             val seasonKey = seasons.getOrNull(seasonIndex)
             val episodes = if (seasonKey != null) item.capitulos[seasonKey] ?: emptyList() else emptyList()
 
             if (episodes.isEmpty()) {
-                SeasonDownloadState.NotDownloaded
+                null
             } else {
                 val totalEpisodes = episodes.size
                 var downloadedCount = 0
@@ -152,16 +177,77 @@ class ContentDetailViewModel @Inject constructor(
                     }
                 }
 
-                if (downloadedCount == totalEpisodes) {
-                    SeasonDownloadState.Downloaded
-                } else if (downloadingCount > 0) {
-                    SeasonDownloadState.Downloading(downloadingCount)
+                val activeSeasonProgress = activeMap.values.filter { it.contentId == item.id && it.partIndex == seasonIndex }
+                val isDownloading = downloadingCount > 0 || activeSeasonProgress.isNotEmpty()
+
+                if (isDownloading) {
+                    val currentDownloading = activeSeasonProgress.firstOrNull()
+                    val totalSpeed = activeSeasonProgress.sumOf { it.speedBytesPerSec }
+
+                    // Progreso ponderado sumando todos los capítulos activos y completados
+                    val activeProgressSum = activeSeasonProgress.sumOf { it.progress }
+                    val overallProgress = (((downloadedCount * 100) + activeProgressSum) / totalEpisodes.coerceAtLeast(1)).coerceIn(0, 100)
+
+                    // Cálculo realista de tiempo restante considerando todos los capítulos restantes
+                    val avgBytesPerEp = activeSeasonProgress.map { it.totalBytes }.filter { it > 0 }.average().takeIf { !it.isNaN() && it > 0 } ?: 35_000_000.0
+                    val remainingActiveBytes = activeSeasonProgress.sumOf { (it.totalBytes - it.bytesDownloaded).coerceAtLeast(0L) }
+                    val unstartedEpisodes = (totalEpisodes - downloadedCount - activeSeasonProgress.size).coerceAtLeast(0)
+                    val totalRemainingBytes = remainingActiveBytes + (unstartedEpisodes * avgBytesPerEp.toLong())
+                    val totalEstimatedRemaining = if (totalSpeed > 1024) (totalRemainingBytes / totalSpeed) else 0L
+
+                    SeasonProgressInfo(
+                        seasonIndex = seasonIndex,
+                        totalEpisodes = totalEpisodes,
+                        downloadedEpisodes = downloadedCount,
+                        downloadingEpisodes = downloadingCount,
+                        currentDownloadingEpisodeTitle = currentDownloading?.title,
+                        overallProgress = overallProgress,
+                        speedBytesPerSec = totalSpeed,
+                        remainingSeconds = totalEstimatedRemaining,
+                        isDownloading = true
+                    )
                 } else {
-                    SeasonDownloadState.NotDownloaded
+                    null
                 }
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SeasonDownloadState.NotDownloaded)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val seasonDownloadState: StateFlow<SeasonDownloadState> = combine(
+        _contentItem,
+        _selectedSeasonIndex,
+        _episodeDownloadStates,
+        seasonProgressState
+    ) { item, seasonIndex, states, progressInfo ->
+        if (item !is Serie) {
+            SeasonDownloadState.NotDownloaded(seasonIndex)
+        } else {
+            val seasons = item.capitulos.keys.sorted()
+            val seasonKey = seasons.getOrNull(seasonIndex)
+            val episodes = if (seasonKey != null) item.capitulos[seasonKey] ?: emptyList() else emptyList()
+
+            if (episodes.isEmpty()) {
+                SeasonDownloadState.NotDownloaded(seasonIndex)
+            } else {
+                val totalEpisodes = episodes.size
+                var downloadedCount = 0
+
+                episodes.indices.forEach { epIndex ->
+                    if (states["${seasonIndex}_$epIndex"] is DownloadState.Downloaded) {
+                        downloadedCount++
+                    }
+                }
+
+                if (progressInfo?.isDownloading == true) {
+                    SeasonDownloadState.Downloading(seasonIndex, progressInfo.downloadingEpisodes)
+                } else if (downloadedCount == totalEpisodes) {
+                    SeasonDownloadState.Downloaded(seasonIndex)
+                } else {
+                    SeasonDownloadState.NotDownloaded(seasonIndex)
+                }
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SeasonDownloadState.NotDownloaded(0))
 
     private val _viewActions = MutableSharedFlow<com.johang.audiocinemateca.util.Event<ViewAction>>()
     val viewActions: SharedFlow<com.johang.audiocinemateca.util.Event<ViewAction>> = _viewActions.asSharedFlow()
@@ -474,14 +560,19 @@ class ContentDetailViewModel @Inject constructor(
             } else {
                 downloadRepository.deleteDownload(item.id, partIndex, episodeIndex)
             }
+            if (item is Serie) {
+                val remaining = downloadRepository.getDownloadsForContent(item.id).firstOrNull() ?: emptyList()
+                if (remaining.none { it.downloadStatus == "COMPLETE" }) {
+                    downloadRepository.deleteSeriesDirectoryIfEmpty(item.title)
+                }
+            }
         }
     }
 
     fun cancelDownload(partIndex: Int, episodeIndex: Int) {
         viewModelScope.launch {
             val item = _contentItem.value ?: return@launch
-            _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.StopDownloadService))
-            downloadRepository.deleteDownload(item.id, partIndex, episodeIndex)
+            downloadManager.cancelDownload(item.id, partIndex, episodeIndex)
         }
     }
 
@@ -494,7 +585,7 @@ class ContentDetailViewModel @Inject constructor(
 
             val downloadedEntities = downloadRepository.getDownloadsForContent(item.id).firstOrNull() ?: emptyList()
 
-            var enqueuedCount = 0
+            val requests = mutableListOf<DownloadRequest>()
             episodes.forEachIndexed { episodeIndex, episode ->
                 val isCompleted = downloadedEntities.any {
                     it.partIndex == seasonIndex && it.episodeIndex == episodeIndex && it.downloadStatus == "COMPLETE"
@@ -504,21 +595,23 @@ class ContentDetailViewModel @Inject constructor(
                 }
                 if (!isCompleted && !isDownloading) {
                     val fullUrl = if (episode.enlace.startsWith("http")) episode.enlace else "${baseUrl.removeSuffix("/")}/${episode.enlace.removePrefix("/")}"
-                    _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.StartDownload(
-                        url = fullUrl,
-                        title = "T${seasonIndex + 1}:E${episode.capitulo} - ${episode.titulo}",
-                        contentId = item.id,
-                        contentType = "serie",
-                        partIndex = seasonIndex,
-                        episodeIndex = episodeIndex,
-                        seriesTitle = item.title
-                    )))
-                    enqueuedCount++
+                    requests.add(
+                        DownloadRequest(
+                            url = fullUrl,
+                            title = "T${seasonIndex + 1}:E${episode.capitulo} - ${episode.titulo}",
+                            contentId = item.id,
+                            contentType = "serie",
+                            partIndex = seasonIndex,
+                            episodeIndex = episodeIndex,
+                            seriesTitle = item.title
+                        )
+                    )
                 }
             }
 
-            if (enqueuedCount > 0) {
-                _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowSeasonDownloadStarted(seasonIndex + 1, enqueuedCount)))
+            if (requests.isNotEmpty()) {
+                downloadManager.enqueueBatch(requests)
+                _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowSeasonDownloadStarted(seasonIndex + 1, requests.size)))
             } else {
                 _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowSeasonAlreadyDownloaded(seasonIndex + 1)))
             }
@@ -549,14 +642,10 @@ class ContentDetailViewModel @Inject constructor(
     fun cancelSeasonDownloads(seasonIndex: Int) {
         viewModelScope.launch {
             val item = _contentItem.value as? Serie ?: return@launch
-            val seasonKey = item.capitulos.keys.sorted().getOrNull(seasonIndex) ?: return@launch
-            val episodes = item.capitulos[seasonKey] ?: return@launch
-
-            episodes.indices.forEach { epIndex ->
-                val entity = downloadRepository.getDownload(item.id, seasonIndex, epIndex)
-                if (entity != null && (entity.downloadStatus == "DOWNLOADING" || entity.downloadStatus == "QUEUED")) {
-                    downloadRepository.deleteDownload(item.id, seasonIndex, epIndex)
-                }
+            downloadManager.cancelSeason(item.id, seasonIndex)
+            val remaining = downloadRepository.getDownloadsForContent(item.id).firstOrNull() ?: emptyList()
+            if (remaining.none { it.downloadStatus == "COMPLETE" }) {
+                downloadRepository.deleteSeriesDirectoryIfEmpty(item.title)
             }
             _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowMessage("Descargas de la temporada canceladas.")))
         }
@@ -576,6 +665,10 @@ class ContentDetailViewModel @Inject constructor(
                     }
                     downloadRepository.deleteDownload(item.id, seasonIndex, epIndex)
                 }
+            }
+            val remaining = downloadRepository.getDownloadsForContent(item.id).firstOrNull() ?: emptyList()
+            if (remaining.none { it.downloadStatus == "COMPLETE" }) {
+                downloadRepository.deleteSeriesDirectoryIfEmpty(item.title)
             }
             _viewActions.emit(com.johang.audiocinemateca.util.Event(ViewAction.ShowMessage("Capítulos descargados de la temporada eliminados.")))
         }

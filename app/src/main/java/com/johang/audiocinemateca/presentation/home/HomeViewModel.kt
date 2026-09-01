@@ -249,11 +249,24 @@ class HomeViewModel @Inject constructor(
                 val currentBanner = _uiState.value.featuredBanner
                 val (hasStartedBanner, bannerPlayTextUpdated) = calculateBannerProgressAndText(currentBanner, mappedItems)
 
+                // Depuración reactiva instantánea: si el usuario inició o vio una obra recomendada, sacarla de la lista
+                val playedIds = progressList.filter { p ->
+                    p.isFinished || p.currentPositionMs > 60_000L || (p.totalDurationMs > 0 && (p.currentPositionMs.toDouble() / p.totalDurationMs.toDouble()) >= 0.15)
+                }.map { it.contentId.lowercase(Locale.ROOT) }.toSet()
+
+                val currentRecs = _uiState.value.recommendations
+                val updatedRecs = if (currentRecs.isNotEmpty() && currentRecs.any { playedIds.contains(it.id.lowercase(Locale.ROOT)) }) {
+                    currentRecs.filterNot { playedIds.contains(it.id.lowercase(Locale.ROOT)) }
+                } else {
+                    currentRecs
+                }
+
                 withContext(Dispatchers.Main) {
                     _uiState.value = _uiState.value.copy(
                         continueListeningList = allUnfinishedContinueListening.take(visibleContinueCount),
                         bannerPlayText = bannerPlayTextUpdated,
-                        featuredBanner = currentBanner?.copy(hasStartedListening = hasStartedBanner)
+                        featuredBanner = currentBanner?.copy(hasStartedListening = hasStartedBanner),
+                        recommendations = updatedRecs
                     )
                 }
             }

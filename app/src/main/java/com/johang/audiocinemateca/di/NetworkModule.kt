@@ -79,17 +79,17 @@ object NetworkModule {
     @Singleton
     @DownloadClient
     fun provideDownloadOkHttpClient(
-        progressFlow: MutableStateFlow<Int>,
         authInterceptor: com.johang.audiocinemateca.data.remote.interceptor.AuthInterceptor,
         offlineModeInterceptor: OfflineModeInterceptor
     ): OkHttpClient {
         return OkHttpClient.Builder()
+            .connectionPool(okhttp3.ConnectionPool(8, 5, TimeUnit.MINUTES))
             .addInterceptor(authInterceptor)
             .addInterceptor(offlineModeInterceptor)
-            .addInterceptor(ProgressInterceptor(progressFlow))
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build()
     }
 

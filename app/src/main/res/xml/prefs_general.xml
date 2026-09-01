@@ -18,6 +18,12 @@
         android:entryValues="@array/startup_tab_values"
         android:defaultValue="catalog" />
 
+    <SwitchPreferenceCompat
+        android:key="hide_home_feed"
+        android:title="Ocultar por completo la pestaña de inicio y el feed"
+        android:summary="Oculta la pestaña de Inicio de la barra inferior y muestra directamente la sección de Explorar al abrir la app."
+        android:defaultValue="false" />
+
     <ListPreference
         android:key="default_content_tab"
         android:title="Pestaña de contenido predeterminada"

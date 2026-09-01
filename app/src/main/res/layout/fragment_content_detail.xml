@@ -86,8 +86,8 @@
                     android:id="@+id/download_container"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
                     android:visibility="gone"
                     android:layout_marginStart="16dp"
                     tools:visibility="visible">
@@ -101,14 +101,35 @@
                         app:iconGravity="textStart"
                         tools:text="Descargar" />
 
-                    <com.google.android.material.progressindicator.LinearProgressIndicator
-                        android:id="@+id/download_progress_bar"
-                        android:layout_width="24dp"
+                    <!-- Progreso accesible para película / documental / corto -->
+                    <LinearLayout
+                        android:id="@+id/single_download_progress_layout"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:visibility="invisible"
-                        tools:visibility="visible"
-                        tools:progress="50"/>
+                        android:orientation="vertical"
+                        android:gravity="center_horizontal"
+                        android:layout_marginTop="4dp"
+                        android:focusable="true"
+                        android:importantForAccessibility="yes"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/download_progress_bar"
+                            android:layout_width="140dp"
+                            android:layout_height="wrap_content"
+                            tools:progress="50"/>
+
+                        <TextView
+                            android:id="@+id/download_progress_info_text"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textSize="12sp"
+                            android:textColor="?android:attr/textColorSecondary"
+                            tools:text="50% • 1.5 MB/s • Quedan 30s" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
@@ -383,6 +404,46 @@
                         app:icon="@drawable/ic_downloads"
                         android:text="Descargar temporada"
                         android:textAllCaps="false" />
+                </LinearLayout>
+
+                <!-- Progreso total y accesible de descarga de temporada -->
+                <LinearLayout
+                    android:id="@+id/season_progress_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="12dp"
+                    android:padding="12dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:focusable="true"
+                    android:importantForAccessibility="yes"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <TextView
+                        android:id="@+id/season_progress_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textStyle="bold"
+                        android:textSize="14sp"
+                        tools:text="Descargando Temporada 1 (Episodio 3 de 10)" />
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/season_progress_bar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        tools:progress="35" />
+
+                    <TextView
+                        android:id="@+id/season_progress_info_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textSize="13sp"
+                        android:textColor="?android:attr/textColorSecondary"
+                        tools:text="35% total • 1.8 MB/s • Tiempo restante: 2 min" />
+
                 </LinearLayout>
 
                 <TextView
