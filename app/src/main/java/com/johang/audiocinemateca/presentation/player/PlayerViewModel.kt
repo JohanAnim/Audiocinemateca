@@ -296,26 +296,48 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    fun onLikeClicked() {
-        val item = _contentItem.value ?: return
-        if (auth.currentUser == null) return 
-        viewModelScope.launch {
-            try {
-                manageVoteUseCase.toggleVote(item.id, currentPartIndex, currentEpisodeIndex, _voteStats.value.userVote, 1)
-            } catch (e: Exception) {
-                _toastMessage.emit("No se pudo registrar tu voto.")
-            }
-        }
-    }
+    private var isVoteRequestInFlight = false
 
-    fun onDislikeClicked() {
+    fun onLikeClicked() = submitVote(1)
+
+    fun onDislikeClicked() = submitVote(-1)
+
+    /**
+     * Aplica el voto de forma optimista (actualiza la UI al instante) y lo confirma
+     * en segundo plano. Si la operación remota falla, se revierte el estado anterior
+     * y se avisa al usuario.
+     */
+    private fun submitVote(intentVote: Int) {
         val item = _contentItem.value ?: return
         if (auth.currentUser == null) return
+        if (isVoteRequestInFlight) return
+
+        val previousStats = _voteStats.value
+        val currentVote = previousStats.userVote
+        val finalVote = if (currentVote == intentVote) 0 else intentVote
+
+        var optimisticLikes = previousStats.likeCount
+        var optimisticDislikes = previousStats.dislikeCount
+        when (currentVote) {
+            1 -> optimisticLikes = (optimisticLikes - 1).coerceAtLeast(0)
+            -1 -> optimisticDislikes = (optimisticDislikes - 1).coerceAtLeast(0)
+        }
+        when (finalVote) {
+            1 -> optimisticLikes++
+            -1 -> optimisticDislikes++
+        }
+
+        _voteStats.value = VoteStats(optimisticLikes, optimisticDislikes, finalVote)
+
+        isVoteRequestInFlight = true
         viewModelScope.launch {
             try {
-                manageVoteUseCase.toggleVote(item.id, currentPartIndex, currentEpisodeIndex, _voteStats.value.userVote, -1)
+                manageVoteUseCase.toggleVote(item.id, currentPartIndex, currentEpisodeIndex, currentVote, intentVote)
             } catch (e: Exception) {
-                _toastMessage.emit("No se pudo registrar tu voto.")
+                _voteStats.value = previousStats
+                _toastMessage.emit("No se pudo registrar tu voto. Intenta de nuevo.")
+            } finally {
+                isVoteRequestInFlight = false
             }
         }
     }
