@@ -174,8 +174,13 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    private var voteStatsJob: Job? = null
+    private var commentsPreviewJob: Job? = null
+    private var allCommentsJob: Job? = null
+
     private fun loadVoteStats(contentId: String) {
-        viewModelScope.launch {
+        voteStatsJob?.cancel()
+        voteStatsJob = viewModelScope.launch {
             try {
                 manageVoteUseCase.getVoteStats(contentId, currentPartIndex, currentEpisodeIndex)
                     .collectLatest { stats ->
@@ -188,7 +193,8 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun loadCommentsPreview(contentId: String) {
-        viewModelScope.launch {
+        commentsPreviewJob?.cancel()
+        commentsPreviewJob = viewModelScope.launch {
             try {
                 commentRepository.getCommentsPreview(contentId, currentPartIndex, currentEpisodeIndex)
                     .collectLatest { preview ->
@@ -201,7 +207,8 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun loadAllComments(contentId: String) {
-        viewModelScope.launch {
+        allCommentsJob?.cancel()
+        allCommentsJob = viewModelScope.launch {
             try {
                 commentRepository.getAllComments(contentId, currentPartIndex, currentEpisodeIndex)
                     .collectLatest { comments ->
@@ -312,6 +319,9 @@ class PlayerViewModel @Inject constructor(
         if (auth.currentUser == null) return
         if (isVoteRequestInFlight) return
 
+        val targetPart = currentPartIndex
+        val targetEpisode = currentEpisodeIndex
+
         val previousStats = _voteStats.value
         val currentVote = previousStats.userVote
         val finalVote = if (currentVote == intentVote) 0 else intentVote
@@ -332,9 +342,11 @@ class PlayerViewModel @Inject constructor(
         isVoteRequestInFlight = true
         viewModelScope.launch {
             try {
-                manageVoteUseCase.toggleVote(item.id, currentPartIndex, currentEpisodeIndex, currentVote, intentVote)
+                manageVoteUseCase.toggleVote(item.id, targetPart, targetEpisode, currentVote, intentVote)
             } catch (e: Exception) {
-                _voteStats.value = previousStats
+                if (currentPartIndex == targetPart && currentEpisodeIndex == targetEpisode) {
+                    _voteStats.value = previousStats
+                }
                 _toastMessage.emit("No se pudo registrar tu voto. Intenta de nuevo.")
             } finally {
                 isVoteRequestInFlight = false

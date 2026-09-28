@@ -580,6 +580,8 @@ class PlayerFragment : Fragment() {
                             previousUserVote == 0 && stats.userVote == -1 -> "Has dado No me gusta"
                             previousUserVote == 1 && stats.userVote == 0 -> "Se quitó tu Me gusta"
                             previousUserVote == -1 && stats.userVote == 0 -> "Se quitó tu No me gusta"
+                            previousUserVote == 1 && stats.userVote == -1 -> "Cambiaste a No me gusta"
+                            previousUserVote == -1 && stats.userVote == 1 -> "Cambiaste a Me gusta"
                             else -> ""
                         }
                         if (msg.isNotEmpty()) binding.exoplayerView.announceForAccessibility(msg)
