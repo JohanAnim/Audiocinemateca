@@ -114,11 +114,11 @@ class PlayerService : MediaSessionService() {
     }
 
     private var audioManager: AudioManager? = null
-    private var castAudioFocusRequest: AudioFocusRequest? = null
+    private var playbackAudioFocusRequest: AudioFocusRequest? = null
     private var wasPlayingBeforeFocusLoss = false
 
-    private val castAudioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
-        Log.d("PlayerService", "Cast AudioFocus change: $focusChange")
+    private val playbackAudioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        Log.d("PlayerService", "Playback AudioFocus change: $focusChange")
         when (focusChange) {
             AudioManager.AUDIOFOCUS_LOSS -> {
                 wasPlayingBeforeFocusLoss = false
@@ -128,12 +128,14 @@ class PlayerService : MediaSessionService() {
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                // Pausar de inmediato tanto en reproducción local como Cast ante llamadas o alertas entrantes
                 if (player.isPlaying) {
                     wasPlayingBeforeFocusLoss = true
                     player.pause()
                 }
             }
             AudioManager.AUDIOFOCUS_GAIN -> {
+                // Reanudar la reproducción con suavidad al finalizar la llamada o llamada VoIP
                 if (wasPlayingBeforeFocusLoss) {
                     wasPlayingBeforeFocusLoss = false
                     player.play()
@@ -142,45 +144,56 @@ class PlayerService : MediaSessionService() {
         }
     }
 
-    private fun requestCastAudioFocus() {
+    private val becomingNoisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+                Log.d("PlayerService", "Auriculares desconectados: Pausando reproducción...")
+                if (player.isPlaying) {
+                    player.pause()
+                }
+            }
+        }
+    }
+
+    private fun requestPlaybackAudioFocus() {
         if (audioManager == null) {
             audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         }
         val am = audioManager ?: return
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                if (castAudioFocusRequest == null) {
+                if (playbackAudioFocusRequest == null) {
                     val playbackAttributes = android.media.AudioAttributes.Builder()
                         .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
                         .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MOVIE)
                         .build()
-                    castAudioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    playbackAudioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                         .setAudioAttributes(playbackAttributes)
                         .setAcceptsDelayedFocusGain(false)
-                        .setOnAudioFocusChangeListener(castAudioFocusChangeListener)
+                        .setOnAudioFocusChangeListener(playbackAudioFocusChangeListener)
                         .build()
                 }
-                castAudioFocusRequest?.let { am.requestAudioFocus(it) }
+                playbackAudioFocusRequest?.let { am.requestAudioFocus(it) }
             } else {
                 @Suppress("DEPRECATION")
-                am.requestAudioFocus(castAudioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
+                am.requestAudioFocus(playbackAudioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
             }
         } catch (e: Exception) {
-            Log.e("PlayerService", "Error solicitando AudioFocus para Cast: ${e.message}")
+            Log.e("PlayerService", "Error solicitando AudioFocus de reproducción: ${e.message}")
         }
     }
 
-    private fun abandonCastAudioFocus() {
+    private fun abandonPlaybackAudioFocus() {
         val am = audioManager ?: return
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                castAudioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
+                playbackAudioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
             } else {
                 @Suppress("DEPRECATION")
-                am.abandonAudioFocus(castAudioFocusChangeListener)
+                am.abandonAudioFocus(playbackAudioFocusChangeListener)
             }
         } catch (e: Exception) {
-            Log.e("PlayerService", "Error liberando AudioFocus de Cast: ${e.message}")
+            Log.e("PlayerService", "Error liberando AudioFocus de reproducción: ${e.message}")
         }
     }
 
@@ -194,7 +207,7 @@ class PlayerService : MediaSessionService() {
         override fun onCastSessionUnavailable() {
             Log.d("PlayerService", "onCastSessionUnavailable: Cast session is no longer available")
             releaseCastLocks()
-            abandonCastAudioFocus()
+            abandonPlaybackAudioFocus()
             wasPlayingBeforeFocusLoss = false
             onCastUnavailable()
         }
@@ -428,7 +441,7 @@ class PlayerService : MediaSessionService() {
             ACTION_STOP -> {
                 Log.d("PlayerService", "Cierre solicitado (Botón X del mini reproductor o Notificación).")
                 wasPlayingBeforeFocusLoss = false
-                abandonCastAudioFocus()
+                abandonPlaybackAudioFocus()
                 serviceScope.launch {
                     try {
                         savePlaybackProgress(syncToCloud = true)
@@ -503,7 +516,7 @@ class PlayerService : MediaSessionService() {
 
         val localExoPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
-            .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ true)
+            .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ false)
             .build()
         exoPlayer = localExoPlayer
 
@@ -517,12 +530,10 @@ class PlayerService : MediaSessionService() {
                 sharedPreferencesManager.saveBoolean("is_currently_playing", isPlaying)
                 if (isPlaying) {
                     serviceScope.launch { savePlaybackProgress() }
-                    if (castPlayer?.isCastSessionAvailable == true) {
-                        requestCastAudioFocus()
-                    }
+                    requestPlaybackAudioFocus()
                 } else {
-                    if (castPlayer?.isCastSessionAvailable == true && !wasPlayingBeforeFocusLoss) {
-                        abandonCastAudioFocus()
+                    if (!wasPlayingBeforeFocusLoss) {
+                        abandonPlaybackAudioFocus()
                     }
                 }
                 ensureForegroundNotification()
@@ -709,6 +720,12 @@ class PlayerService : MediaSessionService() {
             }
         } catch (e: Exception) {
             Log.e("PlayerService", "Error registrando playerActionReceiver con el sistema: ${e.message}")
+        }
+        try {
+            val noisyFilter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
+            registerReceiver(becomingNoisyReceiver, noisyFilter)
+        } catch (e: Exception) {
+            Log.e("PlayerService", "Error registrando becomingNoisyReceiver: ${e.message}")
         }
     }
 
@@ -954,12 +971,15 @@ class PlayerService : MediaSessionService() {
     override fun onDestroy() {
         serviceScope.cancel(); progressSaveHandler.removeCallbacks(progressSaveRunnable)
         releaseCastLocks()
-        abandonCastAudioFocus()
+        abandonPlaybackAudioFocus()
         try {
             LocalBroadcastManager.getInstance(this).unregisterReceiver(playerActionReceiver)
         } catch (e: Exception) {}
         try {
             unregisterReceiver(playerActionReceiver)
+        } catch (e: Exception) {}
+        try {
+            unregisterReceiver(becomingNoisyReceiver)
         } catch (e: Exception) {}
         try { 
             exoPlayer?.removeListener(playerListener)
