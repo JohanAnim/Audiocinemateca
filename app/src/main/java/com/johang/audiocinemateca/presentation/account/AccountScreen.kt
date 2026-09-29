@@ -393,30 +393,84 @@ fun AccountScreen(
                 }
             }
 
-            Text(
-                text = "App Versión: $appVersion (for Android)",
-                fontSize = 14.sp,
-                textAlign = TextAlign.Start,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-                    .clickable { 
-                        scope.launch {
-                            val res = viewModel.manualCheckForUpdates(appVersion)
-                            if (res is UpdateCheckResult.UpdateAvailable) {
+            val onCheckAppUpdate: () -> Unit = {
+                scope.launch {
+                    val loadingDialog = MaterialAlertDialogBuilder(context)
+                        .setTitle("Buscando Actualizaciones")
+                        .setMessage("Comprobando si hay una nueva versión de Audiocinemateca...")
+                        .setCancelable(false)
+                        .create()
+                    loadingDialog.show()
+
+                    try {
+                        val res = viewModel.manualCheckForUpdates(appVersion)
+                        loadingDialog.dismiss()
+                        when (res) {
+                            is UpdateCheckResult.UpdateAvailable -> {
                                 MaterialAlertDialogBuilder(context)
                                     .setTitle("Actualización Disponible")
-                                    .setMessage("Hay una nueva versión de la aplicación disponible. ¿Deseas descargarla ahora mismo?")
-                                    .setPositiveButton("Sí") { _, _ ->
+                                    .setMessage("Hay una nueva versión (${res.updateInfo.version}) de Audiocinemateca disponible. ¿Deseas descargarla e instalarla ahora?")
+                                    .setPositiveButton("Actualizar") { _, _ ->
                                         viewModel.downloadUpdate(res.updateInfo)
                                         onShowUpdateProgress()
                                     }
-                                    .setNegativeButton("No", null).show()
+                                    .setNegativeButton("Cancelar", null)
+                                    .show()
                             }
+                            is UpdateCheckResult.NoUpdateAvailable -> {
+                                MaterialAlertDialogBuilder(context)
+                                    .setTitle("Aplicación Actualizada")
+                                    .setMessage("¡Ya tienes instalada la versión más reciente ($appVersion) de Audiocinemateca! No hay actualizaciones disponibles.")
+                                    .setPositiveButton("Aceptar", null)
+                                    .show()
+                            }
+                            is UpdateCheckResult.Error -> {
+                                MaterialAlertDialogBuilder(context)
+                                    .setTitle("Sin Conexión o Error")
+                                    .setMessage("No se pudo comprobar si hay actualizaciones en el servidor: ${res.message}")
+                                    .setPositiveButton("Aceptar", null)
+                                    .show()
+                            }
+                            else -> {}
                         }
+                    } catch (e: Exception) {
+                        loadingDialog.dismiss()
+                        Toast.makeText(context, "Error al comprobar actualizaciones: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
-                    .audiocinematecaAccessibility(label = "Versión de la aplicación: $appVersion. Toca para buscar actualizaciones")
-            )
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "App Versión: $appVersion (for Android)",
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Start,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onCheckAppUpdate() }
+                        .audiocinematecaAccessibility(
+                            label = "Versión de la aplicación: $appVersion. Toca para buscar actualizaciones de la aplicación",
+                            onClickAction = onCheckAppUpdate
+                        )
+                )
+
+                TextButton(
+                    onClick = onCheckAppUpdate,
+                    modifier = Modifier.audiocinematecaAccessibility(
+                        label = "Buscar actualizaciones de la aplicación",
+                        role = Role.Button,
+                        onClickAction = onCheckAppUpdate
+                    )
+                ) {
+                    Text("Actualizar")
+                }
+            }
             
             Spacer(modifier = Modifier.height(32.dp))
         }

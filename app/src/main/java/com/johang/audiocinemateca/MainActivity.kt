@@ -34,6 +34,7 @@ import com.johang.audiocinemateca.data.model.ShortFilm
 import com.johang.audiocinemateca.domain.usecase.UpdateCheckResult
 import com.johang.audiocinemateca.data.repository.SearchRepository
 import com.johang.audiocinemateca.presentation.account.AccountViewModel
+import com.johang.audiocinemateca.presentation.account.UpdateProgressDialogFragment
 import com.johang.audiocinemateca.presentation.player.PlayerService
 import com.johang.audiocinemateca.data.AuthCatalogRepository
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
@@ -328,9 +329,12 @@ class MainActivity : AppCompatActivity() {
                                     sharedPreferencesManager.saveString("last_seen_version_name", currentVersionName)
                                 }
                             }
-                        } else if (lastSeenVersionName.isEmpty()) {
-                            // Primera vez que se abre esta versión del sistema de noticias, guardamos la actual
-                            sharedPreferencesManager.saveString("last_seen_version_name", currentVersionName)
+                        } else {
+                            if (lastSeenVersionName.isEmpty()) {
+                                // Primera vez que se abre esta versión del sistema de noticias, guardamos la actual
+                                sharedPreferencesManager.saveString("last_seen_version_name", currentVersionName)
+                            }
+                            checkAppUpdateAutomatically(currentVersionName)
                         }
 
                     } catch (e: Exception) { it.findViewById<TextView>(R.id.tv_app_version)?.text = "Versión 3.0.0" }
@@ -579,6 +583,31 @@ class MainActivity : AppCompatActivity() {
             Log.d("MainActivity", "CatalogUpdateWorker scheduled every 6 hours")
         } catch (e: Exception) {
             Log.e("MainActivity", "Error scheduling CatalogUpdateWorker", e)
+        }
+    }
+
+    private fun checkAppUpdateAutomatically(currentVersionName: String) {
+        val autoCheckApp = sharedPreferencesManager.getBoolean("auto_check_app", true)
+        if (!autoCheckApp) return
+
+        lifecycleScope.launch {
+            try {
+                val result = accountViewModel.manualCheckForUpdates(currentVersionName)
+                if (result is UpdateCheckResult.UpdateAvailable) {
+                    if (isFinishing || isDestroyed) return@launch
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("Actualización Disponible")
+                        .setMessage("Hay una nueva versión de Audiocinemateca (${result.updateInfo.version}) disponible. ¿Deseas descargarla e instalarla ahora?")
+                        .setPositiveButton("Actualizar") { _, _ ->
+                            accountViewModel.downloadUpdate(result.updateInfo)
+                            UpdateProgressDialogFragment().show(supportFragmentManager, "UpdateProgressDialog")
+                        }
+                        .setNegativeButton("Más tarde", null)
+                        .show()
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error comprobando actualización de la app automáticamente: ${e.message}")
+            }
         }
     }
 
