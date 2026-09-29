@@ -84,18 +84,17 @@ class CatalogUpdateWorker(
         val totalNew = moviesDiff.coerceAtLeast(0) + seriesDiff.coerceAtLeast(0) + 
                        shortsDiff.coerceAtLeast(0) + docsDiff.coerceAtLeast(0)
 
-        if (totalNew <= 0) return // No hay títulos nuevos realmente, tal vez solo cambios menores
-
-        val title = "¡Nuevas aventuras te esperan!"
-        val message = StringBuilder("Se han añadido $totalNew nuevos títulos al catálogo: ")
-        val parts = mutableListOf<String>()
-        if (moviesDiff > 0) parts.add("$moviesDiff películas")
-        if (seriesDiff > 0) parts.add("$seriesDiff series")
-        if (shortsDiff > 0) parts.add("$shortsDiff cortos")
-        if (docsDiff > 0) parts.add("$docsDiff documentales")
-        
-        message.append(parts.joinToString(", "))
-        message.append(". ¡Entra ahora para descubrirlos!")
+        val title = if (totalNew > 0) "¡Nuevas aventuras te esperan!" else "¡Catálogo actualizado!"
+        val message = if (totalNew > 0) {
+            val parts = mutableListOf<String>()
+            if (moviesDiff > 0) parts.add("$moviesDiff películas")
+            if (seriesDiff > 0) parts.add("$seriesDiff series")
+            if (shortsDiff > 0) parts.add("$shortsDiff cortos")
+            if (docsDiff > 0) parts.add("$docsDiff documentales")
+            "Se han añadido $totalNew nuevos títulos al catálogo: ${parts.joinToString(", ")}. ¡Entra ahora para descubrirlos!"
+        } else {
+            "El catálogo de Audiocinemateca ha sido actualizado con los contenidos y correcciones más recientes."
+        }
 
         val channelId = "catalog_updates"
         val intent = Intent(applicationContext, MainActivity::class.java).apply {

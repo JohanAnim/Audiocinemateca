@@ -341,6 +341,8 @@ class MainActivity : AppCompatActivity() {
                 startGlobalChatWatcher()
                 startRealtimeSync()
                 startAnnouncementsWatcher()
+                checkCatalogUpdateAutomatically()
+                setupCatalogUpdateWorker()
             } else {
                 stopGlobalChatWatcher()
                 stopRealtimeSync()
@@ -532,6 +534,53 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopRealtimeSync() { syncFavoritesJob?.cancel(); syncHistoryJob?.cancel(); syncFavoritesJob = null; syncHistoryJob = null }
+
+    private fun checkCatalogUpdateAutomatically() {
+        val autoUpdate = sharedPreferencesManager.getBoolean("auto_check_catalog", true)
+        if (!autoUpdate) return
+
+        lifecycleScope.launch {
+            try {
+                authCatalogRepository.loadCatalog().collect { result ->
+                    when (result) {
+                        is com.johang.audiocinemateca.data.AuthCatalogRepository.LoadCatalogResultWithProgress.UpdateAvailable -> {
+                            Log.d("MainActivity", "Automatic catalog update available, downloading...")
+                            Toast.makeText(this@MainActivity, "Actualizando catálogo automáticamente...", Toast.LENGTH_SHORT).show()
+                            authCatalogRepository.downloadAndSaveCatalog(result.serverVersion).collect { downloadResult ->
+                                if (downloadResult is com.johang.audiocinemateca.data.AuthCatalogRepository.LoadCatalogResultWithProgress.Success) {
+                                    Toast.makeText(this@MainActivity, "Catálogo actualizado.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                        else -> {}
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error checking catalog updates automatically", e)
+            }
+        }
+    }
+
+    private fun setupCatalogUpdateWorker() {
+        try {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+
+            val workRequest = PeriodicWorkRequestBuilder<CatalogUpdateWorker>(6, TimeUnit.HOURS)
+                .setConstraints(constraints)
+                .build()
+
+            WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                "CatalogUpdateWork",
+                ExistingPeriodicWorkPolicy.KEEP,
+                workRequest
+            )
+            Log.d("MainActivity", "CatalogUpdateWorker scheduled every 6 hours")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error scheduling CatalogUpdateWorker", e)
+        }
+    }
 
     override fun onSupportNavigateUp(): Boolean = navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
 

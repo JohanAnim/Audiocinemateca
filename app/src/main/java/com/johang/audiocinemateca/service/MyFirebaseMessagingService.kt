@@ -128,6 +128,22 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 return
             }
 
+            if (destination == "catalog") {
+                try {
+                    val workRequest = androidx.work.OneTimeWorkRequestBuilder<CatalogUpdateWorker>()
+                        .setConstraints(
+                            androidx.work.Constraints.Builder()
+                                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                                .build()
+                        )
+                        .build()
+                    androidx.work.WorkManager.getInstance(applicationContext).enqueue(workRequest)
+                    Log.d("FCM", "CatalogUpdateWorker enqueued on catalog push notification")
+                } catch (e: Exception) {
+                    Log.e("FCM", "Error enqueuing CatalogUpdateWorker: ${e.message}")
+                }
+            }
+
             showNotification(title, message, destination, url, contentId, contentType)
         }
     }
