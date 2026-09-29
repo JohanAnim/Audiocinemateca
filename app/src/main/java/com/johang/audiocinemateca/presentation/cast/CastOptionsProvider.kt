@@ -11,12 +11,8 @@ import com.johang.audiocinemateca.MainActivity
 
 class CastOptionsProvider : OptionsProvider {
     override fun getCastOptions(context: Context): CastOptions {
-        val notificationOptions = NotificationOptions.Builder()
-            .setTargetActivityClassName(MainActivity::class.java.name)
-            .build()
-
         val mediaOptions = CastMediaOptions.Builder()
-            .setNotificationOptions(notificationOptions)
+            .setNotificationOptions(null)
             .build()
 
         return CastOptions.Builder()

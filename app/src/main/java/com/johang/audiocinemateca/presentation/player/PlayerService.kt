@@ -8,10 +8,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.audiofx.Equalizer
 import android.os.Bundle
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.media3.cast.CastPlayer
 import androidx.media3.cast.DefaultMediaItemConverter
@@ -110,6 +113,77 @@ class PlayerService : MediaSessionService() {
         }
     }
 
+    private var audioManager: AudioManager? = null
+    private var castAudioFocusRequest: AudioFocusRequest? = null
+    private var wasPlayingBeforeFocusLoss = false
+
+    private val castAudioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        Log.d("PlayerService", "Cast AudioFocus change: $focusChange")
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                wasPlayingBeforeFocusLoss = false
+                if (player.isPlaying) {
+                    player.pause()
+                }
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                if (player.isPlaying) {
+                    wasPlayingBeforeFocusLoss = true
+                    player.pause()
+                }
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                if (wasPlayingBeforeFocusLoss) {
+                    wasPlayingBeforeFocusLoss = false
+                    player.play()
+                }
+            }
+        }
+    }
+
+    private fun requestCastAudioFocus() {
+        if (audioManager == null) {
+            audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        }
+        val am = audioManager ?: return
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                if (castAudioFocusRequest == null) {
+                    val playbackAttributes = android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MOVIE)
+                        .build()
+                    castAudioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                        .setAudioAttributes(playbackAttributes)
+                        .setAcceptsDelayedFocusGain(false)
+                        .setOnAudioFocusChangeListener(castAudioFocusChangeListener)
+                        .build()
+                }
+                castAudioFocusRequest?.let { am.requestAudioFocus(it) }
+            } else {
+                @Suppress("DEPRECATION")
+                am.requestAudioFocus(castAudioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
+            }
+        } catch (e: Exception) {
+            Log.e("PlayerService", "Error solicitando AudioFocus para Cast: ${e.message}")
+        }
+    }
+
+    private fun abandonCastAudioFocus() {
+        val am = audioManager ?: return
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                castAudioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
+            } else {
+                @Suppress("DEPRECATION")
+                am.abandonAudioFocus(castAudioFocusChangeListener)
+            }
+        } catch (e: Exception) {
+            Log.e("PlayerService", "Error liberando AudioFocus de Cast: ${e.message}")
+        }
+    }
+
     private val castSessionAvailabilityListener = object : SessionAvailabilityListener {
         override fun onCastSessionAvailable() {
             Log.d("PlayerService", "onCastSessionAvailable: Cast session is now available")
@@ -120,6 +194,8 @@ class PlayerService : MediaSessionService() {
         override fun onCastSessionUnavailable() {
             Log.d("PlayerService", "onCastSessionUnavailable: Cast session is no longer available")
             releaseCastLocks()
+            abandonCastAudioFocus()
+            wasPlayingBeforeFocusLoss = false
             onCastUnavailable()
         }
     }
@@ -341,6 +417,7 @@ class PlayerService : MediaSessionService() {
 
         when (action) {
             ACTION_PLAY_PAUSE -> {
+                wasPlayingBeforeFocusLoss = false
                 if (activePlayer.isPlaying) {
                     serviceScope.launch { savePlaybackProgress(syncToCloud = true) }
                     activePlayer.pause()
@@ -350,6 +427,8 @@ class PlayerService : MediaSessionService() {
             }
             ACTION_STOP -> {
                 Log.d("PlayerService", "Cierre solicitado (Botón X del mini reproductor o Notificación).")
+                wasPlayingBeforeFocusLoss = false
+                abandonCastAudioFocus()
                 serviceScope.launch {
                     try {
                         savePlaybackProgress(syncToCloud = true)
@@ -417,8 +496,14 @@ class PlayerService : MediaSessionService() {
         val defaultDataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(this, httpDataSourceFactory)
         val mediaSourceFactory = DefaultMediaSourceFactory(this).setDataSourceFactory(defaultDataSourceFactory)
 
+        val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
+            .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE)
+            .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+            .build()
+
         val localExoPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
+            .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ true)
             .build()
         exoPlayer = localExoPlayer
 
@@ -432,6 +517,13 @@ class PlayerService : MediaSessionService() {
                 sharedPreferencesManager.saveBoolean("is_currently_playing", isPlaying)
                 if (isPlaying) {
                     serviceScope.launch { savePlaybackProgress() }
+                    if (castPlayer?.isCastSessionAvailable == true) {
+                        requestCastAudioFocus()
+                    }
+                } else {
+                    if (castPlayer?.isCastSessionAvailable == true && !wasPlayingBeforeFocusLoss) {
+                        abandonCastAudioFocus()
+                    }
                 }
                 ensureForegroundNotification()
             }
@@ -609,6 +701,15 @@ class PlayerService : MediaSessionService() {
             addAction(MainActivity.ACTION_SEEK_TO_NEXT)
         }
         LocalBroadcastManager.getInstance(this).registerReceiver(playerActionReceiver, playerActionFilter)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.registerReceiver(this, playerActionReceiver, playerActionFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(playerActionReceiver, playerActionFilter)
+            }
+        } catch (e: Exception) {
+            Log.e("PlayerService", "Error registrando playerActionReceiver con el sistema: ${e.message}")
+        }
     }
 
     private var hapticGenerator: android.media.audiofx.HapticGenerator? = null
@@ -691,16 +792,11 @@ class PlayerService : MediaSessionService() {
         val session = mediaSession ?: return
         val activePlayer = try { session.player } catch (e: Exception) { null } ?: return
 
-        // Cuando la sesión de Cast está activa, Google Cast gestiona su propia notificación.
-        // Retiramos la notificación del teléfono para evitar notificaciones duplicadas.
+        // Comprobar si hay una sesión activa de Google Cast o reproducción local
         val isCastActive = castPlayer?.isCastSessionAvailable == true || activePlayer === castPlayer
-        if (isCastActive) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            return
-        }
 
         val currentItem = activePlayer.currentMediaItem
-        if (currentItem == null && activePlayer.playbackState == Player.STATE_IDLE) {
+        if (currentItem == null && activePlayer.playbackState == Player.STATE_IDLE && !isCastActive) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             return
         }
@@ -721,7 +817,12 @@ class PlayerService : MediaSessionService() {
 
         val metadata = currentItem?.mediaMetadata
         val title = metadata?.title?.toString()?.ifBlank { null } ?: "Audiocinemateca"
-        val subtitle = metadata?.artist?.toString()?.ifBlank { null } ?: "Reproduciendo audio..."
+        val subtitle = if (isCastActive) {
+            val baseArtist = metadata?.artist?.toString()?.ifBlank { null } ?: "Reproduciendo"
+            "Transmitiendo en Google Cast • $baseArtist"
+        } else {
+            metadata?.artist?.toString()?.ifBlank { null } ?: "Reproduciendo audio..."
+        }
         val isPlaying = activePlayer.isPlaying
         val pendingIntent = updateSessionActivity()
 
@@ -764,7 +865,7 @@ class PlayerService : MediaSessionService() {
             .setDeleteIntent(stopIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOngoing(isPlaying)
+            .setOngoing(isPlaying || isCastActive)
             .setStyle(mediaStyle)
             .addAction(
                 NotificationCompat.Action.Builder(
@@ -853,6 +954,13 @@ class PlayerService : MediaSessionService() {
     override fun onDestroy() {
         serviceScope.cancel(); progressSaveHandler.removeCallbacks(progressSaveRunnable)
         releaseCastLocks()
+        abandonCastAudioFocus()
+        try {
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(playerActionReceiver)
+        } catch (e: Exception) {}
+        try {
+            unregisterReceiver(playerActionReceiver)
+        } catch (e: Exception) {}
         try { 
             exoPlayer?.removeListener(playerListener)
             exoPlayer?.release()
