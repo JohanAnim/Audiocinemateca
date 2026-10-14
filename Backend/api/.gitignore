@@ -1,0 +1,16 @@
+# Dependencias y compilación
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Variables de entorno sensibles
+.env
+.env.*
+!.env.example
+
+# Cobertura y logs
+coverage/
+*.log
+
+# Prisma generado si aplica
+/generated/prisma

@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: audiocinemateca-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-audiocinemateca}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-audiocinemateca_secure_dev_2026}
+      POSTGRES_DB: ${DB_NAME:-audiocinemateca_db}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-audiocinemateca} -d ${DB_NAME:-audiocinemateca_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - audiocinemateca-net
+
+volumes:
+  postgres_data:
+    name: audiocinemateca_postgres_data
+
+networks:
+  audiocinemateca-net:
+    name: audiocinemateca_network
+    driver: bridge
