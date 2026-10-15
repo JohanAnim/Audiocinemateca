@@ -109,3 +109,26 @@ npx prisma studio
 | `GET` | `/api/v1/auth/me` | Protegido (Bearer) | Obtener perfil del usuario autenticado |
 | `PATCH`| `/api/v1/auth/profile` | Protegido (Bearer) | Actualizar datos del perfil (`displayName`, `avatarUrl`) |
 | `POST` | `/api/v1/auth/presence`| Protegido (Bearer) | Actualizar presencia en línea (`isOnline`) |
+
+---
+
+## 🎬 Endpoints de Catálogo y Contenido (`/api/v1/contents`)
+
+| Método | Endpoint | Acceso | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/contents` | Público | Lista paginada con filtros (`type`, `genre`, `search`, `year`, `sortBy`, `order`, `page`, `limit`) |
+| `GET` | `/api/v1/contents/featured` | Público | Contenidos destacados para el feed principal |
+| `GET` | `/api/v1/contents/rankings` | Público | Rankings de más vistos y mejor valorados |
+| `GET` | `/api/v1/contents/categories` | Público | Lista de categorías y conteo de obras |
+| `GET` | `/api/v1/contents/:id` | Público (opc. Auth) | Detalle completo de película o serie por ID, slug o externalId con temporadas y capítulos |
+| `POST` | `/api/v1/contents/:id/view` | Público | Registrar reproducción / incremento de vista |
+| `POST` | `/api/v1/contents` | Protegido | Crear nuevo contenido (película o serie con episodios) |
+
+---
+
+### 5. Sembrar Datos Iniciales del Catálogo
+Para importar una muestra inicial de películas, series completas y documentales a la base de datos:
+```powershell
+npm run seed
+```
+

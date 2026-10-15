@@ -10,6 +10,17 @@
     - Hashing de contraseñas con `bcrypt` (10 rondas de salt).
     - Validación y extracción de usuarios mediante `JwtStrategy`, `JwtAuthGuard` con bypass para rutas `@Public()` y decorador de inyección `@CurrentUser()`.
     - Endpoints verificados en vivo: `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/google`, `/api/v1/auth/keycloak`, `/api/v1/auth/refresh`, `/api/v1/auth/me`, `/api/v1/auth/profile` y `/api/v1/auth/presence`.
+  - **Módulo de Catálogo y Contenidos (`contents/`):**
+    - Metadatos cinematográficos completos mapeados al modelo `Content`: compatibilidad con `externalId` (IDs originales del catálogo), audiodescripción, narradores, directores, reparto, sinopsis, año, país, género crudo y enlaces de streaming de audio multi-parte.
+    - Soporte completo para Series, Temporadas y Episodios relacionales numerados (`seasons` y `episodes`).
+    - Endpoints verificados en vivo:
+      - `GET /api/v1/contents`: listado paginado con búsqueda textual, filtros (`type`, `genre`, `year`, `country`), ordenamiento dinámico (`recent`, `popular`, `rating`, `title`, `year`) y estado de favoritos reactivo según el usuario.
+      - `GET /api/v1/contents/featured`: selección destacada para el carrusel de inicio.
+      - `GET /api/v1/contents/rankings`: top más vistos y top mejor valorados.
+      - `GET /api/v1/contents/categories`: listado de géneros y recuento de obras.
+      - `GET /api/v1/contents/:id`: detalle completo por UUID, slug o externalId con temporadas y episodios anidados.
+      - `POST /api/v1/contents/:id/view`: registro atómico de reproducciones / vistas.
+    - Script de siembra (`npm run seed` en `src/scripts/seed-catalog.ts`): importador automático desde `catalogo.json` a PostgreSQL (71 obras de muestra sembradas con 27 temporadas y 296 capítulos reales).
   - **API NestJS 12 ([Backend/api/](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/Backend/api/)):** Configuración modular en ESM con `PrismaService` global, CORS universal para Android/Web, `ValidationPipe` y endpoint de salud `/health` verificado en vivo. Dockerfile multi-stage listo para Dokploy / Oracle Cloud.
 
 

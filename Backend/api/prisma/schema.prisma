@@ -23,6 +23,7 @@ enum ContentType {
   MOVIE
   SERIES
   DOCUMENTARY
+  SHORT
 }
 
 enum ContentStatus {
@@ -85,6 +86,7 @@ model Category {
 
 model Content {
   id               String        @id @default(uuid())
+  externalId       String?       @unique
   title            String
   slug             String        @unique
   synopsis         String        @db.Text
@@ -94,12 +96,22 @@ model Content {
   type             ContentType   @default(MOVIE)
   status           ContentStatus @default(PUBLISHED)
   releaseYear      Int?
+  duration         String?
   durationMinutes  Int?
   country          String?
-  audioUrl         String?
+  director         String?
+  screenplay       String?
+  music            String?
+  cinematography   String?
+  cast             String?
+  production       String?
   narrator         String?
   audioDescription Boolean       @default(true)
   dubbing          String?
+  genreRaw         String?
+  filmaffinityUrl  String?
+  audioUrl         String?
+  audioUrls        String[]      @default([])
   averageRating    Float         @default(0.0)
   ratingsCount     Int           @default(0)
   viewsCount       Int           @default(0)
@@ -112,6 +124,9 @@ model Content {
   favorites        Favorite[]
   playbackProgress PlaybackProgress[]
 
+  @@index([type])
+  @@index([status])
+  @@index([releaseYear])
   @@map("contents")
 }
 
