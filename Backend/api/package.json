@@ -22,7 +22,8 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "seed": "tsx src/scripts/seed-catalog.ts"
+    "seed": "tsx src/scripts/seed-catalog.ts",
+    "seed:admin": "tsx src/scripts/seed-admin.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
