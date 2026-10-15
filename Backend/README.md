@@ -132,3 +132,28 @@ Para importar una muestra inicial de películas, series completas y documentales
 npm run seed
 ```
 
+---
+
+## ⏱️ Endpoints de Progreso de Reproducción (`/api/v1/progress`)
+
+| Método | Endpoint | Acceso | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/progress` | Protegido (Bearer) | Guardar/actualizar progreso en ms (`contentId`, `positionMs`, `durationMs`, `partIndex`, `episodeIndex`) |
+| `GET` | `/api/v1/progress/continue-listening` | Protegido (Bearer) | Obtener lista de "Continuar Escuchando" ordenada por fecha reciente |
+| `GET` | `/api/v1/progress/:contentId` | Protegido (Bearer) | Obtener progreso guardado para una obra específica |
+| `DELETE`| `/api/v1/progress/:contentId` | Protegido (Bearer) | Eliminar progreso de una obra (o capítulo mediante `?part=X&episode=Y`) |
+| `DELETE`| `/api/v1/progress` | Protegido (Bearer) | Limpiar todo el historial de reproducción del usuario |
+
+---
+
+## ⭐ Endpoints de Favoritos (`/api/v1/favorites`)
+
+| Método | Endpoint | Acceso | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/favorites/toggle` | Protegido (Bearer) | Alternar favorito (agrega si no existe, remueve si ya existía) |
+| `GET` | `/api/v1/favorites` | Protegido (Bearer) | Lista paginada de favoritos del usuario con metadatos completos |
+| `GET` | `/api/v1/favorites/check/:contentId` | Protegido (Bearer) | Comprobar rápidamente si una obra está en favoritos (`{ isFavorite: boolean }`) |
+| `DELETE`| `/api/v1/favorites/:contentId` | Protegido (Bearer) | Remover obra de favoritos |
+| `DELETE`| `/api/v1/favorites` | Protegido (Bearer) | Vaciar lista completa de favoritos |
+
+

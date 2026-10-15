@@ -21,6 +21,18 @@
       - `GET /api/v1/contents/:id`: detalle completo por UUID, slug o externalId con temporadas y episodios anidados.
       - `POST /api/v1/contents/:id/view`: registro atómico de reproducciones / vistas.
     - Script de siembra (`npm run seed` en `src/scripts/seed-catalog.ts`): importador automático desde `catalogo.json` a PostgreSQL (71 obras de muestra sembradas con 27 temporadas y 296 capítulos reales).
+  - **Módulo de Progreso de Reproducción y Favoritos (`progress/` y `favorites/`):**
+    - Sincronización en la nube de milisegundos de reproducción (`positionMs`, `durationMs`, `partIndex`, `episodeIndex`) compatible con Room de Android (`PlaybackProgressEntity`), cálculo dinámico de porcentajes y marcado automático de completado (>95%).
+    - Endpoints de progreso verificados en vivo:
+      - `POST /api/v1/progress`: upsert atómico de posición con soporte de multi-parte y capítulos.
+      - `GET /api/v1/progress/continue-listening`: lista paginada y ordenada por fecha reciente de obras en progreso (>5s).
+      - `GET /api/v1/progress/:contentId`: estado de progreso por obra.
+      - `DELETE /api/v1/progress/:contentId` y `DELETE /api/v1/progress`: eliminación granular o vaciado de historial.
+    - Endpoints de favoritos verificados en vivo:
+      - `POST /api/v1/favorites/toggle`: alternancia atómica con retorno de estado (`isFavorite: true/false`).
+      - `GET /api/v1/favorites`: listado paginado con metadatos completos.
+      - `GET /api/v1/favorites/check/:contentId`: verificación instantánea.
+      - `DELETE /api/v1/favorites/:contentId` y `DELETE /api/v1/favorites`: gestión de limpieza.
   - **API NestJS 12 ([Backend/api/](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/Backend/api/)):** Configuración modular en ESM con `PrismaService` global, CORS universal para Android/Web, `ValidationPipe` y endpoint de salud `/health` verificado en vivo. Dockerfile multi-stage listo para Dokploy / Oracle Cloud.
 
 

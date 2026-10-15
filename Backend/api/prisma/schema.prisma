@@ -177,20 +177,23 @@ model Episode {
 }
 
 model PlaybackProgress {
-  id          String   @id @default(uuid())
-  userId      String
-  contentId   String
-  episodeId   String?
-  positionMs  BigInt   @default(0)
-  durationMs  BigInt   @default(0)
-  isCompleted Boolean  @default(false)
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  userId       String
+  contentId    String
+  episodeId    String?
+  partIndex    Int      @default(0)
+  episodeIndex Int      @default(0)
+  positionMs   BigInt   @default(0)
+  durationMs   BigInt   @default(0)
+  isCompleted  Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   content Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  episode Episode? @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  episode Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
 
-  @@unique([userId, contentId, episodeId])
+  @@unique([userId, contentId, partIndex, episodeIndex])
+  @@index([userId, updatedAt])
   @@map("playback_progress")
 }
 
