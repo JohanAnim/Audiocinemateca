@@ -37,9 +37,12 @@ Backend/
         ├── app.module.ts # Módulo raíz con ConfigModule y PrismaModule
         ├── app.controller.ts
         ├── app.service.ts # Health check con ping real a PostgreSQL
-        └── prisma/
-            ├── prisma.service.ts # Cliente Prisma con conexión automática
-            └── prisma.module.ts  # Módulo global exportable
+        ├── prisma/
+        │   ├── prisma.service.ts # Cliente Prisma con conexión automática
+        │   └── prisma.module.ts  # Módulo global exportable
+        └── modules/
+            ├── users/            # Gestión de usuarios, perfiles y presencia
+            └── auth/             # Autenticación multi-método (Local, Google, Keycloak, JWT)
 ```
 
 ---
@@ -91,3 +94,18 @@ Para abrir la interfaz visual en tu navegador:
 ```powershell
 npx prisma studio
 ```
+
+---
+
+## 🔐 Endpoints de Autenticación (`/api/v1/auth`)
+
+| Método | Endpoint | Acceso | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/register` | Público | Registro local (email, username, password, displayName) |
+| `POST` | `/api/v1/auth/login` | Público | Inicio de sesión local (email/usuario + password) |
+| `POST` | `/api/v1/auth/google` | Público | Inicio de sesión con Google Sign-In (`idToken`) |
+| `POST` | `/api/v1/auth/keycloak` | Público | Inicio de sesión con Keycloak OIDC (`token`) |
+| `POST` | `/api/v1/auth/refresh` | Público | Renovación de access token mediante `refreshToken` |
+| `GET` | `/api/v1/auth/me` | Protegido (Bearer) | Obtener perfil del usuario autenticado |
+| `PATCH`| `/api/v1/auth/profile` | Protegido (Bearer) | Actualizar datos del perfil (`displayName`, `avatarUrl`) |
+| `POST` | `/api/v1/auth/presence`| Protegido (Bearer) | Actualizar presencia en línea (`isOnline`) |

@@ -13,6 +13,12 @@ enum Role {
   ADMIN
 }
 
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+  KEYCLOAK
+}
+
 enum ContentType {
   MOVIE
   SERIES
@@ -39,12 +45,29 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  accounts         AuthAccount[]
   ratings          Rating[]
   favorites        Favorite[]
   playbackProgress PlaybackProgress[]
   chatMessages     ChatMessage[]
 
   @@map("users")
+}
+
+model AuthAccount {
+  id           String       @id @default(uuid())
+  userId       String
+  provider     AuthProvider
+  providerId   String
+  accessToken  String?      @db.Text
+  refreshToken String?      @db.Text
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@map("auth_accounts")
 }
 
 model Category {
