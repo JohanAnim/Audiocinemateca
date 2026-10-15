@@ -156,4 +156,27 @@ npm run seed
 | `DELETE`| `/api/v1/favorites/:contentId` | Protegido (Bearer) | Remover obra de favoritos |
 | `DELETE`| `/api/v1/favorites` | Protegido (Bearer) | Vaciar lista completa de favoritos |
 
+---
+
+## 🌟 Endpoints de Calificaciones (`/api/v1/ratings`)
+
+| Método | Endpoint | Acceso | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/ratings` | Protegido (Bearer) | Calificar con 1-5 estrellas y reseña opcional (recalcula promedio en vivo) |
+| `GET` | `/api/v1/ratings/:contentId` | Público (opc. Auth) | Obtener promedio, total y la calificación del usuario |
+| `DELETE`| `/api/v1/ratings/:contentId` | Protegido (Bearer) | Eliminar calificación y recalcular promedio de la obra |
+
+---
+
+## 💬 Endpoints de Comentarios (`/api/v1/comments`)
+
+| Método | Endpoint | Acceso | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/comments` | Protegido (Bearer) | Publicar comentario en una obra o capítulo (`contentId`, `partIndex`, `episodeIndex`, `commentText`) |
+| `GET` | `/api/v1/comments` | Público (opc. Auth) | Listar comentarios paginados con autor y estado de like |
+| `GET` | `/api/v1/comments/preview` | Público | Vista previa con total de comentarios y el más reciente |
+| `POST` | `/api/v1/comments/:id/like` | Protegido (Bearer) | Alternar "Me gusta" a un comentario |
+| `DELETE`| `/api/v1/comments/:id` | Protegido (Bearer) | Eliminar comentario (autor o moderador) |
+
+
 

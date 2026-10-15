@@ -33,6 +33,12 @@
       - `GET /api/v1/favorites`: listado paginado con metadatos completos.
       - `GET /api/v1/favorites/check/:contentId`: verificación instantánea.
       - `DELETE /api/v1/favorites/:contentId` y `DELETE /api/v1/favorites`: gestión de limpieza.
+  - **Módulo de Calificaciones y Reseñas (`ratings/`):**
+    - Puntuación de 1 a 5 estrellas con reseñas opcionales, recálculo atómico transaccional de promedio (`averageRating`) y contador (`ratingsCount`) en la tabla `contents`.
+    - Endpoints verificados en vivo: `POST /api/v1/ratings`, `GET /api/v1/ratings/:contentId` y `DELETE /api/v1/ratings/:contentId`.
+  - **Módulo de Comentarios e Interacción (`comments/`):**
+    - Comentarios vinculados a películas o capítulos específicos de series (`partIndex`, `episodeIndex`), sistema de "Me gusta" atómico (`comment_likes`) y previsualizaciones instantáneas para la UI.
+    - Endpoints verificados en vivo: `POST /api/v1/comments`, `GET /api/v1/comments`, `GET /api/v1/comments/preview`, `POST /api/v1/comments/:id/like` y `DELETE /api/v1/comments/:id`.
   - **API NestJS 12 ([Backend/api/](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/Backend/api/)):** Configuración modular en ESM con `PrismaService` global, CORS universal para Android/Web, `ValidationPipe` y endpoint de salud `/health` verificado en vivo. Dockerfile multi-stage listo para Dokploy / Oracle Cloud.
 
 
