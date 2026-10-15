@@ -62,10 +62,32 @@ button {
   font-family: inherit;
 }
 
-/* --- UTILIDADES DE ACCESIBILIDAD Y ENFOQUE --- */
+/* --- UTILIDADES DE ACCESIBILIDAD Y ENFOQUE (WCAG 2.1 AAA) --- */
 :focus-visible {
-  outline: 2px solid var(--border-focus);
-  outline-offset: 2px;
+  outline: 3px solid #818cf8 !important;
+  outline-offset: 3px !important;
+}
+
+/* Enlace directo para lectores de pantalla y navegación por teclado */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 20px;
+  background: #4f46e5;
+  color: #ffffff;
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 14px;
+  z-index: 9999;
+  text-decoration: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 20px;
+  outline: 3px solid #ffffff;
 }
 
 .sr-only {
@@ -78,6 +100,16 @@ button {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+/* Respeta la preferencia de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* --- CONTENEDORES Y TARJETAS --- */

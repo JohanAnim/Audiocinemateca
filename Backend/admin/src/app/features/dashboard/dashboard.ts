@@ -12,210 +12,224 @@ import { ExecutiveStats } from '../../core/models/stats.models';
   template: `
     <div class="dashboard-page">
       <!-- HEADER DEL DASHBOARD -->
-      <div class="dash-header">
+      <header class="dash-header" aria-labelledby="dash-title">
         <div>
-          <h1>Métricas & Rendimiento Ejecutivo</h1>
-          <p class="subtitle">Supervisión en tiempo real del ecosistema Audiocinemateca</p>
+          <h1 id="dash-title">Panel Ejecutivo & Métricas en Tiempo Real</h1>
+          <p class="subtitle">Monitoreo continuo de audiencia, telemetría de infraestructura y distribución de catálogo</p>
         </div>
         <div class="header-actions">
-          <button class="btn btn-secondary" (click)="loadStats()" [disabled]="isLoading()">
-            <span>🔄</span>
-            <span>Actualizar</span>
+          <button
+            class="btn btn-secondary cursor-pointer"
+            (click)="loadStats()"
+            [disabled]="isLoading()"
+            aria-label="Actualizar todas las métricas ejecutivas de la base de datos"
+          >
+            <span aria-hidden="true">🔄</span>
+            <span>Actualizar Métricas</span>
           </button>
-          <a routerLink="/catalog/create" class="btn btn-primary">
-            <span>✨</span>
+          <a
+            routerLink="/catalog/create"
+            class="btn btn-primary cursor-pointer"
+            aria-label="Crear una nueva ficha de obra para el catálogo exclusivo"
+          >
+            <span aria-hidden="true">✨</span>
             <span>Nueva Ficha Exclusiva</span>
           </a>
         </div>
-      </div>
+      </header>
 
       @if (isLoading() && !stats()) {
-        <div class="loading-state">
-          <div class="spinner"></div>
-          <p>Cargando métricas ejecutivas de la base de datos...</p>
+        <div class="loading-state card" role="status" aria-live="polite">
+          <div class="spinner" aria-hidden="true"></div>
+          <p>Consultando métricas en la base de datos PostgreSQL...</p>
         </div>
       }
 
       @if (stats(); as s) {
-        <!-- TARJETAS PRINCIPALES DE KPI -->
-        <div class="kpi-grid">
-          <!-- CARD 1: USUARIOS -->
-          <div class="card kpi-card">
-            <div class="kpi-icon-wrap user-gradient">👥</div>
-            <div class="kpi-data">
-              <span class="kpi-label">Usuarios Registrados</span>
-              <div class="kpi-value">{{ s.users.total }}</div>
-              <div class="kpi-sub">
-                <span class="badge badge-success">🟢 {{ community.onlineUsers().length || s.users.onlineNow }} en vivo</span>
+        <!-- SECCIÓN 1: INDICADORES CLAVE DE RENDIMIENTO (KPIs) -->
+        <section aria-labelledby="kpi-section-title">
+          <h2 id="kpi-section-title" class="sr-only">Indicadores Clave de Rendimiento (KPIs)</h2>
+          <div class="kpi-grid">
+            <!-- CARD 1: USUARIOS -->
+            <article class="card kpi-card" aria-labelledby="kpi-users-label">
+              <div class="kpi-icon-wrap user-gradient" aria-hidden="true">👥</div>
+              <div class="kpi-data">
+                <h3 id="kpi-users-label" class="kpi-label">Usuarios Registrados</h3>
+                <div class="kpi-value" aria-label="{{ s.users.total }} usuarios totales">{{ s.users.total }}</div>
+                <div class="kpi-sub">
+                  <span class="badge badge-success" role="status" aria-live="polite">
+                    🟢 {{ community.onlineUsers().length || s.users.onlineNow }} activos ahora
+                  </span>
+                </div>
               </div>
-            </div>
-          </div>
+            </article>
 
-          <!-- CARD 2: CATÁLOGO -->
-          <div class="card kpi-card">
-            <div class="kpi-icon-wrap catalog-gradient">🎬</div>
-            <div class="kpi-data">
-              <span class="kpi-label">Obras en Catálogo</span>
-              <div class="kpi-value">{{ s.catalog.total }}</div>
-              <div class="kpi-sub">
-                <span class="badge badge-exclusive">⭐ {{ s.catalog.exclusive }} Exclusivas</span>
-                <span class="sub-text">{{ s.catalog.episodes }} episodios</span>
+            <!-- CARD 2: CATÁLOGO -->
+            <article class="card kpi-card" aria-labelledby="kpi-catalog-label">
+              <div class="kpi-icon-wrap catalog-gradient" aria-hidden="true">🎬</div>
+              <div class="kpi-data">
+                <h3 id="kpi-catalog-label" class="kpi-label">Obras en Catálogo</h3>
+                <div class="kpi-value">{{ s.catalog.total }}</div>
+                <div class="kpi-sub">
+                  <span class="badge badge-exclusive">⭐ {{ s.catalog.exclusive }} Exclusivas</span>
+                  <span class="sub-text">{{ s.catalog.episodes }} episodios indexados</span>
+                </div>
               </div>
-            </div>
-          </div>
+            </article>
 
-          <!-- CARD 3: ENGAGEMENT / VISTAS -->
-          <div class="card kpi-card">
-            <div class="kpi-icon-wrap views-gradient">🎧</div>
-            <div class="kpi-data">
-              <span class="kpi-label">Reproducciones Totales</span>
-              <div class="kpi-value">{{ s.engagement.totalViews }}</div>
-              <div class="kpi-sub">
-                <span class="sub-text">💬 {{ s.engagement.totalComments }} comentarios</span>
+            <!-- CARD 3: AUDIENCIA Y REPRODUCCIONES -->
+            <article class="card kpi-card" aria-labelledby="kpi-views-label">
+              <div class="kpi-icon-wrap views-gradient" aria-hidden="true">🎧</div>
+              <div class="kpi-data">
+                <h3 id="kpi-views-label" class="kpi-label">Reproducciones Acumuladas</h3>
+                <div class="kpi-value">{{ s.engagement.totalViews }}</div>
+                <div class="kpi-sub">
+                  <span class="sub-text">💬 {{ s.engagement.totalComments }} comentarios activos</span>
+                </div>
               </div>
-            </div>
-          </div>
+            </article>
 
-          <!-- CARD 4: CALIFICACIONES -->
-          <div class="card kpi-card">
-            <div class="kpi-icon-wrap rating-gradient">⭐</div>
-            <div class="kpi-data">
-              <span class="kpi-label">Valoración Global</span>
-              <div class="kpi-value">{{ s.engagement.averageRating }} <span class="max-star">/ 5.0</span></div>
-              <div class="kpi-sub">
-                <span class="sub-text">{{ s.engagement.totalRatings }} reseñas auditadas</span>
+            <!-- CARD 4: CALIFICACIONES AUDITADAS -->
+            <article class="card kpi-card" aria-labelledby="kpi-rating-label">
+              <div class="kpi-icon-wrap rating-gradient" aria-hidden="true">⭐</div>
+              <div class="kpi-data">
+                <h3 id="kpi-rating-label" class="kpi-label">Valoración Promedio</h3>
+                <div class="kpi-value">{{ s.engagement.averageRating }} <span class="max-star">/ 5.0</span></div>
+                <div class="kpi-sub">
+                  <span class="sub-text">{{ s.engagement.totalRatings }} valoraciones auditadas</span>
+                </div>
               </div>
-            </div>
+            </article>
           </div>
-        </div>
+        </section>
 
-        <!-- FILA DE PANELES MEDIOS: PLATAFORMAS & SALUD DEL SISTEMA -->
+        <!-- SECCIÓN 2: PLATAFORMAS Y SALUD DE INFRAESTRUCTURA -->
         <div class="grid-2-col">
           <!-- PANEL DE DISPOSITIVOS Y PLATAFORMAS -->
-          <div class="card">
+          <section class="card" aria-labelledby="platforms-title">
             <div class="card-header-clean">
-              <h3>📱 Distribución de Plataformas & Dispositivos</h3>
+              <h2 id="platforms-title">Distribución por Dispositivos y Clientes</h2>
               <span class="badge badge-info">Apps Nativas & Web</span>
             </div>
-            <p class="section-desc">Dispositivos registrados mediante telemetría accesible:</p>
+            <p class="section-desc">Ecosistema de clientes reportados mediante telemetría segura:</p>
 
-            <div class="platforms-list">
-              <div class="platform-row">
+            <ul class="platforms-list" role="list">
+              <li class="platform-row">
                 <div class="platform-meta">
-                  <span class="platform-icon">🤖</span>
-                  <span class="platform-name">Android (Teléfonos, Tablets & TV)</span>
+                  <span class="platform-icon" aria-hidden="true">🤖</span>
+                  <span class="platform-name">Android (Smartphones, Tablets & Android TV)</span>
                 </div>
-                <div class="platform-count badge badge-primary">{{ s.platforms.Android }}</div>
-              </div>
+                <span class="platform-count badge badge-primary" aria-label="{{ s.platforms.Android }} dispositivos Android">{{ s.platforms.Android }}</span>
+              </li>
 
-              <div class="platform-row">
+              <li class="platform-row">
                 <div class="platform-meta">
-                  <span class="platform-icon">🪟</span>
+                  <span class="platform-icon" aria-hidden="true">🪟</span>
                   <span class="platform-name">Windows (Audiocinemateca Desktop)</span>
                 </div>
-                <div class="platform-count badge badge-secondary">{{ s.platforms.Windows }}</div>
-              </div>
+                <span class="platform-count badge badge-secondary" aria-label="{{ s.platforms.Windows }} dispositivos Windows">{{ s.platforms.Windows }}</span>
+              </li>
 
-              <div class="platform-row">
+              <li class="platform-row">
                 <div class="platform-meta">
-                  <span class="platform-icon">🍏</span>
-                  <span class="platform-name">macOS</span>
+                  <span class="platform-icon" aria-hidden="true">🍏</span>
+                  <span class="platform-name">Apple macOS (Desktop)</span>
                 </div>
-                <div class="platform-count badge badge-secondary">{{ s.platforms.macOS }}</div>
-              </div>
+                <span class="platform-count badge badge-secondary" aria-label="{{ s.platforms.macOS }} dispositivos macOS">{{ s.platforms.macOS }}</span>
+              </li>
 
-              <div class="platform-row">
+              <li class="platform-row">
                 <div class="platform-meta">
-                  <span class="platform-icon">🐧</span>
-                  <span class="platform-name">Linux (App Desktop & CLI)</span>
+                  <span class="platform-icon" aria-hidden="true">🐧</span>
+                  <span class="platform-name">GNU/Linux (Aplicación Desktop & Terminal)</span>
                 </div>
-                <div class="platform-count badge badge-secondary">{{ s.platforms.Linux }}</div>
-              </div>
+                <span class="platform-count badge badge-secondary" aria-label="{{ s.platforms.Linux }} dispositivos Linux">{{ s.platforms.Linux }}</span>
+              </li>
 
-              <div class="platform-row">
+              <li class="platform-row">
                 <div class="platform-meta">
-                  <span class="platform-icon">🌐</span>
-                  <span class="platform-name">Navegador Web & Smart TV</span>
+                  <span class="platform-icon" aria-hidden="true">🌐</span>
+                  <span class="platform-name">Navegadores Web & Smart TV Hubs</span>
                 </div>
-                <div class="platform-count badge badge-secondary">{{ s.platforms.Web }}</div>
-              </div>
-            </div>
-          </div>
+                <span class="platform-count badge badge-secondary" aria-label="{{ s.platforms.Web }} sesiones Web">{{ s.platforms.Web }}</span>
+              </li>
+            </ul>
+          </section>
 
           <!-- PANEL DE SALUD Y SERVIDOR -->
-          <div class="card">
+          <section class="card" aria-labelledby="server-health-title">
             <div class="card-header-clean">
-              <h3>⚡ Infraestructura & Servidor Propio</h3>
-              <span class="badge badge-success">PostgreSQL 16 OK</span>
+              <h2 id="server-health-title">Salud de la Infraestructura Soberana</h2>
+              <span class="badge badge-success">PostgreSQL 16 Activo</span>
             </div>
-            <p class="section-desc">Estado de ejecución del backend independiente:</p>
+            <p class="section-desc">Métricas de rendimiento en tiempo real del nodo NestJS:</p>
 
-            <div class="sys-metrics">
+            <dl class="sys-metrics">
               <div class="sys-metric-item">
-                <span class="metric-title">Tiempo de Actividad (Uptime)</span>
-                <span class="metric-val">{{ formatUptime(s.system.uptimeSeconds) }}</span>
+                <dt class="metric-title">Tiempo Activo (Uptime Continuo)</dt>
+                <dd class="metric-val font-mono">{{ formatUptime(s.system.uptimeSeconds) }}</dd>
               </div>
 
               <div class="sys-metric-item">
-                <span class="metric-title">Memoria RAM Utilizada (RSS)</span>
-                <span class="metric-val">{{ s.system.memoryRssMb }} MB</span>
+                <dt class="metric-title">Memoria RAM Asignada (RSS)</dt>
+                <dd class="metric-val font-mono">{{ s.system.memoryRssMb }} MB</dd>
               </div>
 
               <div class="sys-metric-item">
-                <span class="metric-title">Heap de Node.js</span>
-                <span class="metric-val">{{ s.system.memoryHeapUsedMb }} MB</span>
+                <dt class="metric-title">Memoria Heap Utilizada</dt>
+                <dd class="metric-val font-mono">{{ s.system.memoryHeapUsedMb }} MB</dd>
               </div>
 
               <div class="sys-metric-item">
-                <span class="metric-title">Versión Runtime</span>
-                <span class="metric-val">{{ s.system.nodeVersion }} (NestJS 12 ESM)</span>
+                <dt class="metric-title">Entorno de Ejecución</dt>
+                <dd class="metric-val font-mono">{{ s.system.nodeVersion }} (NestJS 12 ESM)</dd>
               </div>
 
               <div class="sys-metric-item">
-                <span class="metric-title">Hora del Servidor</span>
-                <span class="metric-val">{{ s.system.serverTime | date:'medium' }}</span>
+                <dt class="metric-title">Hora Sincronizada de Base de Datos</dt>
+                <dd class="metric-val font-mono">{{ s.system.serverTime | date:'medium' }}</dd>
               </div>
-            </div>
-          </div>
+            </dl>
+          </section>
         </div>
 
-        <!-- ACCESOS DIRECTOS -->
-        <div class="card quick-actions-card">
-          <h3>🚀 Acciones Rápidas de Administración</h3>
+        <!-- SECCIÓN 3: ACCIONES RÁPIDAS DE GESTIÓN -->
+        <section class="card quick-actions-card" aria-labelledby="quick-actions-title">
+          <h2 id="quick-actions-title">Acciones Directas de Administración</h2>
           <div class="actions-grid">
-            <a routerLink="/catalog/create" class="action-btn">
-              <span class="action-icon">➕</span>
+            <a routerLink="/catalog/create" class="action-btn cursor-pointer">
+              <span class="action-icon" aria-hidden="true">➕</span>
               <div>
-                <strong>Crear Ficha de Catálogo</strong>
-                <small>Película, Serie, Corto o Documental Exclusivo</small>
+                <strong>Crear Ficha Cinematográfica</strong>
+                <small>Alta de Película, Serie, Corto o Documental con selector multilingüe</small>
               </div>
             </a>
 
-            <a routerLink="/community" class="action-btn">
-              <span class="action-icon">📢</span>
+            <a routerLink="/community" class="action-btn cursor-pointer">
+              <span class="action-icon" aria-hidden="true">📢</span>
               <div>
                 <strong>Publicar Comunicado Oficial</strong>
-                <small>Aviso para toda la comunidad en la app</small>
+                <small>Aviso prioritario en tiempo real para todos los clientes de la app</small>
               </div>
             </a>
 
-            <a routerLink="/users" class="action-btn">
-              <span class="action-icon">🛡️</span>
+            <a routerLink="/users" class="action-btn cursor-pointer">
+              <span class="action-icon" aria-hidden="true">🛡️</span>
               <div>
                 <strong>Gestionar y Moderar Usuarios</strong>
-                <small>Cambiar roles, ver dispositivos y sanciones</small>
+                <small>Asignar roles, inspeccionar UIDs y moderar sanciones en caliente</small>
               </div>
             </a>
 
-            <a routerLink="/config" class="action-btn">
-              <span class="action-icon">📲</span>
+            <a routerLink="/config" class="action-btn cursor-pointer">
+              <span class="action-icon" aria-hidden="true">📲</span>
               <div>
                 <strong>Configurar Versión del APK</strong>
-                <small>Control del actualizador automático</small>
+                <small>Control del actualizador automático, changelogs y descargas directas</small>
               </div>
             </a>
           </div>
-        </div>
+        </section>
       }
     </div>
   `,
@@ -223,7 +237,7 @@ import { ExecutiveStats } from '../../core/models/stats.models';
     .dashboard-page {
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 28px;
     }
 
     .dash-header {
@@ -235,21 +249,44 @@ import { ExecutiveStats } from '../../core/models/stats.models';
     }
 
     h1 {
-      font-size: 24px;
+      font-size: 26px;
       font-weight: 800;
       color: var(--text-main);
+      letter-spacing: -0.5px;
     }
 
     .subtitle {
       font-size: 14px;
       color: var(--text-muted);
-      margin-top: 2px;
+      margin-top: 4px;
     }
 
     .header-actions {
       display: flex;
       align-items: center;
       gap: 12px;
+    }
+
+    .loading-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     /* --- KPIS GRID --- */
@@ -267,20 +304,20 @@ import { ExecutiveStats } from '../../core/models/stats.models';
     }
 
     .kpi-icon-wrap {
-      width: 56px;
-      height: 56px;
+      width: 54px;
+      height: 54px;
       border-radius: var(--radius-md);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 26px;
+      font-size: 24px;
       flex-shrink: 0;
     }
 
-    .user-gradient { background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.1)); }
-    .catalog-gradient { background: linear-gradient(135deg, rgba(236, 72, 153, 0.25), rgba(244, 63, 94, 0.1)); }
-    .views-gradient { background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.1)); }
-    .rating-gradient { background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.1)); }
+    .user-gradient { background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); }
+    .catalog-gradient { background: rgba(236, 72, 153, 0.15); border: 1px solid rgba(236, 72, 153, 0.3); }
+    .views-gradient { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .rating-gradient { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); }
 
     .kpi-data {
       display: flex;
@@ -289,23 +326,24 @@ import { ExecutiveStats } from '../../core/models/stats.models';
     }
 
     .kpi-label {
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      color: var(--text-muted);
     }
 
     .kpi-value {
-      font-size: 28px;
+      font-size: 30px;
       font-weight: 800;
       color: var(--text-main);
-      line-height: 1.2;
-      margin: 4px 0;
+      line-height: 1.1;
+      margin: 4px 0 6px 0;
     }
 
     .max-star {
       font-size: 16px;
+      font-weight: 500;
       color: var(--text-dim);
     }
 
@@ -313,28 +351,28 @@ import { ExecutiveStats } from '../../core/models/stats.models';
       display: flex;
       align-items: center;
       gap: 8px;
+      font-size: 12px;
     }
 
     .sub-text {
-      font-size: 12px;
       color: var(--text-dim);
     }
 
-    /* --- FILAS DE 2 COLUMNAS --- */
+    /* --- FILAS MEDIAS --- */
     .grid-2-col {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-      gap: 20px;
+      gap: 24px;
     }
 
     .card-header-clean {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
-    .card-header-clean h3 {
+    .card-header-clean h2 {
       font-size: 16px;
       font-weight: 700;
       color: var(--text-main);
@@ -342,11 +380,12 @@ import { ExecutiveStats } from '../../core/models/stats.models';
 
     .section-desc {
       font-size: 13px;
-      color: var(--text-muted);
-      margin-bottom: 16px;
+      color: var(--text-dim);
+      margin-bottom: 18px;
     }
 
     .platforms-list {
+      list-style: none;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -366,8 +405,12 @@ import { ExecutiveStats } from '../../core/models/stats.models';
       display: flex;
       align-items: center;
       gap: 10px;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
+    }
+
+    .platform-icon {
+      font-size: 18px;
     }
 
     .sys-metrics {
@@ -380,36 +423,34 @@ import { ExecutiveStats } from '../../core/models/stats.models';
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--border-color);
+      padding: 10px 14px;
+      background-color: var(--bg-input);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-color);
       font-size: 13px;
-    }
-
-    .sys-metric-item:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
     }
 
     .metric-title {
       color: var(--text-muted);
+      font-weight: 500;
     }
 
     .metric-val {
       font-weight: 700;
-      font-family: monospace;
       color: var(--text-main);
     }
 
     /* --- ACCIONES RÁPIDAS --- */
-    .quick-actions-card h3 {
+    .quick-actions-card h2 {
       font-size: 16px;
       font-weight: 700;
+      color: var(--text-main);
       margin-bottom: 16px;
     }
 
     .actions-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 14px;
     }
 
@@ -421,38 +462,34 @@ import { ExecutiveStats } from '../../core/models/stats.models';
       background-color: var(--bg-input);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-sm);
-      transition: all 0.2s;
+      transition: all 0.2s ease;
+      color: var(--text-main);
     }
 
     .action-btn:hover {
-      background-color: var(--bg-card-hover);
       border-color: var(--primary);
+      background-color: rgba(99, 102, 241, 0.08);
       transform: translateY(-2px);
     }
 
     .action-icon {
       font-size: 24px;
+      flex-shrink: 0;
     }
 
     .action-btn strong {
       display: block;
       font-size: 14px;
+      font-weight: 700;
       color: var(--text-main);
     }
 
     .action-btn small {
+      display: block;
       font-size: 12px;
       color: var(--text-dim);
-    }
-
-    .loading-state {
-      padding: 60px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-      color: var(--text-muted);
+      margin-top: 2px;
+      line-height: 1.3;
     }
   `],
 })
@@ -486,6 +523,6 @@ export class DashboardComponent implements OnInit {
     const m = Math.floor((seconds % 3600) / 60);
     if (d > 0) return `${d}d ${h}h ${m}m`;
     if (h > 0) return `${h}h ${m}m`;
-    return `${m}m ${seconds % 60}s`;
+    return `${Math.floor(seconds)}s`;
   }
 }

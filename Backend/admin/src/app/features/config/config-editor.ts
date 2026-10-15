@@ -90,16 +90,21 @@ import {
       }
 
       <!-- TABS NAVIGATION -->
-      <div class="flex border-b border-slate-800 gap-2 overflow-x-auto pb-px">
+      <!-- TABS NAVIGATION ACCESIBLE (WCAG 2.1) -->
+      <nav class="flex border-b border-slate-800 gap-2 overflow-x-auto pb-px" role="tablist" aria-label="Secciones de configuración remota del sistema">
         <button
           (click)="activeTab.set('version')"
+          role="tab"
+          id="tab-version"
+          [attr.aria-selected]="activeTab() === 'version'"
+          aria-controls="tabpanel-version"
           [class.border-indigo-500]="activeTab() === 'version'"
           [class.text-indigo-400]="activeTab() === 'version'"
           [class.border-transparent]="activeTab() !== 'version'"
           [class.text-slate-400]="activeTab() !== 'version'"
           class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
           Actualizador de la App (APK)
@@ -107,13 +112,17 @@ import {
 
         <button
           (click)="activeTab.set('banner')"
+          role="tab"
+          id="tab-banner"
+          [attr.aria-selected]="activeTab() === 'banner'"
+          aria-controls="tabpanel-banner"
           [class.border-indigo-500]="activeTab() === 'banner'"
           [class.text-indigo-400]="activeTab() === 'banner'"
           [class.border-transparent]="activeTab() !== 'banner'"
           [class.text-slate-400]="activeTab() !== 'banner'"
           class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
           </svg>
           Banner Global del Feed
@@ -121,13 +130,17 @@ import {
 
         <button
           (click)="activeTab.set('maintenance')"
+          role="tab"
+          id="tab-maintenance"
+          [attr.aria-selected]="activeTab() === 'maintenance'"
+          aria-controls="tabpanel-maintenance"
           [class.border-indigo-500]="activeTab() === 'maintenance'"
           [class.text-indigo-400]="activeTab() === 'maintenance'"
           [class.border-transparent]="activeTab() !== 'maintenance'"
           [class.text-slate-400]="activeTab() !== 'maintenance'"
           class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           Modo Mantenimiento
@@ -135,13 +148,17 @@ import {
 
         <button
           (click)="activeTab.set('chat')"
+          role="tab"
+          id="tab-chat"
+          [attr.aria-selected]="activeTab() === 'chat'"
+          aria-controls="tabpanel-chat"
           [class.border-indigo-500]="activeTab() === 'chat'"
           [class.text-indigo-400]="activeTab() === 'chat'"
           [class.border-transparent]="activeTab() !== 'chat'"
           [class.text-slate-400]="activeTab() !== 'chat'"
           class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
           Chat y Comunidad
@@ -149,13 +166,17 @@ import {
 
         <button
           (click)="activeTab.set('donations')"
+          role="tab"
+          id="tab-donations"
+          [attr.aria-selected]="activeTab() === 'donations'"
+          aria-controls="tabpanel-donations"
           [class.border-indigo-500]="activeTab() === 'donations'"
           [class.text-indigo-400]="activeTab() === 'donations'"
           [class.border-transparent]="activeTab() !== 'donations'"
           [class.text-slate-400]="activeTab() !== 'donations'"
           class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
           Donaciones y Enlaces
@@ -163,22 +184,32 @@ import {
 
         <button
           (click)="activeTab.set('raw')"
+          role="tab"
+          id="tab-raw"
+          [attr.aria-selected]="activeTab() === 'raw'"
+          aria-controls="tabpanel-raw"
           [class.border-indigo-500]="activeTab() === 'raw'"
           [class.text-indigo-400]="activeTab() === 'raw'"
           [class.border-transparent]="activeTab() !== 'raw'"
           [class.text-slate-400]="activeTab() !== 'raw'"
           class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
           </svg>
           Visor de Base de Datos (Claves Raw)
         </button>
-      </div>
+      </nav>
 
       <!-- 1. TAB: VERSION CONFIG -->
       @if (activeTab() === 'version') {
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <section
+          id="tabpanel-version"
+          role="tabpanel"
+          tabindex="0"
+          aria-labelledby="tab-version"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+        >
           <div class="flex items-center justify-between border-b border-slate-800 pb-4">
             <div>
               <h3 class="text-lg font-bold text-white">Actualizador Oficial de la App</h3>
@@ -286,12 +317,18 @@ import {
               Guardar Configuración de Versión
             </button>
           </div>
-        </div>
+        </section>
       }
 
       <!-- 2. TAB: BANNER CONFIG -->
       @if (activeTab() === 'banner') {
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <section
+          id="tabpanel-banner"
+          role="tabpanel"
+          tabindex="0"
+          aria-labelledby="tab-banner"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+        >
           <div class="flex items-center justify-between border-b border-slate-800 pb-4">
             <div>
               <h3 class="text-lg font-bold text-white">Banner Global Destacado</h3>
@@ -414,12 +451,18 @@ import {
               Guardar Banner
             </button>
           </div>
-        </div>
+        </section>
       }
 
       <!-- 3. TAB: MAINTENANCE MODE -->
       @if (activeTab() === 'maintenance') {
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <section
+          id="tabpanel-maintenance"
+          role="tabpanel"
+          tabindex="0"
+          aria-labelledby="tab-maintenance"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+        >
           <div class="flex items-center justify-between border-b border-slate-800 pb-4">
             <div>
               <h3 class="text-lg font-bold text-white">Modo Mantenimiento</h3>
@@ -471,12 +514,18 @@ import {
               Guardar Estado de Mantenimiento
             </button>
           </div>
-        </div>
+        </section>
       }
 
       <!-- 4. TAB: CHAT & COMMUNITY -->
       @if (activeTab() === 'chat') {
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <section
+          id="tabpanel-chat"
+          role="tabpanel"
+          tabindex="0"
+          aria-labelledby="tab-chat"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+        >
           <div class="flex items-center justify-between border-b border-slate-800 pb-4">
             <div>
               <h3 class="text-lg font-bold text-white">Parámetros del Chat Global</h3>
@@ -535,12 +584,18 @@ import {
               Guardar Configuración de Chat
             </button>
           </div>
-        </div>
+        </section>
       }
 
       <!-- 5. TAB: DONATIONS -->
       @if (activeTab() === 'donations') {
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <section
+          id="tabpanel-donations"
+          role="tabpanel"
+          tabindex="0"
+          aria-labelledby="tab-donations"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+        >
           <div class="border-b border-slate-800 pb-4">
             <h3 class="text-lg font-bold text-white">Canales Oficiales de Donación y Soporte</h3>
             <p class="text-xs text-slate-400">Configura los enlaces que aparecen en los diálogos de soporte y botón "Invitame un café".</p>
@@ -583,12 +638,18 @@ import {
               Guardar Canales de Donación
             </button>
           </div>
-        </div>
+        </section>
       }
 
       <!-- 6. TAB: RAW CONFIGS -->
       @if (activeTab() === 'raw') {
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <section
+          id="tabpanel-raw"
+          role="tabpanel"
+          tabindex="0"
+          aria-labelledby="tab-raw"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+        >
           <div class="flex items-center justify-between border-b border-slate-800 pb-4">
             <div>
               <h3 class="text-lg font-bold text-white">Todas las Claves Almacenadas en PostgreSQL</h3>
@@ -612,7 +673,7 @@ import {
               </div>
             }
           </div>
-        </div>
+        </section>
       }
     </div>
   `

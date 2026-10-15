@@ -22,12 +22,14 @@ import { ContentItem } from '../../core/models/content.models';
         </a>
       </div>
 
-      <!-- BARRA DE BÚSQUEDA Y FILTROS -->
-      <div class="card filters-card">
+      <!-- BARRA DE BÚSQUEDA Y FILTROS ACCESIBLE -->
+      <section class="card filters-card" aria-label="Búsqueda y filtros del catálogo">
         <div class="filters-row">
           <div class="search-box">
-            <span class="search-icon">🔍</span>
+            <label for="catalog-search" class="sr-only">Buscar obras por título, director, narrador o género</label>
+            <span class="search-icon" aria-hidden="true">🔍</span>
             <input
+              id="catalog-search"
               type="text"
               class="form-control"
               placeholder="Buscar por título, director, narrador o género..."
@@ -36,44 +38,52 @@ import { ContentItem } from '../../core/models/content.models';
             />
           </div>
 
-          <select class="form-control type-select" [(ngModel)]="selectedType" (change)="applyFilters()">
-            <option value="">Todos los tipos</option>
+          <label for="catalog-type" class="sr-only">Filtrar por formato o tipo de contenido</label>
+          <select id="catalog-type" class="form-control type-select" [(ngModel)]="selectedType" (change)="applyFilters()">
+            <option value="">Todos los formatos</option>
             <option value="MOVIE">Películas</option>
             <option value="SERIES">Series</option>
             <option value="DOCUMENTARY">Documentales</option>
             <option value="SHORT">Cortometrajes</option>
           </select>
 
-          <button class="btn btn-secondary" (click)="applyFilters()">Filtrar</button>
+          <button
+            class="btn btn-secondary cursor-pointer"
+            (click)="applyFilters()"
+            aria-label="Aplicar criterios de búsqueda y filtros"
+          >
+            Filtrar
+          </button>
         </div>
-      </div>
+      </section>
 
       <!-- LISTA DE CONTENIDO -->
       @if (isLoading()) {
-        <div class="card loading-card">
-          <div class="spinner"></div>
+        <div class="card loading-card" role="status" aria-live="polite">
+          <div class="spinner" aria-hidden="true"></div>
           <p>Cargando catálogo cinematográfico...</p>
         </div>
       } @else if (contents().length === 0) {
-        <div class="card empty-card">
-          <span class="empty-icon">🎬</span>
-          <h3>No se encontraron obras</h3>
+        <div class="card empty-card" role="status">
+          <span class="empty-icon" aria-hidden="true">🎬</span>
+          <h2>No se encontraron obras</h2>
           <p>Prueba con otros términos de búsqueda o añade una nueva ficha al catálogo.</p>
-          <a routerLink="/catalog/create" class="btn btn-primary">Crear Primera Ficha Exclusiva</a>
+          <a routerLink="/catalog/create" class="btn btn-primary cursor-pointer">Crear Primera Ficha Exclusiva</a>
         </div>
       } @else {
         <div class="card table-card">
           <div class="table-responsive">
-            <table class="table">
+            <table class="table" role="table">
+              <caption class="sr-only">Listado de obras cinematográficas indexadas con audiodescripción</caption>
               <thead>
                 <tr>
-                  <th>Obra</th>
-                  <th>Tipo</th>
-                  <th>Idioma / Doblaje</th>
-                  <th>Audiodescripción</th>
-                  <th>Vistas</th>
-                  <th>Valoración</th>
-                  <th>Acciones</th>
+                  <th scope="col">Obra & Ficha</th>
+                  <th scope="col">Formato</th>
+                  <th scope="col">Idioma / Doblaje</th>
+                  <th scope="col">Audiodescripción</th>
+                  <th scope="col">Vistas</th>
+                  <th scope="col">Calificación</th>
+                  <th scope="col">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -83,16 +93,16 @@ import { ContentItem } from '../../core/models/content.models';
                       <div class="item-cell">
                         <div class="cover-thumb">
                           @if (item.coverUrl) {
-                            <img [src]="item.coverUrl" [alt]="item.title" onerror="this.style.display='none'" />
+                            <img [src]="item.coverUrl" [alt]="'Carátula de ' + item.title" onerror="this.style.display='none'" />
                           } @else {
-                            <span>🎬</span>
+                            <span aria-hidden="true">🎬</span>
                           }
                         </div>
                         <div class="item-meta">
                           <div class="title-row">
                             <strong>{{ item.title }}</strong>
                             @if (item.isExclusive) {
-                              <span class="badge badge-exclusive">⭐ Exclusiva</span>
+                              <span class="badge badge-exclusive" title="Producción propia del catálogo exclusivo">⭐ Exclusiva</span>
                             }
                           </div>
                           <small class="item-sub">
@@ -124,11 +134,21 @@ import { ContentItem } from '../../core/models/content.models';
                     </td>
                     <td>
                       <div class="action-buttons">
-                        <button class="btn btn-secondary btn-sm" (click)="copyAudioLink(item)" title="Copiar enlace de streaming">
-                          🔗
+                        <button
+                          class="btn btn-secondary btn-sm cursor-pointer"
+                          (click)="copyAudioLink(item)"
+                          [attr.aria-label]="'Copiar enlace de reproducción de ' + item.title"
+                          title="Copiar enlace de streaming"
+                        >
+                          <span aria-hidden="true">🔗</span>
                         </button>
-                        <button class="btn btn-danger btn-sm" (click)="confirmDelete(item)" title="Eliminar del catálogo">
-                          🗑️
+                        <button
+                          class="btn btn-danger btn-sm cursor-pointer"
+                          (click)="confirmDelete(item)"
+                          [attr.aria-label]="'Eliminar ' + item.title + ' del catálogo'"
+                          title="Eliminar del catálogo"
+                        >
+                          <span aria-hidden="true">🗑️</span>
                         </button>
                       </div>
                     </td>
@@ -138,19 +158,29 @@ import { ContentItem } from '../../core/models/content.models';
             </table>
           </div>
 
-          <!-- PAGINACIÓN -->
-          <div class="pagination-bar">
-            <span>Total: {{ totalItems() }} obras encontradas</span>
+          <!-- PAGINACIÓN ACCESIBLE -->
+          <nav class="pagination-bar" aria-label="Paginación de resultados del catálogo">
+            <span role="status" aria-live="polite">Total: {{ totalItems() }} obras encontradas</span>
             <div class="page-controls">
-              <button class="btn btn-secondary btn-sm" [disabled]="currentPage() === 1" (click)="changePage(currentPage() - 1)">
+              <button
+                class="btn btn-secondary btn-sm cursor-pointer"
+                [disabled]="currentPage() === 1"
+                (click)="changePage(currentPage() - 1)"
+                aria-label="Ir a la página anterior"
+              >
                 Anterior
               </button>
-              <span>Página {{ currentPage() }} de {{ totalPages() }}</span>
-              <button class="btn btn-secondary btn-sm" [disabled]="currentPage() >= totalPages()" (click)="changePage(currentPage() + 1)">
+              <span aria-current="page">Página {{ currentPage() }} de {{ totalPages() }}</span>
+              <button
+                class="btn btn-secondary btn-sm cursor-pointer"
+                [disabled]="currentPage() >= totalPages()"
+                (click)="changePage(currentPage() + 1)"
+                aria-label="Ir a la página siguiente"
+              >
                 Siguiente
               </button>
             </div>
-          </div>
+          </nav>
         </div>
       }
     </div>

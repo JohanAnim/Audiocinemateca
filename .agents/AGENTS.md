@@ -70,6 +70,12 @@
       6. **Configuración Remota y Actualizador APK (`config/`):** Editor de versiones de la app Android (versión, `versionCode`, changelog, enlace directo, versión mínima y toggle de actualización forzada), gestor de banner en el Feed, modo mantenimiento e inspección de claves raw.
       7. **Centro de Agentes de IA y Automatizaciones (`agents/`):** Parámetros de Aura 2.0 (modelo de lenguaje, temperatura, system prompt maestro, activación de herramientas `play_content` y búsqueda de catálogo), emisor de Notificaciones Push masivas (FCM) y automatizaciones Cron.
     - **Compilación de Producción Verificada:** `npm run build` ejecutado con éxito total (0 errores, 0 warnings).
+    - **Accesibilidad Universal y Semántica Rigurosa (WCAG 2.1 AAA):**
+      - **Enlace de Salto (Skip-Link):** Enlace directo `.skip-link` visible al tabular para saltar navegación y acceder inmediatamente al contenido principal (`#main-content`).
+      - **Landmarks HTML5 Semánticos:** Estructura completa con `<header role="banner">`, `<aside role="navigation">`, `<main id="main-content" role="main">` y `<footer role="contentinfo">`.
+      - **Pie de Página Institucional (Footer):** Integrado en el layout con telemetría de Oracle Cloud/Dokploy, estado de réplicas en PostgreSQL 16, Socket.IO `/ws/chat`, reloj en tiempo real sincronizado, certificaciones de lectores de pantalla (TalkBack, NVDA, JAWS) y copyright oficial.
+      - **Tablas y Diálogos Accesibles:** Tablas con `<caption class="sr-only">`, encabezados con `<th scope="col">`, botones de acción con descripciones semánticas completas (`aria-label`), modales con `role="dialog"`, `aria-modal="true"` y pestañas con patrón `role="tablist"` / `role="tab"` / `role="tabpanel"`.
+      - **Respeto a Preferencias del Usuario:** Soporte nativo para `@media (prefers-reduced-motion: reduce)` y anillos de foco de alto contraste `:focus-visible` (3px solid `#818cf8`).
 
 
 - **Blindaje Permanente de Google Cast en Segundo Plano y Pausa Automática por Llamadas (Audio Focus) ([PlayerService.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/player/PlayerService.kt) & [CastOptionsProvider.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/cast/CastOptionsProvider.kt)):**

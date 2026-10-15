@@ -33,17 +33,24 @@ import { ChatMessage, Announcement } from '../../core/models/community.models';
             </button>
           </div>
 
-          <!-- LISTA DE MENSAJES -->
-          <div class="messages-container" #messagesList>
+          <!-- LISTA DE MENSAJES (ACCESSIBLE LIVE LOG) -->
+          <div
+            class="messages-container"
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+            aria-label="Transmisión de mensajes de la comunidad en tiempo real"
+            #messagesList
+          >
             @if (community.messages().length === 0) {
-              <div class="empty-messages">
+              <div class="empty-messages" role="status">
                 <p>No hay mensajes recientes en el chat global.</p>
               </div>
             }
 
             @for (msg of community.messages(); track msg.id) {
-              <div class="message-item" [class.admin-msg]="msg.user?.role === 'ADMIN'">
-                <div class="msg-avatar">
+              <article class="message-item" [class.admin-msg]="msg.user?.role === 'ADMIN'" aria-label="Mensaje de {{ msg.user?.displayName || msg.user?.username }}">
+                <div class="msg-avatar" aria-hidden="true">
                   {{ (msg.user?.displayName || msg.user?.username || 'U').charAt(0).toUpperCase() }}
                 </div>
                 <div class="msg-body">
@@ -52,53 +59,61 @@ import { ChatMessage, Announcement } from '../../core/models/community.models';
                     @if (msg.user?.role === 'ADMIN') {
                       <span class="badge badge-danger">ADMIN</span>
                     }
-                    <small class="msg-time">{{ msg.createdAt | date:'shortTime' }}</small>
+                    <time class="msg-time">{{ msg.createdAt | date:'shortTime' }}</time>
                   </div>
                   <div class="msg-text">{{ msg.content }}</div>
                 </div>
                 <button
-                  class="btn-delete-msg"
+                  class="btn-delete-msg cursor-pointer"
                   (click)="deleteMessage(msg.id)"
+                  [attr.aria-label]="'Eliminar mensaje de ' + (msg.user?.displayName || msg.user?.username)"
                   title="Eliminar este mensaje para todos en tiempo real"
                 >
-                  🗑️
+                  <span aria-hidden="true">🗑️</span>
                 </button>
-              </div>
+              </article>
             }
           </div>
 
           <!-- ENTRADA DE MENSAJE ADMINISTRATIVO -->
-          <form class="chat-input-bar" (ngSubmit)="sendAdminMessage()">
+          <form class="chat-input-bar" (ngSubmit)="sendAdminMessage()" aria-label="Enviar mensaje como administrador">
+            <label for="admin-chat-input" class="sr-only">Escribe un mensaje administrativo para el chat global</label>
             <input
+              id="admin-chat-input"
               type="text"
               class="form-control"
               placeholder="Escribe un mensaje como Administrador en el chat global..."
               [(ngModel)]="outgoingMessage"
               name="outgoing"
             />
-            <button type="submit" class="btn btn-primary" [disabled]="!outgoingMessage.trim()">
+            <button
+              type="submit"
+              class="btn btn-primary cursor-pointer"
+              [disabled]="!outgoingMessage.trim()"
+              aria-label="Publicar mensaje en el chat global"
+            >
               Enviar
             </button>
           </form>
         </div>
 
         <!-- SECCIÓN DERECHA: USUARIOS CONECTADOS & ANUNCIOS OFICIALES -->
-        <div class="side-panels">
+        <aside class="side-panels" aria-label="Panel lateral de presencia y comunicados">
           <!-- USUARIOS EN LÍNEA EN VIVO -->
-          <div class="card users-online-card">
+          <section class="card users-online-card" aria-labelledby="online-users-title">
             <div class="side-head">
-              <h4>👥 Conectados Ahora ({{ community.onlineUsers().length }})</h4>
-              <span class="badge badge-success">En Vivo</span>
+              <h4 id="online-users-title">👥 Conectados Ahora ({{ community.onlineUsers().length }})</h4>
+              <span class="badge badge-success" role="status" aria-live="polite">En Vivo</span>
             </div>
 
-            <div class="online-users-list">
+            <div class="online-users-list" role="list">
               @if (community.onlineUsers().length === 0) {
-                <small class="no-users">Esperando conexiones activas...</small>
+                <small class="no-users" role="status">Esperando conexiones activas...</small>
               }
 
               @for (u of community.onlineUsers(); track u.id) {
-                <div class="online-user-item">
-                  <span class="dot online"></span>
+                <div class="online-user-item" role="listitem">
+                  <span class="dot online" aria-hidden="true"></span>
                   <div class="u-info">
                     <span class="u-name">{{ u.displayName || u.username }}</span>
                     <small class="u-device">📱 {{ u.deviceInfo || 'Android' }}</small>
@@ -109,17 +124,18 @@ import { ChatMessage, Announcement } from '../../core/models/community.models';
                 </div>
               }
             </div>
-          </div>
+          </section>
 
           <!-- GESTOR DE COMUNICADOS Y ANUNCIOS -->
-          <div class="card announcements-card">
+          <section class="card announcements-card" aria-labelledby="announcement-form-title">
             <div class="side-head">
-              <h4>📢 Publicar Comunicado</h4>
+              <h4 id="announcement-form-title">📢 Publicar Comunicado</h4>
             </div>
 
             <div class="form-group mt-2">
-              <label class="form-label">Título del Comunicado</label>
+              <label for="announcement-title-input" class="form-label">Título del Comunicado</label>
               <input
+                id="announcement-title-input"
                 type="text"
                 class="form-control"
                 placeholder="Ej. Nueva Versión Disponible"
@@ -128,8 +144,9 @@ import { ChatMessage, Announcement } from '../../core/models/community.models';
             </div>
 
             <div class="form-group">
-              <label class="form-label">Contenido del Mensaje *</label>
+              <label for="announcement-content-input" class="form-label">Contenido del Mensaje *</label>
               <textarea
+                id="announcement-content-input"
                 class="form-control"
                 rows="3"
                 placeholder="Escribe el aviso que se desplegará en la app para todos los usuarios..."
@@ -138,33 +155,42 @@ import { ChatMessage, Announcement } from '../../core/models/community.models';
             </div>
 
             <button
-              class="btn btn-primary btn-block"
+              class="btn btn-primary btn-block cursor-pointer"
               (click)="publishAnnouncement()"
               [disabled]="!announcementContent.trim() || isPublishing()"
+              aria-label="Publicar comunicado oficial a toda la comunidad"
             >
               @if (isPublishing()) {
-                <span>Publicando...</span>
+                <span>Publicando en vivo...</span>
               } @else {
-                <span>📢 Emitir Anuncio Oficial</span>
+                <span aria-hidden="true">📢</span>
+                <span>Emitir Anuncio Oficial</span>
               }
             </button>
 
             <!-- LISTA DE ANUNCIOS RECIENTES -->
-            <div class="announcements-history mt-3">
+            <div class="announcements-history mt-3" aria-label="Historial de anuncios activos">
               <span class="form-label">Anuncios Activos</span>
               @for (ann of announcements(); track ann.id) {
-                <div class="announcement-item">
+                <article class="announcement-item">
                   <div class="ann-info">
                     <strong>{{ ann.title || 'Aviso Oficial' }}</strong>
                     <p>{{ ann.content }}</p>
-                    <small>{{ ann.createdAt | date:'short' }}</small>
+                    <time class="ann-time">{{ ann.createdAt | date:'short' }}</time>
                   </div>
-                  <button class="btn btn-danger btn-sm" (click)="deleteAnnouncement(ann.id)">✕</button>
-                </div>
+                  <button
+                    class="btn btn-danger btn-sm cursor-pointer"
+                    (click)="deleteAnnouncement(ann.id)"
+                    [attr.aria-label]="'Eliminar anuncio ' + (ann.title || 'oficial')"
+                    title="Eliminar este anuncio oficial"
+                  >
+                    ✕
+                  </button>
+                </article>
               }
             </div>
-          </div>
-        </div>
+          </section>
+        </aside>
       </div>
     </div>
   `,

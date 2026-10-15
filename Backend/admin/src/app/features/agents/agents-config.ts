@@ -88,17 +88,21 @@ export interface PushNotificationPayload {
         </div>
       }
 
-      <!-- TABS -->
-      <div class="flex border-b border-slate-800 gap-2 overflow-x-auto pb-px">
+      <!-- TABS ACCESIBLES (WCAG 2.1) -->
+      <nav class="flex border-b border-slate-800 gap-2 overflow-x-auto pb-px" role="tablist" aria-label="Secciones de agentes y tareas programadas">
         <button
           (click)="activeTab.set('aura')"
+          role="tab"
+          id="tab-aura"
+          [attr.aria-selected]="activeTab() === 'aura'"
+          aria-controls="tabpanel-aura"
           [class.border-purple-500]="activeTab() === 'aura'"
           [class.text-purple-400]="activeTab() === 'aura'"
           [class.border-transparent]="activeTab() !== 'aura'"
           [class.text-slate-400]="activeTab() !== 'aura'"
           class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
           </svg>
           Aura 2.0 (Inteligencia Artificial)
@@ -106,13 +110,17 @@ export interface PushNotificationPayload {
 
         <button
           (click)="activeTab.set('push')"
+          role="tab"
+          id="tab-push"
+          [attr.aria-selected]="activeTab() === 'push'"
+          aria-controls="tabpanel-push"
           [class.border-purple-500]="activeTab() === 'push'"
           [class.text-purple-400]="activeTab() === 'push'"
           [class.border-transparent]="activeTab() !== 'push'"
           [class.text-slate-400]="activeTab() !== 'push'"
           class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
           </svg>
           Emisor Masivo de Notificaciones Push (FCM)
@@ -120,22 +128,32 @@ export interface PushNotificationPayload {
 
         <button
           (click)="activeTab.set('cron')"
+          role="tab"
+          id="tab-cron"
+          [attr.aria-selected]="activeTab() === 'cron'"
+          aria-controls="tabpanel-cron"
           [class.border-purple-500]="activeTab() === 'cron'"
           [class.text-purple-400]="activeTab() === 'cron'"
           [class.border-transparent]="activeTab() !== 'cron'"
           [class.text-slate-400]="activeTab() !== 'cron'"
           class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           Cron Jobs y Tareas de Fondo
         </button>
-      </div>
+      </nav>
 
       <!-- 1. TAB: AURA IA -->
       @if (activeTab() === 'aura') {
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <section
+          id="tabpanel-aura"
+          role="tabpanel"
+          tabindex="0"
+          aria-labelledby="tab-aura"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+        >
           <div class="flex items-center justify-between border-b border-slate-800 pb-4">
             <div>
               <h3 class="text-lg font-bold text-white flex items-center gap-2">
@@ -278,12 +296,18 @@ export interface PushNotificationPayload {
               Guardar Configuración de Aura IA
             </button>
           </div>
-        </div>
+        </section>
       }
 
       <!-- 2. TAB: PUSH NOTIFICATIONS -->
       @if (activeTab() === 'push') {
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <section
+          id="tabpanel-push"
+          role="tabpanel"
+          tabindex="0"
+          aria-labelledby="tab-push"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+        >
           <div class="border-b border-slate-800 pb-4">
             <h3 class="text-lg font-bold text-white flex items-center gap-2">
               <span>Emisión de Notificaciones Masivas (FCM)</span>
@@ -381,12 +405,18 @@ export interface PushNotificationPayload {
               Disparar Notificación Push Inmediata
             </button>
           </div>
-        </div>
+        </section>
       }
 
       <!-- 3. TAB: CRON JOBS -->
       @if (activeTab() === 'cron') {
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <section
+          id="tabpanel-cron"
+          role="tabpanel"
+          tabindex="0"
+          aria-labelledby="tab-cron"
+          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+        >
           <div class="border-b border-slate-800 pb-4">
             <h3 class="text-lg font-bold text-white">Automatizaciones y Tareas Programadas (Cron)</h3>
             <p class="text-xs text-slate-400">Procesos autónomos en segundo plano para mantenimiento de la base de datos y auditoría de enlaces.</p>
@@ -515,7 +545,7 @@ export interface PushNotificationPayload {
               Guardar Automatizaciones Cron
             </button>
           </div>
-        </div>
+        </section>
       }
     </div>
   `

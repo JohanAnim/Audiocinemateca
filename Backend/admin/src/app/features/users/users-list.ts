@@ -17,12 +17,14 @@ import { UserListItem } from '../../core/models/user.models';
         </div>
       </div>
 
-      <!-- FILTROS -->
-      <div class="card filters-card">
+      <!-- FILTROS ACCESIBLES -->
+      <section class="card filters-card" aria-label="Búsqueda y filtros de usuarios">
         <div class="filters-row">
           <div class="search-box">
-            <span class="search-icon">🔍</span>
+            <label for="user-search" class="sr-only">Buscar por UID, nombre de usuario, correo o nombre</label>
+            <span class="search-icon" aria-hidden="true">🔍</span>
             <input
+              id="user-search"
               type="text"
               class="form-control"
               placeholder="Buscar por UID, usuario, correo o nombre..."
@@ -31,47 +33,50 @@ import { UserListItem } from '../../core/models/user.models';
             />
           </div>
 
-          <select class="form-control role-select" [(ngModel)]="selectedRole" (change)="applyFilters()">
+          <label for="role-filter" class="sr-only">Filtrar por rol de usuario</label>
+          <select id="role-filter" class="form-control role-select" [(ngModel)]="selectedRole" (change)="applyFilters()">
             <option value="">Todos los roles</option>
             <option value="USER">Usuarios (USER)</option>
             <option value="MODERATOR">Moderadores</option>
             <option value="ADMIN">Administradores</option>
           </select>
 
-          <select class="form-control status-select" [(ngModel)]="selectedOnline" (change)="applyFilters()">
+          <label for="status-filter" class="sr-only">Filtrar por estado de conexión</label>
+          <select id="status-filter" class="form-control status-select" [(ngModel)]="selectedOnline" (change)="applyFilters()">
             <option value="">Cualquier estado</option>
             <option value="true">Solo en línea</option>
             <option value="false">Desconectados</option>
           </select>
 
-          <button class="btn btn-secondary" (click)="applyFilters()">Filtrar</button>
+          <button class="btn btn-secondary cursor-pointer" (click)="applyFilters()" aria-label="Aplicar filtros de búsqueda">Filtrar</button>
         </div>
-      </div>
+      </section>
 
       <!-- TABLA DE USUARIOS -->
       @if (isLoading()) {
-        <div class="card loading-card">
-          <div class="spinner"></div>
+        <div class="card loading-card" role="status" aria-live="polite">
+          <div class="spinner" aria-hidden="true"></div>
           <p>Cargando lista de usuarios...</p>
         </div>
       } @else if (users().length === 0) {
-        <div class="card empty-card">
-          <span>👥</span>
-          <h3>No se encontraron usuarios</h3>
+        <div class="card empty-card" role="status">
+          <span aria-hidden="true">👥</span>
+          <h2>No se encontraron usuarios</h2>
         </div>
       } @else {
         <div class="card table-card">
           <div class="table-responsive">
-            <table class="table">
+            <table class="table" role="table">
+              <caption class="sr-only">Directorio de usuarios registrados, roles y estado de conexión</caption>
               <thead>
                 <tr>
-                  <th>Usuario & UID</th>
-                  <th>Correo & Proveedor</th>
-                  <th>Rol</th>
-                  <th>Presencia & Dispositivo</th>
-                  <th>Actividad</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
+                  <th scope="col">Usuario & UID</th>
+                  <th scope="col">Correo & Proveedor</th>
+                  <th scope="col">Rol</th>
+                  <th scope="col">Presencia & Dispositivo</th>
+                  <th scope="col">Actividad</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -79,13 +84,18 @@ import { UserListItem } from '../../core/models/user.models';
                   <tr>
                     <td>
                       <div class="user-cell">
-                        <div class="avatar" [class.online-border]="user.isOnline">
+                        <div class="avatar" [class.online-border]="user.isOnline" aria-hidden="true">
                           {{ (user.displayName || user.username).charAt(0).toUpperCase() }}
                         </div>
                         <div class="user-meta">
                           <strong class="user-name">{{ user.displayName || user.username }}</strong>
                           <span class="user-handle">&#64;{{ user.username }}</span>
-                          <button class="uid-tag" (click)="copyUid(user.id)" title="Copiar UID de base de datos">
+                          <button
+                            class="uid-tag cursor-pointer"
+                            (click)="copyUid(user.id)"
+                            [attr.aria-label]="'Copiar UID ' + user.id + ' al portapapeles'"
+                            title="Copiar UID de base de datos"
+                          >
                             UID: {{ user.id.slice(0, 8) }}... 📋
                           </button>
                         </div>
@@ -97,7 +107,7 @@ import { UserListItem } from '../../core/models/user.models';
                         <span>{{ user.email }}</span>
                         <div class="providers-row">
                           @for (acc of user.accounts; track acc.providerId) {
-                            <span class="provider-pill">{{ acc.provider }}</span>
+                            <span class="provider-pill" title="Proveedor de autenticación">{{ acc.provider }}</span>
                           }
                         </div>
                       </div>
@@ -112,8 +122,10 @@ import { UserListItem } from '../../core/models/user.models';
                     <td>
                       <div class="device-cell">
                         <div class="online-indicator">
-                          <span class="dot" [class.online]="user.isOnline"></span>
-                          <span>{{ user.isOnline ? 'En Línea' : 'Desconectado' }}</span>
+                          <span class="dot" [class.online]="user.isOnline" aria-hidden="true"></span>
+                          <span [attr.aria-label]="user.isOnline ? 'En línea ahora mismo' : 'Desconectado'">
+                            {{ user.isOnline ? 'En Línea' : 'Desconectado' }}
+                          </span>
                         </div>
                         <small class="device-name">📱 {{ user.deviceInfo || 'Android' }}</small>
                         @if (user.currentlyListening) {
@@ -144,39 +156,43 @@ import { UserListItem } from '../../core/models/user.models';
                       <div class="actions-group">
                         <!-- CAMBIAR ROL -->
                         <button
-                          class="btn btn-secondary btn-sm"
+                          class="btn btn-secondary btn-sm cursor-pointer"
                           (click)="openRoleModal(user)"
+                          [attr.aria-label]="'Cambiar rol y permisos de ' + user.username"
                           title="Cambiar permisos y rol"
                         >
-                          👑
+                          <span aria-hidden="true">👑</span>
                         </button>
 
                         <!-- BANEAR / DESBANEAR -->
                         @if (!user.isBanned) {
                           <button
-                            class="btn btn-danger btn-sm"
+                            class="btn btn-danger btn-sm cursor-pointer"
                             (click)="openBanModal(user)"
+                            [attr.aria-label]="'Suspender o sancionar a ' + user.username"
                             title="Suspender o banear usuario"
                           >
-                            🚫
+                            <span aria-hidden="true">🚫</span>
                           </button>
                         } @else {
                           <button
-                            class="btn btn-success btn-sm"
+                            class="btn btn-success btn-sm cursor-pointer"
                             (click)="unbanUser(user)"
+                            [attr.aria-label]="'Levantar suspensión a ' + user.username"
                             title="Levantar sanción y desbanear"
                           >
-                            ✅
+                            <span aria-hidden="true">✅</span>
                           </button>
                         }
 
                         <!-- ELIMINAR -->
                         <button
-                          class="btn btn-secondary btn-sm btn-delete"
+                          class="btn btn-secondary btn-sm btn-delete cursor-pointer"
                           (click)="confirmDelete(user)"
+                          [attr.aria-label]="'Eliminar cuenta de ' + user.username"
                           title="Eliminar usuario definitivamente"
                         >
-                          🗑️
+                          <span aria-hidden="true">🗑️</span>
                         </button>
                       </div>
                     </td>
@@ -186,29 +202,51 @@ import { UserListItem } from '../../core/models/user.models';
             </table>
           </div>
 
-          <!-- PAGINACIÓN -->
-          <div class="pagination-bar">
-            <span>Total: {{ totalUsers() }} usuarios</span>
+          <!-- PAGINACIÓN ACCESIBLE -->
+          <nav class="pagination-bar" aria-label="Paginación del directorio de usuarios">
+            <span role="status" aria-live="polite">Total: {{ totalUsers() }} usuarios</span>
             <div class="page-controls">
-              <button class="btn btn-secondary btn-sm" [disabled]="currentPage() === 1" (click)="changePage(currentPage() - 1)">
+              <button
+                class="btn btn-secondary btn-sm cursor-pointer"
+                [disabled]="currentPage() === 1"
+                (click)="changePage(currentPage() - 1)"
+                aria-label="Ir a la página anterior"
+              >
                 Anterior
               </button>
-              <span>Página {{ currentPage() }} de {{ totalPages() }}</span>
-              <button class="btn btn-secondary btn-sm" [disabled]="currentPage() >= totalPages()" (click)="changePage(currentPage() + 1)">
+              <span aria-current="page">Página {{ currentPage() }} de {{ totalPages() }}</span>
+              <button
+                class="btn btn-secondary btn-sm cursor-pointer"
+                [disabled]="currentPage() >= totalPages()"
+                (click)="changePage(currentPage() + 1)"
+                aria-label="Ir a la página siguiente"
+              >
                 Siguiente
               </button>
             </div>
-          </div>
+          </nav>
         </div>
       }
 
-      <!-- MODAL DE SANCIÓN / BANEO -->
+      <!-- MODAL DE SANCIÓN / BANEO ACCESIBLE (WCAG 2.1) -->
       @if (banModalUser()) {
-        <div class="modal-backdrop">
-          <div class="modal-container">
+        <div class="modal-backdrop" role="presentation">
+          <div
+            class="modal-container"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ban-modal-title"
+            tabindex="-1"
+          >
             <div class="modal-header">
-              <h3>🚫 Suspender Usuario &#64;{{ banModalUser()?.username }}</h3>
-              <button class="btn-close" (click)="banModalUser.set(null)">✕</button>
+              <h2 id="ban-modal-title">🚫 Suspender Usuario &#64;{{ banModalUser()?.username }}</h2>
+              <button
+                class="btn-close cursor-pointer"
+                (click)="banModalUser.set(null)"
+                aria-label="Cerrar diálogo de sanción"
+              >
+                ✕
+              </button>
             </div>
             <div class="modal-body">
               <p class="modal-desc">
@@ -216,19 +254,21 @@ import { UserListItem } from '../../core/models/user.models';
               </p>
 
               <div class="form-group mt-3">
-                <label class="form-label">Motivo de la Sanción *</label>
+                <label for="ban-reason-input" class="form-label">Motivo de la Sanción *</label>
                 <input
+                  id="ban-reason-input"
                   type="text"
                   class="form-control"
                   placeholder="Ej. Uso de vocabulario ofensivo en el chat global"
                   [(ngModel)]="banReason"
                   required
+                  aria-required="true"
                 />
               </div>
 
               <div class="form-group">
-                <label class="form-label">Duración de la Suspensión</label>
-                <select class="form-control" [(ngModel)]="banDurationHours">
+                <label for="ban-duration-select" class="form-label">Duración de la Suspensión</label>
+                <select id="ban-duration-select" class="form-control" [(ngModel)]="banDurationHours">
                   <option [ngValue]="24">24 Horas (1 Día)</option>
                   <option [ngValue]="72">72 Horas (3 Días)</option>
                   <option [ngValue]="168">7 Días (1 Semana)</option>
@@ -238,8 +278,8 @@ import { UserListItem } from '../../core/models/user.models';
               </div>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-secondary" (click)="banModalUser.set(null)">Cancelar</button>
-              <button class="btn btn-danger" (click)="submitBan()" [disabled]="!banReason.trim()">
+              <button class="btn btn-secondary cursor-pointer" (click)="banModalUser.set(null)">Cancelar</button>
+              <button class="btn btn-danger cursor-pointer" (click)="submitBan()" [disabled]="!banReason.trim()">
                 Aplicar Sanción
               </button>
             </div>
@@ -247,18 +287,30 @@ import { UserListItem } from '../../core/models/user.models';
         </div>
       }
 
-      <!-- MODAL DE CAMBIO DE ROL -->
+      <!-- MODAL DE CAMBIO DE ROL ACCESIBLE (WCAG 2.1) -->
       @if (roleModalUser()) {
-        <div class="modal-backdrop">
-          <div class="modal-container">
+        <div class="modal-backdrop" role="presentation">
+          <div
+            class="modal-container"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="role-modal-title"
+            tabindex="-1"
+          >
             <div class="modal-header">
-              <h3>👑 Cambiar Rol de &#64;{{ roleModalUser()?.username }}</h3>
-              <button class="btn-close" (click)="roleModalUser.set(null)">✕</button>
+              <h2 id="role-modal-title">👑 Cambiar Rol de &#64;{{ roleModalUser()?.username }}</h2>
+              <button
+                class="btn-close cursor-pointer"
+                (click)="roleModalUser.set(null)"
+                aria-label="Cerrar diálogo de cambio de rol"
+              >
+                ✕
+              </button>
             </div>
             <div class="modal-body">
               <div class="form-group">
-                <label class="form-label">Seleccionar Nivel de Acceso</label>
-                <select class="form-control" [(ngModel)]="newRole">
+                <label for="role-select-modal" class="form-label">Seleccionar Nivel de Acceso</label>
+                <select id="role-select-modal" class="form-control" [(ngModel)]="newRole">
                   <option value="USER">USER (Usuario estándar de la app)</option>
                   <option value="MODERATOR">MODERATOR (Moderador de chat y avisos)</option>
                   <option value="ADMIN">ADMIN (Acceso total al panel de control)</option>
@@ -266,8 +318,8 @@ import { UserListItem } from '../../core/models/user.models';
               </div>
             </div>
             <div class="modal-footer">
-              <button class="btn btn-secondary" (click)="roleModalUser.set(null)">Cancelar</button>
-              <button class="btn btn-primary" (click)="submitRole()">Guardar Rol</button>
+              <button class="btn btn-secondary cursor-pointer" (click)="roleModalUser.set(null)">Cancelar</button>
+              <button class="btn btn-primary cursor-pointer" (click)="submitRole()">Guardar Rol</button>
             </div>
           </div>
         </div>
