@@ -24,6 +24,8 @@ interface ConnectedUser {
   displayName: string | null;
   avatarUrl: string | null;
   role: Role;
+  deviceInfo?: string | null;
+  currentlyListening?: string | null;
 }
 
 @WebSocketGateway({
@@ -82,6 +84,11 @@ export class ChatGateway
           return next(new Error(`Usuario suspendido: ${banCheck.reason}`));
         }
 
+        const deviceInfo =
+          socket.handshake.auth?.deviceInfo ||
+          (socket.handshake.headers?.['x-device-info'] as string) ||
+          'Android';
+
         const connectedUser: ConnectedUser = {
           socketId: socket.id,
           id: user.id,
@@ -89,6 +96,7 @@ export class ChatGateway
           displayName: user.displayName,
           avatarUrl: user.avatarUrl,
           role: user.role,
+          deviceInfo,
         };
 
         (socket as any).user = connectedUser;
@@ -105,8 +113,14 @@ export class ChatGateway
       user.socketId = socket.id;
       this.connectedUsers.set(user.id, user);
 
-      await this.usersService.updateOnlinePresence(user.id, true);
-      this.logger.log(`🟢 Usuario conectado al chat: ${user.username} (${socket.id})`);
+      await this.usersService.updateOnlinePresence(
+        user.id,
+        true,
+        user.deviceInfo || undefined,
+      );
+      this.logger.log(
+        `🟢 Usuario conectado al chat: ${user.username} (${socket.id}) - Dispositivo: ${user.deviceInfo || 'Android'}`,
+      );
 
       this.broadcastOnlineUsers();
     }
@@ -196,6 +210,29 @@ export class ChatGateway
     }
   }
 
+  // --- EVENTO 4: ACTUALIZAR REPRODUCCIÓN EN VIVO ---
+  @SubscribeMessage('listening_to')
+  async handleListeningTo(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() rawData: any,
+  ) {
+    const user = (socket as any).user as ConnectedUser | undefined;
+    if (user) {
+      const payload = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+      const title = payload?.title?.trim() || null;
+      user.currentlyListening = title;
+
+      await this.usersService.updateOnlinePresence(
+        user.id,
+        true,
+        user.deviceInfo || undefined,
+        title || undefined,
+      );
+
+      this.broadcastOnlineUsers();
+    }
+  }
+
   // --- AUXILIAR: EMITIR USUARIOS EN LÍNEA ---
   private broadcastOnlineUsers() {
     const users = Array.from(this.connectedUsers.values());
@@ -203,10 +240,14 @@ export class ChatGateway
       count: users.length,
       users: users.map((u) => ({
         id: u.id,
+        userId: u.id,
         username: u.username,
         displayName: u.displayName,
         avatarUrl: u.avatarUrl,
         role: u.role,
+        deviceInfo: u.deviceInfo || 'Android',
+        currentlyListening: u.currentlyListening || null,
+        online: true,
       })),
     };
 

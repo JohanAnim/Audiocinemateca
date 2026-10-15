@@ -23,7 +23,7 @@ async function runTest() {
 
   // 2. Conectar a WebSocket en namespace /ws/chat
   const socket = io('http://localhost:3000/ws/chat', {
-    auth: { token },
+    auth: { token, deviceInfo: 'Samsung Galaxy S23 (Android 14)' },
     transports: ['websocket', 'polling'],
   });
 
@@ -44,6 +44,10 @@ async function runTest() {
 
     socket.on('online_users', (data) => {
       console.log(`👥 Evento "online_users" recibido:`, data.count, 'usuarios activos');
+      const me = data.users?.find((u: any) => u.username === 'johan');
+      if (me) {
+        console.log(`   📱 Dispositivo reportado para @johan: "${me.deviceInfo}"`);
+      }
     });
 
     socket.on('new_message', (msg) => {
@@ -52,8 +56,11 @@ async function runTest() {
       resolve();
     });
 
-    // Enviar mensaje tras 500ms
+    // Enviar mensaje y estado de reproducción tras 500ms
     setTimeout(() => {
+      console.log('📻 Emitiendo evento "listening_to"...');
+      socket.emit('listening_to', { title: 'Interestelar (Película con Audiodescripción)' });
+
       console.log('📤 Emitiendo evento "send_message"...');
       socket.emit('send_message', {
         content: '¡Hola a todos! Este es un mensaje de prueba en tiempo real desde WebSockets.',

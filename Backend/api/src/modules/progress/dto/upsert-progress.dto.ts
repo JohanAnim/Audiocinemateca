@@ -31,4 +31,8 @@ export class UpsertProgressDto {
   @IsOptional()
   @IsBoolean()
   isCompleted?: boolean;
+
+  @IsOptional()
+  @IsString()
+  deviceName?: string;
 }

@@ -24,8 +24,8 @@
   - **Módulo de Progreso de Reproducción y Favoritos (`progress/` y `favorites/`):**
     - Sincronización en la nube de milisegundos de reproducción (`positionMs`, `durationMs`, `partIndex`, `episodeIndex`) compatible con Room de Android (`PlaybackProgressEntity`), cálculo dinámico de porcentajes y marcado automático de completado (>95%).
     - Endpoints de progreso verificados en vivo:
-      - `POST /api/v1/progress`: upsert atómico de posición con soporte de multi-parte y capítulos.
-      - `GET /api/v1/progress/continue-listening`: lista paginada y ordenada por fecha reciente de obras en progreso (>5s).
+      - `POST /api/v1/progress`: upsert atómico de posición con soporte de multi-parte, capítulos y dispositivo (`deviceName`, ej. "Samsung Galaxy S23", "Google Cast").
+      - `GET /api/v1/progress/continue-listening`: lista paginada y ordenada por fecha reciente de obras en progreso (>5s) con dispositivo de última escucha.
       - `GET /api/v1/progress/:contentId`: estado de progreso por obra.
       - `DELETE /api/v1/progress/:contentId` y `DELETE /api/v1/progress`: eliminación granular o vaciado de historial.
     - Endpoints de favoritos verificados en vivo:
@@ -41,8 +41,9 @@
     - Endpoints verificados en vivo: `POST /api/v1/comments`, `GET /api/v1/comments`, `GET /api/v1/comments/preview`, `POST /api/v1/comments/:id/like` y `DELETE /api/v1/comments/:id`.
   - **Módulo de Comunidad y Chat en Tiempo Real (WebSockets / Socket.IO) (`community/`):**
     - WebSocket Gateway en namespace `/ws/chat` autenticado en el handshake con JWT mediante Socket.IO middleware.
-    - Soporte de eventos en tiempo real: `send_message`, `new_message` (broadcast instantáneo), `typing`, `user_typing`, `delete_message` y `message_deleted`.
-    - Detección de presencia en línea en tiempo real (`online_users`) con sincronización atómica a la tabla `users` (`isOnline`, `lastSeen`).
+    - Soporte de eventos en tiempo real: `send_message`, `new_message` (broadcast instantáneo), `typing`, `user_typing`, `delete_message`, `message_deleted` y `listening_to` (obra en reproducción en vivo).
+    - Detección de presencia en línea en tiempo real (`online_users`) compatible 1:1 con `OnlineUser.kt` de Android (`userId`, `displayName`, `email`, `online`, `deviceInfo`, `currentlyListening`, `lastActive`).
+    - Registro y gestión de dispositivos con tokens FCM (`POST /api/v1/auth/device` y tabla `user_devices`).
     - Endpoints REST de soporte:
       - `GET /api/v1/community/chat/messages`: historial cronológico paginado.
       - `GET /api/v1/community/online`: listado instantáneo de usuarios activos.

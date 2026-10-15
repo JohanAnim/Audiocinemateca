@@ -117,12 +117,50 @@ export class UsersService {
     });
   }
 
-  async updateOnlinePresence(userId: string, isOnline: boolean): Promise<void> {
+  async updateOnlinePresence(
+    userId: string,
+    isOnline: boolean,
+    deviceInfo?: string,
+    currentlyListening?: string,
+  ): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
       data: {
         isOnline,
         lastSeen: new Date(),
+        deviceInfo: deviceInfo !== undefined ? deviceInfo : undefined,
+        currentlyListening: currentlyListening !== undefined ? currentlyListening : undefined,
+      },
+    });
+  }
+
+  async registerDevice(
+    userId: string,
+    data: { fcmToken: string; deviceInfo?: string; osVersion?: string; appVersion?: string },
+  ) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        fcmToken: data.fcmToken,
+        deviceInfo: data.deviceInfo !== undefined ? data.deviceInfo : undefined,
+      },
+    });
+
+    return this.prisma.userDevice.upsert({
+      where: { fcmToken: data.fcmToken },
+      update: {
+        userId,
+        deviceInfo: data.deviceInfo,
+        osVersion: data.osVersion,
+        appVersion: data.appVersion,
+        lastActive: new Date(),
+      },
+      create: {
+        userId,
+        fcmToken: data.fcmToken,
+        deviceInfo: data.deviceInfo,
+        osVersion: data.osVersion,
+        appVersion: data.appVersion,
       },
     });
   }

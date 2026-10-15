@@ -98,9 +98,29 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async updatePresence(
     @CurrentUser('id') userId: string,
-    @Body() body: { isOnline: boolean },
+    @Body() body: { isOnline?: boolean; deviceInfo?: string; currentlyListening?: string },
   ) {
-    await this.usersService.updateOnlinePresence(userId, body.isOnline ?? true);
-    return { success: true, isOnline: body.isOnline ?? true };
+    const isOnline = body.isOnline ?? true;
+    await this.usersService.updateOnlinePresence(
+      userId,
+      isOnline,
+      body.deviceInfo,
+      body.currentlyListening,
+    );
+    return {
+      success: true,
+      isOnline,
+      deviceInfo: body.deviceInfo,
+      currentlyListening: body.currentlyListening,
+    };
+  }
+
+  @Post('device')
+  @HttpCode(HttpStatus.OK)
+  async registerDevice(
+    @CurrentUser('id') userId: string,
+    @Body() body: { fcmToken: string; deviceInfo?: string; osVersion?: string; appVersion?: string },
+  ) {
+    return this.usersService.registerDevice(userId, body);
   }
 }

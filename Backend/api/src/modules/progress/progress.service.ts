@@ -48,6 +48,7 @@ export class ProgressService {
         positionMs: BigInt(dto.positionMs),
         durationMs: BigInt(dto.durationMs),
         isCompleted,
+        deviceName: dto.deviceName !== undefined ? dto.deviceName : undefined,
         updatedAt: new Date(),
       },
       create: {
@@ -57,6 +58,7 @@ export class ProgressService {
         episodeIndex,
         positionMs: BigInt(dto.positionMs),
         durationMs: BigInt(dto.durationMs),
+        deviceName: dto.deviceName,
         isCompleted,
       },
     });
@@ -68,6 +70,7 @@ export class ProgressService {
       episodeIndex: record.episodeIndex,
       positionMs: Number(record.positionMs),
       durationMs: Number(record.durationMs),
+      deviceName: record.deviceName,
       isCompleted: record.isCompleted,
       updatedAt: record.updatedAt,
     };
@@ -104,6 +107,7 @@ export class ProgressService {
           ? Math.round((Number(r.positionMs) / Number(r.durationMs)) * 100)
           : 0,
       isCompleted: r.isCompleted,
+      deviceName: r.deviceName,
       updatedAt: r.updatedAt,
       content: {
         ...r.content,
@@ -132,6 +136,7 @@ export class ProgressService {
       positionMs: Number(r.positionMs),
       durationMs: Number(r.durationMs),
       isCompleted: r.isCompleted,
+      deviceName: r.deviceName,
       updatedAt: r.updatedAt,
     }));
   }

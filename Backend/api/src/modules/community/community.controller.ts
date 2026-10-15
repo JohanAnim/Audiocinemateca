@@ -58,10 +58,14 @@ export class CommunityController {
       count: users.length,
       users: users.map((u) => ({
         id: u.id,
+        userId: u.id,
         username: u.username,
         displayName: u.displayName,
         avatarUrl: u.avatarUrl,
         role: u.role,
+        deviceInfo: u.deviceInfo || 'Android',
+        currentlyListening: u.currentlyListening || null,
+        online: true,
       })),
     };
   }

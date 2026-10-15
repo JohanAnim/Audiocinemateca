@@ -40,13 +40,17 @@ model User {
   avatarUrl    String?
   passwordHash String?
   keycloakId   String?   @unique
-  role         Role      @default(USER)
-  isOnline     Boolean   @default(false)
-  lastSeen     DateTime  @default(now())
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  role               Role      @default(USER)
+  isOnline           Boolean   @default(false)
+  lastSeen           DateTime  @default(now())
+  deviceInfo         String?
+  currentlyListening String?
+  fcmToken           String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   accounts         AuthAccount[]
+  devices          UserDevice[]
   ratings          Rating[]
   favorites        Favorite[]
   playbackProgress PlaybackProgress[]
@@ -190,6 +194,7 @@ model PlaybackProgress {
   episodeIndex Int      @default(0)
   positionMs   BigInt   @default(0)
   durationMs   BigInt   @default(0)
+  deviceName   String?
   isCompleted  Boolean  @default(false)
   updatedAt    DateTime @updatedAt
 
@@ -200,6 +205,21 @@ model PlaybackProgress {
   @@unique([userId, contentId, partIndex, episodeIndex])
   @@index([userId, updatedAt])
   @@map("playback_progress")
+}
+
+model UserDevice {
+  id         String   @id @default(uuid())
+  userId     String
+  fcmToken   String   @unique
+  deviceInfo String?
+  osVersion  String?
+  appVersion String?
+  lastActive DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_devices")
 }
 
 model Favorite {
