@@ -54,6 +54,22 @@
     - Configuración integral pública en un único round-trip (`GET /api/v1/config/app`) para arranque de la app: versión, banner, estado de modo mantenimiento, donaciones, límites de chat y soporte.
     - Endpoints administrativos (`/api/v1/config/all`, `PUT /:key`, `DELETE /:key`, `POST /seed`) protegidos con rol `ADMIN`.
   - **API NestJS 12 ([Backend/api/](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/Backend/api/)):** Configuración modular en ESM con `PrismaService` global, CORS universal para Android/Web, `ValidationPipe` y endpoint de salud `/health` verificado en vivo. Dockerfile multi-stage listo para Dokploy / Oracle Cloud.
+  - **Panel de Control de Administración en Angular 22 Standalone ([Backend/admin/](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/Backend/admin)):**
+    - Construido con la última versión de Angular 22, arquitectura Standalone 100%, Signals reactivos, nuevo control flow `@if`/`@for`, diseño ejecutivo Dark Theme accesible y responsive.
+    - Preparado para producción en `audiocinemateca.johanag.dev` con Nginx multi-stage (`Backend/admin/Dockerfile` y `Backend/admin/nginx.conf`) y orquestación unificada en `Backend/compose.yaml`.
+    - **Vistas y Módulos Desarrollados:**
+      1. **Autenticación y Guardia de Rutas (`login/` y `auth.guard.ts`):** Restricción de acceso estricto a roles `ADMIN` y `MODERATOR` con JWT Interceptor y almacenamiento local persistente.
+      2. **Dashboard Ejecutivo y Métricas en Tiempo Real (`dashboard/`):** Tarjetas KPIs de usuarios, obras, reproducciones acumuladas y ratings. Gráficas de distribución por plataforma (Android, Windows, macOS, Linux, Web) y telemetría de memoria/uptime del servidor en vivo.
+      3. **Catálogo Exclusivo y Creador de Fichas Cinematográficas (`catalog/`):**
+         - Listado con búsqueda reactiva, filtros, enlaces y borrado.
+         - Creador completo de obras con soporte para Catálogo Exclusivo (`isExclusive`), selector de doblaje multilingüe (*Español Latino*, *Español de España*, *Inglés*), audiodescripción, URLs multi-parte y constructor dinámico de temporadas y episodios para series.
+      4. **Gestión de Usuarios y Sanciones (`users/`):**
+         - Tabla de usuarios con UIDs, correos, nombres, rol, dispositivo registrado (`deviceInfo`), estado online y obra en escucha actual.
+         - Modal de sanciones: suspensión temporal (horas/días) o permanente con motivo auditable, levantamiento de veto instantáneo y asignación de roles.
+      5. **Comunidad, Chat en Vivo y Comunicados (`community/`):** Consola de streaming de mensajes mediante WebSockets (`/ws/chat`) en tiempo real, eliminación instantánea de mensajes ofensivos con broadcast global a clientes y publicador de comunicados oficiales.
+      6. **Configuración Remota y Actualizador APK (`config/`):** Editor de versiones de la app Android (versión, `versionCode`, changelog, enlace directo, versión mínima y toggle de actualización forzada), gestor de banner en el Feed, modo mantenimiento e inspección de claves raw.
+      7. **Centro de Agentes de IA y Automatizaciones (`agents/`):** Parámetros de Aura 2.0 (modelo de lenguaje, temperatura, system prompt maestro, activación de herramientas `play_content` y búsqueda de catálogo), emisor de Notificaciones Push masivas (FCM) y automatizaciones Cron.
+    - **Compilación de Producción Verificada:** `npm run build` ejecutado con éxito total (0 errores, 0 warnings).
 
 
 - **Blindaje Permanente de Google Cast en Segundo Plano y Pausa Automática por Llamadas (Audio Focus) ([PlayerService.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/player/PlayerService.kt) & [CastOptionsProvider.kt](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/app/src/main/java/com/johang/audiocinemateca/presentation/cast/CastOptionsProvider.kt)):**

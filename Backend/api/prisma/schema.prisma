@@ -116,6 +116,8 @@ model Content {
   narrator         String?
   audioDescription Boolean       @default(true)
   dubbing          String?
+  language         String?       @default("es")
+  isExclusive      Boolean       @default(false)
   genreRaw         String?
   filmaffinityUrl  String?
   audioUrl         String?

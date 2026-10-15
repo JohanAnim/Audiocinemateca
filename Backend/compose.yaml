@@ -20,6 +20,39 @@ services:
     networks:
       - audiocinemateca-net
 
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: audiocinemateca-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${DB_USER:-audiocinemateca}:${DB_PASSWORD:-audiocinemateca_secure_dev_2026}@postgres:5432/${DB_NAME:-audiocinemateca_db}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-audiocinemateca_secret_jwt_key_2026_super_secure}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - audiocinemateca-net
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: audiocinemateca-admin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    networks:
+      - audiocinemateca-net
+
 volumes:
   postgres_data:
     name: audiocinemateca_postgres_data

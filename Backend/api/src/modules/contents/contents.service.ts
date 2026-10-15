@@ -284,6 +284,8 @@ export class ContentsService {
         narrator: dto.narrator,
         audioDescription: dto.audioDescription ?? true,
         dubbing: dto.dubbing,
+        language: dto.language || 'es',
+        isExclusive: !!dto.isExclusive,
         genreRaw: dto.genreRaw,
         filmaffinityUrl: dto.filmaffinityUrl,
         audioUrl: dto.audioUrl,
@@ -315,6 +317,58 @@ export class ContentsService {
         seasons: { include: { episodes: true } },
       },
     });
+  }
+
+  async updateContent(id: string, dto: any) {
+    const existing = await this.prisma.content.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException(`Contenido con ID ${id} no encontrado`);
+    }
+
+    return this.prisma.content.update({
+      where: { id },
+      data: {
+        title: dto.title !== undefined ? dto.title : undefined,
+        synopsis: dto.synopsis !== undefined ? dto.synopsis : undefined,
+        coverUrl: dto.coverUrl !== undefined ? dto.coverUrl : undefined,
+        bannerUrl: dto.bannerUrl !== undefined ? dto.bannerUrl : undefined,
+        type: dto.type !== undefined ? dto.type : undefined,
+        status: dto.status !== undefined ? dto.status : undefined,
+        releaseYear: dto.releaseYear !== undefined ? dto.releaseYear : undefined,
+        duration: dto.duration !== undefined ? dto.duration : undefined,
+        durationMinutes: dto.durationMinutes !== undefined ? dto.durationMinutes : undefined,
+        country: dto.country !== undefined ? dto.country : undefined,
+        director: dto.director !== undefined ? dto.director : undefined,
+        screenplay: dto.screenplay !== undefined ? dto.screenplay : undefined,
+        music: dto.music !== undefined ? dto.music : undefined,
+        cinematography: dto.cinematography !== undefined ? dto.cinematography : undefined,
+        cast: dto.cast !== undefined ? dto.cast : undefined,
+        production: dto.production !== undefined ? dto.production : undefined,
+        narrator: dto.narrator !== undefined ? dto.narrator : undefined,
+        audioDescription: dto.audioDescription !== undefined ? dto.audioDescription : undefined,
+        dubbing: dto.dubbing !== undefined ? dto.dubbing : undefined,
+        language: dto.language !== undefined ? dto.language : undefined,
+        isExclusive: dto.isExclusive !== undefined ? dto.isExclusive : undefined,
+        genreRaw: dto.genreRaw !== undefined ? dto.genreRaw : undefined,
+        filmaffinityUrl: dto.filmaffinityUrl !== undefined ? dto.filmaffinityUrl : undefined,
+        audioUrl: dto.audioUrl !== undefined ? dto.audioUrl : undefined,
+        audioUrls: dto.audioUrls !== undefined ? dto.audioUrls : undefined,
+      },
+      include: {
+        categories: { include: { category: true } },
+        seasons: { include: { episodes: true } },
+      },
+    });
+  }
+
+  async deleteContent(id: string) {
+    const existing = await this.prisma.content.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException(`Contenido con ID ${id} no encontrado`);
+    }
+
+    await this.prisma.content.delete({ where: { id } });
+    return { success: true, message: `Contenido "${existing.title}" eliminado correctamente` };
   }
 
   async getCategories() {

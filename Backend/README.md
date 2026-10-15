@@ -235,9 +235,73 @@ Reemplazo completo de Firebase Remote Config. Proporciona control de versiones p
 | `GET` | `/api/v1/config/:key` | Protegido (Admin) | Consultar valor de una configuración por su clave |
 | `PUT` | `/api/v1/config/:key` | Protegido (Admin) | Crear o actualizar configuración (`value`, `description`) invalidando la caché |
 | `DELETE`| `/api/v1/config/:key` | Protegido (Admin) | Eliminar una configuración del sistema |
-| `POST` | `/api/v1/config/seed` | Protegido (Admin) | Re-sembrar configuraciones por defecto |
+| `POST` | `/api/v1/config/seed` | Protegido (Admin) | Re-sembrar configuraciones por defecto |---
 
+## 📊 Endpoints de Administración y Métricas (`/api/v1/admin`)
 
+| Método | Endpoint | Acceso | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/admin/stats` | Protegido (Admin/Mod) | Métricas ejecutivas del sistema: recuento de usuarios, distribución por plataformas (Android, Windows, macOS, Linux, Web), catálogo total, horas reproducidas, valoraciones y telemetría de memoria/uptime del servidor |
 
+---
 
+## 👥 Endpoints de Gestión de Usuarios (`/api/v1/users`)
+
+| Método | Endpoint | Acceso | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/users` | Protegido (Admin/Mod) | Listado paginado con búsqueda por nombre, email o UID, dispositivos (`deviceInfo`), estado online y obra en escucha |
+| `GET` | `/api/v1/users/:id` | Protegido (Admin/Mod) | Ficha completa y detallada de un usuario |
+| `PATCH` | `/api/v1/users/:id/role` | Protegido (Admin) | Cambiar rol de usuario (`USER`, `MODERATOR`, `ADMIN`) |
+| `DELETE` | `/api/v1/users/:id` | Protegido (Admin) | Eliminar cuenta de usuario de la plataforma |
+
+---
+
+## 🖥️ Panel de Control de Administración (Angular 22 Standalone) (`Backend/admin`)
+
+Ubicado en `Backend/admin`, preparado para publicarse en `audiocinemateca.johanag.dev` o ejecutarse localmente:
+
+### Características Principales:
+1. **Autenticación Estricta de Administradores:**
+   - Inicio de sesión seguro con JWT, validación reactiva de roles (`ADMIN` / `MODERATOR`) y guardia de rutas `authGuard`.
+2. **Dashboard Ejecutivo en Tiempo Real:**
+   - Tarjetas de KPIs: Usuarios totales, Contenidos en catálogo, Vistas acumuladas, Promedio de valoraciones.
+   - Gráficas y desglose de dispositivos y plataformas activas (Android, Windows, macOS, Linux, Web).
+   - Estado de salud del nodo y consumo de memoria en tiempo real.
+3. **Catálogo Exclusivo y Creador de Fichas Cinematográficas:**
+   - Alta completa de películas, series, documentales y cortometrajes.
+   - Selector multilingüe de audiodescripción: *Español Latino*, *Español de España*, *Inglés*, etc.
+   - Constructor jerárquico dinámico de temporadas y episodios para series con URLs de audio y duración en milisegundos.
+   - Lista interactiva de contenidos con filtros, enlaces directos y eliminación protegida.
+4. **Moderación de Usuarios y Sanciones:**
+   - Visualización de UIDs de usuarios, correos, nombres, rol, dispositivo registrado (`deviceInfo`) y estado de escucha actual.
+   - Modal de sanciones: suspensión temporal (horas/días) o permanente con motivo auditable, y levantamiento de veto instantáneo.
+   - Asignación de roles administrativos y eliminación de cuentas.
+5. **Comunidad, Chat en Vivo y Comunicados Oficiales:**
+   - Consola de streaming de mensajes mediante WebSockets (`/ws/chat`) en tiempo real con indicador de usuarios en línea.
+   - Eliminación instantánea de mensajes ofensivos o spam con broadcast inmediato a todos los clientes.
+   - Publicación y gestión de comunicados oficiales para la comunidad.
+6. **Configuración Remota y Actualizador de la Aplicación:**
+   - Control de versiones de la app Android (APK): versión, `versionCode`, changelog, enlace directo, versión mínima y toggle de actualización forzada.
+   - Gestor de banner global en el Feed con previsualización en vivo (tipos: info, warning, alert, update).
+   - Interruptor global de Modo Mantenimiento.
+   - Parámetros y reglas del chat comunitario (modo lento, longitud de mensaje).
+   - Canales oficiales de soporte y donaciones (PayPal, PayPal.Me).
+7. **Centro de Agentes de IA y Automatizaciones:**
+   - Configuración de Aura 2.0 (modelo de lenguaje, temperatura, system prompt maestro, activación de herramientas `play_content` y búsqueda de catálogo).
+   - Emisor de Notificaciones Push masivas (FCM) dirigido a dispositivos Android y clientes.
+   - Automatizaciones Cron (purga de mensajes antiguos, auditoría de enlaces de streaming, recálculo diario de tendencias y backups).
+
+### Comandos de Ejecución Local del Panel:
+```powershell
+# En la carpeta Backend/admin:
+npm install
+npm start
+# Abre automáticamente http://localhost:4200
+```
+
+### Compilación para Producción:
+```powershell
+npm run build
+# Genera los archivos estáticos en dist/admin/browser listos para Nginx o Dokploy
+```
 

@@ -183,4 +183,154 @@ export class UsersService {
       include: { accounts: true },
     });
   }
+
+  // --- MÉTODOS DE ADMINISTRACIÓN PARA PANEL ANGULAR ---
+
+  async findAll(query: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: Role;
+    isOnline?: boolean;
+  }) {
+    const page = query.page ? Number(query.page) : 1;
+    const limit = query.limit ? Math.min(Number(query.limit), 100) : 20;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    if (query.role) {
+      where.role = query.role;
+    }
+
+    if (query.isOnline !== undefined) {
+      where.isOnline = query.isOnline;
+    }
+
+    if (query.search) {
+      const s = query.search.toLowerCase();
+      where.OR = [
+        { username: { contains: s, mode: 'insensitive' } },
+        { email: { contains: s, mode: 'insensitive' } },
+        { displayName: { contains: s, mode: 'insensitive' } },
+      ];
+    }
+
+    const [total, users] = await Promise.all([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          accounts: { select: { provider: true, providerId: true } },
+          devices: { select: { deviceInfo: true, osVersion: true, appVersion: true, lastActive: true } },
+          bannedRecord: true,
+          _count: {
+            select: {
+              ratings: true,
+              favorites: true,
+              playbackProgress: true,
+              comments: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      data: users.map((u) => ({
+        id: u.id,
+        email: u.email,
+        username: u.username,
+        displayName: u.displayName,
+        avatarUrl: u.avatarUrl,
+        role: u.role,
+        isOnline: u.isOnline,
+        lastSeen: u.lastSeen,
+        deviceInfo: u.deviceInfo,
+        currentlyListening: u.currentlyListening,
+        createdAt: u.createdAt,
+        isBanned: !!u.bannedRecord,
+        banReason: u.bannedRecord?.reason || null,
+        accounts: u.accounts,
+        devices: u.devices,
+        stats: u._count,
+      })),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getUserDetail(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        accounts: true,
+        devices: true,
+        bannedRecord: true,
+        _count: {
+          select: {
+            ratings: true,
+            favorites: true,
+            playbackProgress: true,
+            comments: true,
+            chatMessages: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      role: user.role,
+      isOnline: user.isOnline,
+      lastSeen: user.lastSeen,
+      deviceInfo: user.deviceInfo,
+      currentlyListening: user.currentlyListening,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      isBanned: !!user.bannedRecord,
+      bannedRecord: user.bannedRecord,
+      accounts: user.accounts,
+      devices: user.devices,
+      stats: user._count,
+    };
+  }
+
+  async updateRole(id: string, newRole: Role) {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new NotFoundException(`Usuario ${id} no encontrado`);
+    }
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { role: newRole },
+      select: { id: true, username: true, email: true, role: true },
+    });
+  }
+
+  async deleteUser(id: string) {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new NotFoundException(`Usuario ${id} no encontrado`);
+    }
+
+    await this.prisma.user.delete({ where: { id } });
+    return { success: true, message: `Usuario @${user.username} eliminado correctamente` };
+  }
 }

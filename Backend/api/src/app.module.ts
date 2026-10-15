@@ -10,6 +10,7 @@ import { RatingsModule } from './modules/ratings/ratings.module.js';
 import { CommentsModule } from './modules/comments/comments.module.js';
 import { CommunityModule } from './modules/community/community.module.js';
 import { AppConfigModule } from './modules/app-config/app-config.module.js';
+import { AdminModule } from './modules/admin/admin.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -29,6 +30,7 @@ import { AppService } from './app.service.js';
     CommentsModule,
     CommunityModule,
     AppConfigModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

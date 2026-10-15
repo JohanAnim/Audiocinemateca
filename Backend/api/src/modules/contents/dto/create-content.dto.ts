@@ -133,6 +133,14 @@ export class CreateContentDto {
 
   @IsOptional()
   @IsString()
+  language?: string = 'es';
+
+  @IsOptional()
+  @IsBoolean()
+  isExclusive?: boolean = false;
+
+  @IsOptional()
+  @IsString()
   genreRaw?: string;
 
   @IsOptional()
