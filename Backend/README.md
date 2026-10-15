@@ -220,6 +220,24 @@ const socket = io('http://localhost:3000/ws/chat', {
 | `POST` | `/api/v1/community/moderation/ban` | Protegido (Admin) | Suspender a un usuario del chat (temporal o permanente) |
 | `POST` | `/api/v1/community/moderation/unban` | Protegido (Admin) | Levantar la suspensión a un usuario |
 
+---
+
+## ⚙️ Endpoints de Configuración Remota y Actualizaciones (`/api/v1/config`)
+
+Reemplazo completo de Firebase Remote Config. Proporciona control de versiones para la app Android, parámetros de mantenimiento, banners globales del feed, límites de chat y enlaces de soporte, con respuestas en sub-milisegundos mediante caché en memoria.
+
+| Método | Endpoint | Acceso | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/config/app` | Público | Configuración completa y consolidada para inicializar la app Android (versión, banners, mantenimiento, donaciones) |
+| `GET` | `/api/v1/config/version` | Público | Comprobación de actualizaciones (parámetro `?currentVersion=X.Y.Z`). Devuelve `isUpdateAvailable`, `isForceUpdate` y el objeto `UpdateInfo` de Android |
+| `GET` | `/api/v1/config/banner` | Público | Obtener el banner o aviso activo en el feed principal |
+| `GET` | `/api/v1/config/all` | Protegido (Admin) | Listado de todas las configuraciones almacenadas en base de datos |
+| `GET` | `/api/v1/config/:key` | Protegido (Admin) | Consultar valor de una configuración por su clave |
+| `PUT` | `/api/v1/config/:key` | Protegido (Admin) | Crear o actualizar configuración (`value`, `description`) invalidando la caché |
+| `DELETE`| `/api/v1/config/:key` | Protegido (Admin) | Eliminar una configuración del sistema |
+| `POST` | `/api/v1/config/seed` | Protegido (Admin) | Re-sembrar configuraciones por defecto |
+
+
 
 
 

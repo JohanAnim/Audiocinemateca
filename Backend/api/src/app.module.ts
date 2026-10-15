@@ -9,6 +9,7 @@ import { FavoritesModule } from './modules/favorites/favorites.module.js';
 import { RatingsModule } from './modules/ratings/ratings.module.js';
 import { CommentsModule } from './modules/comments/comments.module.js';
 import { CommunityModule } from './modules/community/community.module.js';
+import { AppConfigModule } from './modules/app-config/app-config.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -27,6 +28,7 @@ import { AppService } from './app.service.js';
     RatingsModule,
     CommentsModule,
     CommunityModule,
+    AppConfigModule,
   ],
   controllers: [AppController],
   providers: [AppService],

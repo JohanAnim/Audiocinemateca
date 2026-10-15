@@ -47,7 +47,11 @@
       - `GET /api/v1/community/chat/messages`: historial cronológico paginado.
       - `GET /api/v1/community/online`: listado instantáneo de usuarios activos.
       - `GET /api/v1/community/announcements` y `POST /api/v1/community/announcements`: sistema de comunicados oficiales y avisos del sistema (restringido a `ADMIN`).
-      - `POST /api/v1/community/moderation/ban` y `/unban`: sistema de moderación y suspensión temporal/permanente con verificación previa en el handshake de WebSockets.
+  - **Módulo de Configuración Remota y Actualizaciones (`app-config/`):**
+    - Reemplazo completo de Firebase Remote Config con respuestas sub-milisegundo (<1ms) mediante caché reactiva en memoria e inicialización automática de valores por defecto en PostgreSQL (`app_configs`).
+    - Control de versiones y actualizaciones para Android (`GET /api/v1/config/version`) compatible con `UpdateInfo` (`version`, `name`, `changelog`, `downloadUrl`, `updatedAt`, `downloadCount`, `isUpdateAvailable`, `isForceUpdate`).
+    - Configuración integral pública en un único round-trip (`GET /api/v1/config/app`) para arranque de la app: versión, banner, estado de modo mantenimiento, donaciones, límites de chat y soporte.
+    - Endpoints administrativos (`/api/v1/config/all`, `PUT /:key`, `DELETE /:key`, `POST /seed`) protegidos con rol `ADMIN`.
   - **API NestJS 12 ([Backend/api/](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/Backend/api/)):** Configuración modular en ESM con `PrismaService` global, CORS universal para Android/Web, `ValidationPipe` y endpoint de salud `/health` verificado en vivo. Dockerfile multi-stage listo para Dokploy / Oracle Cloud.
 
 
