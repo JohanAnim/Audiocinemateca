@@ -149,58 +149,16 @@ import { CommunityService } from '../../core/services/community.service';
             <router-outlet />
           </main>
 
-          <!-- PIE DE PÁGINA INSTITUCIONAL ACCESIBLE -->
-          <footer class="admin-footer" role="contentinfo" aria-label="Información institucional y estado del sistema">
-            <div class="footer-grid">
-              <div class="footer-brand-col">
-                <div class="footer-brand">
-                  <span class="footer-icon" aria-hidden="true">🎬</span>
-                  <span class="footer-title">Audiocinemateca</span>
-                  <span class="badge badge-primary">v3.1.0</span>
-                </div>
-                <p class="footer-desc">
-                  Plataforma soberana y accesible de cine, series y documentales con audiodescripción integral en español.
-                  Diseñada con estándares rigurosos de inclusión para personas ciegas y con baja visión.
-                </p>
-                <div class="footer-cert-badges">
-                  <span class="cert-pill" title="Cumple con las pautas de accesibilidad para el contenido web nivel AAA">WCAG 2.1 AAA</span>
-                  <span class="cert-pill" title="Optimizado para TalkBack, NVDA, JAWS y VoiceOver">Screen Reader First</span>
-                  <span class="cert-pill" title="Base de datos relacional PostgreSQL con réplica y cascadas seguras">PostgreSQL 16</span>
-                  <span class="cert-pill" title="Backend modular compilado en TypeScript de alto rendimiento">NestJS 12</span>
-                </div>
-              </div>
-
-              <div class="footer-telemetry-col">
-                <h3 class="footer-section-title">Telemetría del Nodo</h3>
-                <ul class="telemetry-list" role="list">
-                  <li class="telemetry-item">
-                    <span class="telemetry-label">Entorno de Producción:</span>
-                    <span class="telemetry-value font-mono">Oracle Cloud / Dokploy</span>
-                  </li>
-                  <li class="telemetry-item">
-                    <span class="telemetry-label">Gateway en Tiempo Real:</span>
-                    <span class="telemetry-value font-mono text-emerald-400">Socket.IO /ws/chat</span>
-                  </li>
-                  <li class="telemetry-item">
-                    <span class="telemetry-label">Base de Datos:</span>
-                    <span class="telemetry-value font-mono">audiocinemateca_db</span>
-                  </li>
-                  <li class="telemetry-item">
-                    <span class="telemetry-label">Reloj Sincronizado:</span>
-                    <span class="telemetry-value font-mono">{{ currentTime() }}</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div class="footer-bottom-bar">
+          <!-- PIE DE PÁGINA ACCESIBLE Y LIMPIO -->
+          <footer class="admin-footer" role="contentinfo" aria-label="Información del panel">
+            <div class="footer-content">
               <p class="copyright-text">
-                © {{ currentYear }} <strong>Audiocinemateca</strong>. Desarrollado por Johan Antonio Gutiérrez con máxima dedicación a la accesibilidad universal.
+                © {{ currentYear }} <strong>Audiocinemateca</strong>. Panel de Control y Administración.
               </p>
               <div class="footer-links">
                 <span class="footer-status-indicator">
                   <span class="status-indicator-dot" aria-hidden="true"></span>
-                  Todos los sistemas operativos
+                  Panel Activo
                 </span>
               </div>
             </div>
@@ -444,117 +402,27 @@ import { CommunityService } from '../../core/services/community.service';
       outline: none;
     }
 
-    /* --- FOOTER INSTITUCIONAL ACCESIBLE --- */
+    /* --- FOOTER ACCESIBLE Y LIMPIO --- */
     .admin-footer {
-      background-color: #0b0f19;
+      background-color: var(--bg-card);
       border-top: 1px solid var(--border-color);
-      padding: 32px 28px 24px 28px;
+      padding: 16px 28px;
       color: var(--text-muted);
       font-size: 13px;
       margin-top: auto;
     }
 
-    .footer-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 32px;
-      margin-bottom: 24px;
-    }
-
-    @media (max-width: 900px) {
-      .footer-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .footer-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .footer-icon {
-      font-size: 20px;
-    }
-
-    .footer-title {
-      font-size: 16px;
-      font-weight: 800;
-      color: var(--text-main);
-    }
-
-    .footer-desc {
-      font-size: 13px;
-      line-height: 1.6;
-      color: var(--text-muted);
-      max-width: 650px;
-      margin-bottom: 14px;
-    }
-
-    .footer-cert-badges {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .cert-pill {
-      font-size: 11px;
-      font-weight: 700;
-      padding: 3px 8px;
-      border-radius: 6px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: var(--text-dim);
-    }
-
-    .footer-section-title {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--text-main);
-      margin-bottom: 12px;
-    }
-
-    .telemetry-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .telemetry-item {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      font-size: 12px;
-      padding-bottom: 4px;
-      border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
-    }
-
-    .telemetry-label {
-      color: var(--text-dim);
-    }
-
-    .telemetry-value {
-      font-weight: 600;
-      color: var(--text-muted);
-    }
-
-    .footer-bottom-bar {
+    .footer-content {
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 16px;
-      padding-top: 18px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      font-size: 12px;
     }
 
     .copyright-text {
       color: var(--text-dim);
+      font-size: 12px;
     }
 
     .copyright-text strong {
@@ -573,6 +441,7 @@ import { CommunityService } from '../../core/services/community.service';
       gap: 6px;
       color: #34d399;
       font-weight: 600;
+      font-size: 12px;
     }
 
     .status-indicator-dot {
@@ -589,21 +458,13 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   readonly community = inject(CommunityService);
 
   readonly currentYear = new Date().getFullYear();
-  readonly currentTime = signal<string>(new Date().toLocaleTimeString('es-ES'));
-  private clockInterval?: any;
 
   ngOnInit() {
     this.community.initSocket();
-    this.clockInterval = setInterval(() => {
-      this.currentTime.set(new Date().toLocaleTimeString('es-ES'));
-    }, 1000);
   }
 
   ngOnDestroy() {
     this.community.disconnectSocket();
-    if (this.clockInterval) {
-      clearInterval(this.clockInterval);
-    }
   }
 
   userInitial(): string {
