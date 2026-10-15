@@ -39,6 +39,15 @@
   - **Módulo de Comentarios e Interacción (`comments/`):**
     - Comentarios vinculados a películas o capítulos específicos de series (`partIndex`, `episodeIndex`), sistema de "Me gusta" atómico (`comment_likes`) y previsualizaciones instantáneas para la UI.
     - Endpoints verificados en vivo: `POST /api/v1/comments`, `GET /api/v1/comments`, `GET /api/v1/comments/preview`, `POST /api/v1/comments/:id/like` y `DELETE /api/v1/comments/:id`.
+  - **Módulo de Comunidad y Chat en Tiempo Real (WebSockets / Socket.IO) (`community/`):**
+    - WebSocket Gateway en namespace `/ws/chat` autenticado en el handshake con JWT mediante Socket.IO middleware.
+    - Soporte de eventos en tiempo real: `send_message`, `new_message` (broadcast instantáneo), `typing`, `user_typing`, `delete_message` y `message_deleted`.
+    - Detección de presencia en línea en tiempo real (`online_users`) con sincronización atómica a la tabla `users` (`isOnline`, `lastSeen`).
+    - Endpoints REST de soporte:
+      - `GET /api/v1/community/chat/messages`: historial cronológico paginado.
+      - `GET /api/v1/community/online`: listado instantáneo de usuarios activos.
+      - `GET /api/v1/community/announcements` y `POST /api/v1/community/announcements`: sistema de comunicados oficiales y avisos del sistema (restringido a `ADMIN`).
+      - `POST /api/v1/community/moderation/ban` y `/unban`: sistema de moderación y suspensión temporal/permanente con verificación previa en el handshake de WebSockets.
   - **API NestJS 12 ([Backend/api/](file:///E:/Johan/AndroidStudioProjects/Audiocinemateca/Backend/api/)):** Configuración modular en ESM con `PrismaService` global, CORS universal para Android/Web, `ValidationPipe` y endpoint de salud `/health` verificado en vivo. Dockerfile multi-stage listo para Dokploy / Oracle Cloud.
 
 

@@ -53,6 +53,8 @@ model User {
   chatMessages     ChatMessage[]
   comments         Comment[]
   commentLikes     CommentLike[]
+  announcements    Announcement[]
+  bannedRecord     BannedUser?
 
   @@map("users")
 }
@@ -265,11 +267,39 @@ model ChatMessage {
   id        String   @id @default(uuid())
   userId    String
   content   String   @db.Text
+  isPinned  Boolean  @default(false)
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([createdAt])
   @@map("chat_messages")
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  authorId  String
+  title     String?
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@map("announcements")
+}
+
+model BannedUser {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  reason      String    @default("Infracción de las reglas de la comunidad")
+  bannedById  String
+  bannedUntil DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("banned_users")
 }
 
 model AppConfig {

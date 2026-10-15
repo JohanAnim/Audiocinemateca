@@ -178,5 +178,48 @@ npm run seed
 | `POST` | `/api/v1/comments/:id/like` | Protegido (Bearer) | Alternar "Me gusta" a un comentario |
 | `DELETE`| `/api/v1/comments/:id` | Protegido (Bearer) | Eliminar comentario (autor o moderador) |
 
+---
+
+## 🌐 WebSockets y Chat Global en Tiempo Real (`/ws/chat`)
+
+La comunicación bidireccional y en tiempo real utiliza Socket.IO sobre el namespace `/ws/chat`, autenticado automáticamente mediante el token JWT en el handshake.
+
+### Conexión del Cliente (Android / Web / Node):
+```typescript
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3000/ws/chat', {
+  auth: { token: 'MI_ACCESS_TOKEN_JWT' },
+  transports: ['websocket', 'polling'],
+});
+```
+
+### Eventos del Socket:
+
+| Evento | Dirección | Payload | Descripción |
+| :--- | :--- | :--- | :--- |
+| `send_message` | Cliente → Servidor | `{ content: string }` | Enviar mensaje al chat global |
+| `new_message` | Servidor → Clientes | `ChatMessage` (con usuario anidado) | Mensaje transmitido a todos los clientes conectados |
+| `typing` | Cliente → Servidor | `{ isTyping: boolean }` | Notificar estado de escritura |
+| `user_typing` | Servidor → Clientes | `{ userId, username, isTyping }` | Indicador de quién está escribiendo |
+| `delete_message`| Cliente → Servidor | `{ messageId: string }` | Eliminar mensaje propio (o admin) |
+| `message_deleted`| Servidor → Clientes| `{ messageId: string }` | Notificación de eliminación a los clientes |
+| `online_users` | Servidor → Clientes | `{ count: number, users: User[] }` | Lista en vivo de usuarios activos conectados |
+
+---
+
+## 📢 Endpoints de Comunidad, Moderación y Anuncios (`/api/v1/community`)
+
+| Método | Endpoint | Acceso | Descripción |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/community/chat/messages` | Protegido (Bearer) | Historial paginado de mensajes de chat global |
+| `GET` | `/api/v1/community/online` | Público | Lista de usuarios actualmente conectados al chat |
+| `GET` | `/api/v1/community/announcements` | Público | Lista de anuncios oficiales de la plataforma |
+| `POST` | `/api/v1/community/announcements` | Protegido (Admin) | Publicar un anuncio oficial |
+| `DELETE`| `/api/v1/community/announcements/:id`| Protegido (Admin) | Eliminar un anuncio oficial |
+| `POST` | `/api/v1/community/moderation/ban` | Protegido (Admin) | Suspender a un usuario del chat (temporal o permanente) |
+| `POST` | `/api/v1/community/moderation/unban` | Protegido (Admin) | Levantar la suspensión a un usuario |
+
+
 
 
