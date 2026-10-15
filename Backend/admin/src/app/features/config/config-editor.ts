@@ -222,24 +222,27 @@ import {
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Versión Semántica (ej. 3.1.0)</label>
+              <label for="cfg-version" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Versión Semántica (ej. 3.1.0)</label>
               <input
+                id="cfg-version"
                 type="text"
                 [(ngModel)]="versionConfig.version"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Código de Versión (versionCode)</label>
+              <label for="cfg-version-code" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Código de Versión (versionCode)</label>
               <input
+                id="cfg-version-code"
                 type="number"
                 [(ngModel)]="versionConfig.versionCode"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Versión Mínima Requerida</label>
+              <label for="cfg-min-version" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Versión Mínima Requerida</label>
               <input
+                id="cfg-min-version"
                 type="text"
                 [(ngModel)]="versionConfig.minRequiredVersion"
                 placeholder="3.0.0"
@@ -251,16 +254,18 @@ import {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Nombre Visible de la Release</label>
+              <label for="cfg-release-name" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Nombre Visible de la Release</label>
               <input
+                id="cfg-release-name"
                 type="text"
                 [(ngModel)]="versionConfig.name"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Contador de Descargas Mostrado</label>
+              <label for="cfg-download-count" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Contador de Descargas Mostrado</label>
               <input
+                id="cfg-download-count"
                 type="number"
                 [(ngModel)]="versionConfig.downloadCount"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
@@ -269,9 +274,10 @@ import {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">URL Directa de Descarga (.APK)</label>
+            <label for="cfg-download-url" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">URL Directa de Descarga (.APK)</label>
             <div class="relative">
               <input
+                id="cfg-download-url"
                 type="url"
                 [(ngModel)]="versionConfig.downloadUrl"
                 placeholder="https://github.com/.../Audiocinemateca.apk"
@@ -281,8 +287,9 @@ import {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Registro de Cambios (Changelog / Novedades)</label>
+            <label for="cfg-changelog" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Registro de Cambios (Changelog / Novedades)</label>
             <textarea
+              id="cfg-changelog"
               [(ngModel)]="versionConfig.changelog"
               rows="5"
               placeholder="- Nueva función...\n- Corrección de errores..."
@@ -292,17 +299,18 @@ import {
           </div>
 
           <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
-            <label class="flex items-center gap-3 cursor-pointer">
+            <div class="flex items-center gap-3">
               <input
+                id="cfg-force-update"
                 type="checkbox"
                 [(ngModel)]="versionConfig.forceUpdate"
                 class="w-5 h-5 rounded bg-slate-950 border-slate-800 text-rose-600 focus:ring-0 focus:ring-offset-0 cursor-pointer"
               />
-              <div>
+              <label for="cfg-force-update" class="cursor-pointer">
                 <span class="text-sm font-semibold text-white block">Forzar Actualización Obligatoria</span>
                 <span class="text-xs text-rose-400">Si se activa, los usuarios no podrán saltarse la actualización ni usar la app sin actualizar.</span>
-              </div>
-            </label>
+              </label>
+            </div>
 
             <button
               (click)="saveVersionConfig()"
@@ -334,8 +342,8 @@ import {
               <h3 class="text-lg font-bold text-white">Banner Global Destacado</h3>
               <p class="text-xs text-slate-400">Mensaje fijado en la parte superior del Feed principal de la aplicación para avisos masivos.</p>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" [(ngModel)]="bannerConfig.enabled" class="sr-only peer" />
+            <label for="cfg-banner-enabled" class="relative inline-flex items-center cursor-pointer">
+              <input id="cfg-banner-enabled" type="checkbox" [(ngModel)]="bannerConfig.enabled" class="sr-only peer" />
               <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
               <span class="ml-3 text-sm font-medium text-slate-300">
                 {{ bannerConfig.enabled ? 'Banner Activado' : 'Banner Oculto' }}
@@ -373,16 +381,18 @@ import {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">ID Único del Banner (Cambiar para volver a mostrar a quienes lo descartaron)</label>
+              <label for="cfg-banner-id" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">ID Único del Banner (Cambiar para volver a mostrar a quienes lo descartaron)</label>
               <input
+                id="cfg-banner-id"
                 type="text"
                 [(ngModel)]="bannerConfig.id"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tipo de Alerta Visual</label>
+              <label for="cfg-banner-type" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tipo de Alerta Visual</label>
               <select
+                id="cfg-banner-type"
                 [(ngModel)]="bannerConfig.type"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
               >
@@ -395,8 +405,9 @@ import {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Título del Banner</label>
+            <label for="cfg-banner-title" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Título del Banner</label>
             <input
+              id="cfg-banner-title"
               type="text"
               [(ngModel)]="bannerConfig.title"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
@@ -404,8 +415,9 @@ import {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Mensaje Explicativo</label>
+            <label for="cfg-banner-message" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Mensaje Explicativo</label>
             <textarea
+              id="cfg-banner-message"
               [(ngModel)]="bannerConfig.message"
               rows="3"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-indigo-500 leading-relaxed"
@@ -414,8 +426,9 @@ import {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Texto del Botón de Acción (Opcional)</label>
+              <label for="cfg-banner-action-text" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Texto del Botón de Acción (Opcional)</label>
               <input
+                id="cfg-banner-action-text"
                 type="text"
                 [(ngModel)]="bannerConfig.actionText"
                 placeholder="Ver más / Donar / Actualizar"
@@ -423,8 +436,9 @@ import {
               />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">URL o Destino del Botón (Opcional)</label>
+              <label for="cfg-banner-action-url" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">URL o Destino del Botón (Opcional)</label>
               <input
+                id="cfg-banner-action-url"
                 type="text"
                 [(ngModel)]="bannerConfig.actionUrl"
                 placeholder="https://..."
@@ -434,14 +448,17 @@ import {
           </div>
 
           <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
-            <label class="flex items-center gap-3 cursor-pointer">
+            <div class="flex items-center gap-3">
               <input
+                id="cfg-banner-dismissible"
                 type="checkbox"
                 [(ngModel)]="bannerConfig.dismissible"
                 class="w-5 h-5 rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0 focus:ring-offset-0 cursor-pointer"
               />
-              <span class="text-sm font-medium text-slate-300">Permitir que el usuario cierre o descarte este banner</span>
-            </label>
+              <label for="cfg-banner-dismissible" class="text-sm font-medium text-slate-300 cursor-pointer">
+                Permitir que el usuario cierre o descarte este banner
+              </label>
+            </div>
 
             <button
               (click)="saveBannerConfig()"
@@ -468,8 +485,8 @@ import {
               <h3 class="text-lg font-bold text-white">Modo Mantenimiento</h3>
               <p class="text-xs text-slate-400">Bloquea temporalmente el uso de la aplicación móvil y muestra una pantalla explicativa.</p>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" [(ngModel)]="maintenanceConfig.enabled" class="sr-only peer" />
+            <label for="cfg-maint-enabled" class="relative inline-flex items-center cursor-pointer">
+              <input id="cfg-maint-enabled" type="checkbox" [(ngModel)]="maintenanceConfig.enabled" class="sr-only peer" />
               <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
               <span class="ml-3 text-sm font-medium text-slate-300">
                 {{ maintenanceConfig.enabled ? 'Mantenimiento ACTIVO' : 'Sistema Operativo' }}
@@ -487,8 +504,9 @@ import {
           }
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Mensaje para los Usuarios</label>
+            <label for="cfg-maint-message" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Mensaje para los Usuarios</label>
             <textarea
+              id="cfg-maint-message"
               [(ngModel)]="maintenanceConfig.message"
               rows="4"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-indigo-500 leading-relaxed"
@@ -496,8 +514,9 @@ import {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Hora / Fecha Estimada de Retorno (Opcional)</label>
+            <label for="cfg-maint-estimated-end" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Hora / Fecha Estimada de Retorno (Opcional)</label>
             <input
+              id="cfg-maint-estimated-end"
               type="text"
               [(ngModel)]="maintenanceConfig.estimatedEndTime"
               placeholder="Ej. Hoy a las 22:00 UTC / En unos minutos"
@@ -531,8 +550,8 @@ import {
               <h3 class="text-lg font-bold text-white">Parámetros del Chat Global</h3>
               <p class="text-xs text-slate-400">Límites contra spam, lentitud y bienvenida en el chat en tiempo real.</p>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" [(ngModel)]="chatConfig.enabled" class="sr-only peer" />
+            <label for="cfg-chat-enabled" class="relative inline-flex items-center cursor-pointer">
+              <input id="cfg-chat-enabled" type="checkbox" [(ngModel)]="chatConfig.enabled" class="sr-only peer" />
               <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
               <span class="ml-3 text-sm font-medium text-slate-300">
                 {{ chatConfig.enabled ? 'Chat Habilitado' : 'Chat Apagado' }}
@@ -542,8 +561,9 @@ import {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Modo Lento / Enfriamiento (Segundos entre mensajes)</label>
+              <label for="cfg-chat-slowmode" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Modo Lento / Enfriamiento (Segundos entre mensajes)</label>
               <input
+                id="cfg-chat-slowmode"
                 type="number"
                 [(ngModel)]="chatConfig.slowModeSeconds"
                 min="0"
@@ -554,8 +574,9 @@ import {
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Longitud Máxima por Mensaje (Caracteres)</label>
+              <label for="cfg-chat-max-len" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Longitud Máxima por Mensaje (Caracteres)</label>
               <input
+                id="cfg-chat-max-len"
                 type="number"
                 [(ngModel)]="chatConfig.maxMessageLength"
                 min="50"
@@ -567,8 +588,9 @@ import {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Mensaje de Bienvenida / Reglas del Chat</label>
+            <label for="cfg-chat-welcome" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Mensaje de Bienvenida / Reglas del Chat</label>
             <textarea
+              id="cfg-chat-welcome"
               [(ngModel)]="chatConfig.welcomeMessage"
               rows="3"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-indigo-500 leading-relaxed"
@@ -603,16 +625,18 @@ import {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Enlace PayPal Principal</label>
+              <label for="cfg-donations-paypal" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Enlace PayPal Principal</label>
               <input
+                id="cfg-donations-paypal"
                 type="url"
                 [(ngModel)]="donationConfig.paypal"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Enlace PayPal.Me ("Invitame un Café")</label>
+              <label for="cfg-donations-paypalme" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Enlace PayPal.Me ("Invitame un Café")</label>
               <input
+                id="cfg-donations-paypalme"
                 type="url"
                 [(ngModel)]="donationConfig.paypalMe"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
@@ -621,8 +645,9 @@ import {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Correo de Soporte Oficial</label>
+            <label for="cfg-donations-email" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Correo de Soporte Oficial</label>
             <input
+              id="cfg-donations-email"
               type="email"
               [(ngModel)]="donationConfig.supportEmail"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"

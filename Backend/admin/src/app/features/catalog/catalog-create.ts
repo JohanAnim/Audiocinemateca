@@ -13,29 +13,29 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
     <div class="create-page">
       <div class="page-header">
         <div>
-          <div class="breadcrumbs">
+          <nav class="breadcrumbs" aria-label="Ruta de navegación">
             <a routerLink="/catalog">Catálogo</a>
-            <span>/</span>
-            <span>Nueva Ficha Exclusiva</span>
-          </div>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">Nueva Ficha Exclusiva</span>
+          </nav>
           <h1>Ficha Completa de Producción & Catálogo</h1>
           <p class="subtitle">Creación de títulos con audiodescripción, doblaje multi-idioma y pistas de streaming</p>
         </div>
         <div class="header-actions">
-          <a routerLink="/catalog" class="btn btn-secondary">Cancelar</a>
-          <button class="btn btn-primary" (click)="saveContent('PUBLISHED')" [disabled]="isSaving()">
+          <a routerLink="/catalog" class="btn btn-secondary cursor-pointer">Cancelar</a>
+          <button class="btn btn-primary cursor-pointer" (click)="saveContent()" [disabled]="isSaving()">
             @if (isSaving()) {
-              <span class="spinner"></span>
+              <span class="spinner" aria-hidden="true"></span>
               <span>Guardando...</span>
             } @else {
-              <span>🚀 Publicar en Catálogo</span>
+              <span>💾 Guardar Ficha Cinematográfica</span>
             }
           </button>
         </div>
       </div>
 
       @if (errorMessage()) {
-        <div class="alert-error" role="alert">
+        <div class="alert-error" role="alert" aria-live="assertive">
           <span>⚠️ {{ errorMessage() }}</span>
         </div>
       }
@@ -44,31 +44,33 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
         <!-- COLUMNA PRINCIPAL (FORMULARIO) -->
         <div class="form-main">
           <!-- 1. IDENTIFICACIÓN Y TIPO -->
-          <div class="card section-card">
+          <section class="card section-card" aria-labelledby="section-1-title">
             <div class="section-title">
-              <span class="step-num">1</span>
+              <span class="step-num" aria-hidden="true">1</span>
               <div>
-                <h3>Identificación & Formato</h3>
+                <h2 id="section-1-title">Identificación & Formato</h2>
                 <small>Tipo de producción, exclusividad e idiomas disponibles</small>
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group flex-2">
-                <label class="form-label">Título de la Obra *</label>
+                <label for="content-title" class="form-label">Título de la Obra *</label>
                 <input
+                  id="content-title"
                   type="text"
                   class="form-control"
                   placeholder="Ej. Los Sonidos del Silencio"
                   [(ngModel)]="form.title"
                   (input)="generateSlug()"
                   required
+                  aria-required="true"
                 />
               </div>
 
               <div class="form-group flex-1">
-                <label class="form-label">Tipo de Contenido *</label>
-                <select class="form-control" [(ngModel)]="form.type">
+                <label for="content-type" class="form-label">Tipo de Contenido *</label>
+                <select id="content-type" class="form-control" [(ngModel)]="form.type" required aria-required="true">
                   <option value="MOVIE">Película</option>
                   <option value="SERIES">Serie de Televisión</option>
                   <option value="DOCUMENTARY">Documental</option>
@@ -82,11 +84,11 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
               <div class="checkbox-row">
                 <input
                   type="checkbox"
-                  id="isExclusive"
+                  id="content-is-exclusive"
                   [(ngModel)]="form.isExclusive"
                   class="custom-checkbox"
                 />
-                <label for="isExclusive" class="checkbox-label">
+                <label for="content-is-exclusive" class="checkbox-label">
                   <strong>⭐ Marcar como Producción Exclusiva de Audiocinemateca</strong>
                   <span>Tendrá insignia dorada destacada y prioridad en recomendaciones del feed</span>
                 </label>
@@ -95,8 +97,8 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
 
             <div class="form-row mt-3">
               <div class="form-group flex-1">
-                <label class="form-label">Idioma / Doblaje del Audio *</label>
-                <select class="form-control" [(ngModel)]="form.dubbing">
+                <label for="content-dubbing" class="form-label">Idioma / Doblaje del Audio *</label>
+                <select id="content-dubbing" class="form-control" [(ngModel)]="form.dubbing" required aria-required="true">
                   <option value="Español Latino">Español Latino (Latinoamérica)</option>
                   <option value="Español de España (Castellano)">Español de España (Castellano)</option>
                   <option value="Inglés (English)">Inglés Original (English)</option>
@@ -106,8 +108,8 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
               </div>
 
               <div class="form-group flex-1">
-                <label class="form-label">Código de Idioma Base</label>
-                <select class="form-control" [(ngModel)]="form.language">
+                <label for="content-language" class="form-label">Código de Idioma Base</label>
+                <select id="content-language" class="form-control" [(ngModel)]="form.language">
                   <option value="es">Español (es)</option>
                   <option value="en">Inglés (en)</option>
                   <option value="fr">Francés (fr)</option>
@@ -118,32 +120,17 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
 
             <div class="form-row">
               <div class="form-group flex-1">
-                <label class="form-label">¿Tiene Audiodescripción?</label>
-                <div class="toggle-group">
-                  <button
-                    type="button"
-                    class="btn btn-sm"
-                    [class.btn-primary]="form.audioDescription"
-                    [class.btn-secondary]="!form.audioDescription"
-                    (click)="form.audioDescription = true"
-                  >
-                    ✓ Sí (Accesible)
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-sm"
-                    [class.btn-danger]="!form.audioDescription"
-                    [class.btn-secondary]="form.audioDescription"
-                    (click)="form.audioDescription = false"
-                  >
-                    ✕ No
-                  </button>
-                </div>
+                <label for="content-audio-description" class="form-label">Audiodescripción *</label>
+                <select id="content-audio-description" class="form-control" [(ngModel)]="form.audioDescription">
+                  <option [ngValue]="true">✓ Sí (Producción Accesible con Audiodescripción)</option>
+                  <option [ngValue]="false">✕ No (Sin pista de audiodescripción)</option>
+                </select>
               </div>
 
               <div class="form-group flex-2">
-                <label class="form-label">Narrador(a) de la Audiodescripción</label>
+                <label for="content-narrator" class="form-label">Narrador(a) de la Audiodescripción</label>
                 <input
+                  id="content-narrator"
                   type="text"
                   class="form-control"
                   placeholder="Ej. Johan Gutiérrez, Voz Institucional ONCE, Aura IA..."
@@ -154,100 +141,103 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
 
             <div class="form-row">
               <div class="form-group flex-1">
-                <label class="form-label">Año de Lanzamiento</label>
-                <input type="number" class="form-control" placeholder="2026" [(ngModel)]="form.releaseYear" />
+                <label for="content-release-year" class="form-label">Año de Lanzamiento</label>
+                <input id="content-release-year" type="number" class="form-control" placeholder="2026" [(ngModel)]="form.releaseYear" />
               </div>
 
               <div class="form-group flex-1">
-                <label class="form-label">Duración (Texto)</label>
-                <input type="text" class="form-control" placeholder="1h 45m" [(ngModel)]="form.duration" />
+                <label for="content-duration" class="form-label">Duración Estimada</label>
+                <input id="content-duration" type="text" class="form-control" placeholder="1h 45m" [(ngModel)]="form.duration" />
               </div>
 
               <div class="form-group flex-1">
-                <label class="form-label">País de Origen</label>
-                <input type="text" class="form-control" placeholder="Colombia, España, EE. UU..." [(ngModel)]="form.country" />
+                <label for="content-country" class="form-label">País de Origen</label>
+                <input id="content-country" type="text" class="form-control" placeholder="Colombia, España, EE. UU..." [(ngModel)]="form.country" />
               </div>
             </div>
-          </div>
+          </section>
 
           <!-- 2. SINOPSIS & ACCESIBILIDAD SONORA -->
-          <div class="card section-card">
+          <section class="card section-card" aria-labelledby="section-2-title">
             <div class="section-title">
-              <span class="step-num">2</span>
+              <span class="step-num" aria-hidden="true">2</span>
               <div>
-                <h3>Sinopsis & Accesibilidad Sonora</h3>
+                <h2 id="section-2-title">Sinopsis & Accesibilidad Sonora</h2>
                 <small>Textos descriptivos para la ficha y narración de TalkBack / Aura</small>
               </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Sinopsis Cinematográfica *</label>
+              <label for="content-synopsis" class="form-label">Sinopsis Cinematográfica *</label>
               <textarea
+                id="content-synopsis"
                 class="form-control"
                 rows="4"
                 placeholder="Escribe la sinopsis detallada del argumento cinematográfico..."
                 [(ngModel)]="form.synopsis"
                 required
+                aria-required="true"
               ></textarea>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Género(s) / Etiquetas</label>
+              <label for="content-genres" class="form-label">Género(s) / Categorías (separados por coma)</label>
               <input
+                id="content-genres"
                 type="text"
                 class="form-control"
-                placeholder="Ej. Ciencia Ficción, Suspenso, Drama, Cine Accesible (separados por coma)"
+                placeholder="Ej. Ciencia Ficción, Suspenso, Drama, Cine Accesible"
                 [(ngModel)]="genreInput"
               />
             </div>
-          </div>
+          </section>
 
           <!-- 3. FICHA TÉCNICA Y ARTÍSTICA -->
-          <div class="card section-card">
+          <section class="card section-card" aria-labelledby="section-3-title">
             <div class="section-title">
-              <span class="step-num">3</span>
+              <span class="step-num" aria-hidden="true">3</span>
               <div>
-                <h3>Ficha Técnica & Equipo Artístico</h3>
+                <h2 id="section-3-title">Ficha Técnica & Equipo Artístico</h2>
                 <small>Metadatos para el buscador de directores, narradores y reparto</small>
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group flex-1">
-                <label class="form-label">Director(es)</label>
-                <input type="text" class="form-control" placeholder="Ej. Christopher Nolan" [(ngModel)]="form.director" />
+                <label for="content-director" class="form-label">Director(es)</label>
+                <input id="content-director" type="text" class="form-control" placeholder="Ej. Christopher Nolan" [(ngModel)]="form.director" />
               </div>
 
               <div class="form-group flex-1">
-                <label class="form-label">Guion / Guionista</label>
-                <input type="text" class="form-control" placeholder="Ej. Jonathan Nolan" [(ngModel)]="form.screenplay" />
+                <label for="content-screenplay" class="form-label">Guion / Guionista</label>
+                <input id="content-screenplay" type="text" class="form-control" placeholder="Ej. Jonathan Nolan" [(ngModel)]="form.screenplay" />
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group flex-1">
-                <label class="form-label">Banda Sonora / Música</label>
-                <input type="text" class="form-control" placeholder="Ej. Hans Zimmer" [(ngModel)]="form.music" />
+                <label for="content-music" class="form-label">Banda Sonora / Música</label>
+                <input id="content-music" type="text" class="form-control" placeholder="Ej. Hans Zimmer" [(ngModel)]="form.music" />
               </div>
 
               <div class="form-group flex-1">
-                <label class="form-label">Reparto Principal</label>
-                <input type="text" class="form-control" placeholder="Ej. Matthew McConaughey, Anne Hathaway" [(ngModel)]="form.cast" />
+                <label for="content-cast" class="form-label">Reparto Principal</label>
+                <input id="content-cast" type="text" class="form-control" placeholder="Ej. Matthew McConaughey, Anne Hathaway" [(ngModel)]="form.cast" />
               </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label">URL Externa de Referencia (FilmAffinity o IMDb)</label>
-              <input type="text" class="form-control" placeholder="https://www.filmaffinity.com/es/film..." [(ngModel)]="form.filmaffinityUrl" />
+              <label for="content-filmaffinity" class="form-label">URL Externa de Referencia (FilmAffinity o IMDb)</label>
+              <input id="content-filmaffinity" type="text" class="form-control" placeholder="https://www.filmaffinity.com/es/film..." [(ngModel)]="form.filmaffinityUrl" />
             </div>
-          </div>
+          </section>
 
           <!-- 4. PISTAS DE AUDIO & STREAMING -->
-          <div class="card section-card">
+          <section class="card section-card" aria-labelledby="section-4-title">
             <div class="section-title">
-              <span class="step-num">4</span>
+              <span class="step-num" aria-hidden="true">4</span>
               <div>
-                <h3>Pistas de Audio & Streaming Directo</h3>
+                <h2 id="section-4-title">Pistas de Audio & Streaming Directo</h2>
                 <small>Enlaces de audio reproducibles en ExoPlayer, Web y Google Cast</small>
               </div>
             </div>
@@ -255,13 +245,15 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
             @if (form.type !== 'SERIES') {
               <!-- MODO PELÍCULA / CORTO / DOCUMENTAL -->
               <div class="form-group">
-                <label class="form-label">URL de Audio Streaming Principal *</label>
+                <label for="content-audio-url" class="form-label">URL de Audio Streaming Principal *</label>
                 <input
+                  id="content-audio-url"
                   type="text"
                   class="form-control"
                   placeholder="https://servidor.com/audios/pelicula.mp3"
                   [(ngModel)]="form.audioUrl"
                   required
+                  aria-required="true"
                 />
               </div>
 
@@ -270,12 +262,26 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
                 <div class="multi-part-inputs">
                   @for (part of multiPartUrls; track $index) {
                     <div class="part-row">
-                      <span class="part-num">Parte {{ $index + 1 }}:</span>
-                      <input type="text" class="form-control" [(ngModel)]="multiPartUrls[$index]" placeholder="https://..." />
-                      <button type="button" class="btn btn-danger btn-sm" (click)="removePart($index)">✕</button>
+                      <label [for]="'content-part-' + $index" class="part-num">Parte {{ $index + 1 }}:</label>
+                      <input
+                        [id]="'content-part-' + $index"
+                        type="text"
+                        class="form-control"
+                        [(ngModel)]="multiPartUrls[$index]"
+                        placeholder="https://..."
+                        [attr.aria-label]="'URL de la parte adicional ' + ($index + 1)"
+                      />
+                      <button
+                        type="button"
+                        class="btn btn-danger btn-sm cursor-pointer"
+                        (click)="removePart($index)"
+                        [attr.aria-label]="'Eliminar parte ' + ($index + 1)"
+                      >
+                        ✕
+                      </button>
                     </div>
                   }
-                  <button type="button" class="btn btn-secondary btn-sm mt-2" (click)="addPart()">
+                  <button type="button" class="btn btn-secondary btn-sm mt-2 cursor-pointer" (click)="addPart()">
                     ➕ Agregar Parte Adicional
                   </button>
                 </div>
@@ -285,7 +291,7 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
               <div class="series-builder">
                 <div class="builder-header">
                   <strong>Estructura de Temporadas y Capítulos</strong>
-                  <button type="button" class="btn btn-primary btn-sm" (click)="addSeason()">
+                  <button type="button" class="btn btn-primary btn-sm cursor-pointer" (click)="addSeason()">
                     ➕ Nueva Temporada
                   </button>
                 </div>
@@ -293,13 +299,23 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
                 @for (season of seasons; track season.seasonNumber; let sIndex = $index) {
                   <div class="season-block">
                     <div class="season-head">
-                      <h4>Temporada {{ season.seasonNumber }}</h4>
+                      <h3>Temporada {{ season.seasonNumber }}</h3>
                       <div class="season-actions">
-                        <button type="button" class="btn btn-secondary btn-sm" (click)="addEpisode(season)">
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-sm cursor-pointer"
+                          (click)="addEpisode(season)"
+                          [attr.aria-label]="'Agregar episodio a temporada ' + season.seasonNumber"
+                        >
                           ➕ Agregar Episodio
                         </button>
                         @if (seasons.length > 1) {
-                          <button type="button" class="btn btn-danger btn-sm" (click)="removeSeason(sIndex)">
+                          <button
+                            type="button"
+                            class="btn btn-danger btn-sm cursor-pointer"
+                            (click)="removeSeason(sIndex)"
+                            [attr.aria-label]="'Eliminar temporada ' + season.seasonNumber"
+                          >
                             Eliminar Temporada
                           </button>
                         }
@@ -309,27 +325,46 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
                     <div class="episodes-list">
                       @for (ep of season.episodes; track ep.episodeNumber; let eIndex = $index) {
                         <div class="episode-row">
-                          <span class="ep-num">E{{ ep.episodeNumber }}</span>
+                          <span class="ep-num" aria-hidden="true">E{{ ep.episodeNumber }}</span>
+                          <label [for]="'ep-title-' + sIndex + '-' + eIndex" class="sr-only">
+                            Título del Capítulo {{ ep.episodeNumber }} de Temporada {{ season.seasonNumber }}
+                          </label>
                           <input
+                            [id]="'ep-title-' + sIndex + '-' + eIndex"
                             type="text"
                             class="form-control ep-title"
                             placeholder="Título del Capítulo"
                             [(ngModel)]="ep.title"
                           />
+                          <label [for]="'ep-url-' + sIndex + '-' + eIndex" class="sr-only">
+                            URL de Audio del Capítulo {{ ep.episodeNumber }} de Temporada {{ season.seasonNumber }}
+                          </label>
                           <input
+                            [id]="'ep-url-' + sIndex + '-' + eIndex"
                             type="text"
                             class="form-control ep-url"
                             placeholder="URL Audio Streaming (mp3/m4a)"
                             [(ngModel)]="ep.audioUrl"
                           />
+                          <label [for]="'ep-dur-' + sIndex + '-' + eIndex" class="sr-only">
+                            Duración en Minutos del Capítulo {{ ep.episodeNumber }} de Temporada {{ season.seasonNumber }}
+                          </label>
                           <input
+                            [id]="'ep-dur-' + sIndex + '-' + eIndex"
                             type="number"
                             class="form-control ep-duration"
                             placeholder="Min"
                             [(ngModel)]="ep.durationMinutes"
                             title="Duración en minutos"
                           />
-                          <button type="button" class="btn btn-danger btn-sm" (click)="removeEpisode(season, eIndex)">✕</button>
+                          <button
+                            type="button"
+                            class="btn btn-danger btn-sm cursor-pointer"
+                            (click)="removeEpisode(season, eIndex)"
+                            [attr.aria-label]="'Eliminar capítulo ' + ep.episodeNumber + ' de temporada ' + season.seasonNumber"
+                          >
+                            ✕
+                          </button>
                         </div>
                       }
                     </div>
@@ -337,25 +372,35 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
                 }
               </div>
             }
-          </div>
+          </section>
         </div>
 
-        <!-- COLUMNA LATERAL (IMÁGENES Y PREVIEW) -->
-        <div class="form-sidebar">
+        <!-- COLUMNA LATERAL (IMÁGENES Y ESTADO) -->
+        <aside class="form-sidebar" aria-label="Ajustes de publicación y previsualización">
           <!-- MATERIAL GRÁFICO & PREVIEWS -->
           <div class="card preview-card">
             <h3>🖼️ Material Gráfico</h3>
-            
+
             <div class="form-group mt-3">
-              <label class="form-label">URL de Portada (Vertical)</label>
-              <input type="text" class="form-control" placeholder="https://.../cover.jpg" [(ngModel)]="form.coverUrl" />
+              <label for="content-cover-url" class="form-label">URL de Portada (Vertical)</label>
+              <input
+                id="content-cover-url"
+                type="text"
+                class="form-control"
+                placeholder="https://.../cover.jpg"
+                [(ngModel)]="form.coverUrl"
+              />
             </div>
 
             <div class="cover-preview-box">
               @if (form.coverUrl) {
-                <img [src]="form.coverUrl" alt="Previsualización de Portada" onerror="this.style.display='none'" />
+                <img
+                  [src]="form.coverUrl"
+                  [alt]="'Previsualización de portada para ' + (form.title || 'nueva obra')"
+                  onerror="this.style.display='none'"
+                />
               } @else {
-                <div class="cover-placeholder">
+                <div class="cover-placeholder" aria-hidden="true">
                   <span>🎬</span>
                   <small>Previsualización de Portada</small>
                 </div>
@@ -363,15 +408,25 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
             </div>
 
             <div class="form-group mt-3">
-              <label class="form-label">URL de Banner (Horizontal)</label>
-              <input type="text" class="form-control" placeholder="https://.../banner.jpg" [(ngModel)]="form.bannerUrl" />
+              <label for="content-banner-url" class="form-label">URL de Banner (Horizontal)</label>
+              <input
+                id="content-banner-url"
+                type="text"
+                class="form-control"
+                placeholder="https://.../banner.jpg"
+                [(ngModel)]="form.bannerUrl"
+              />
             </div>
 
             <div class="banner-preview-box">
               @if (form.bannerUrl) {
-                <img [src]="form.bannerUrl" alt="Previsualización de Banner" onerror="this.style.display='none'" />
+                <img
+                  [src]="form.bannerUrl"
+                  [alt]="'Previsualización de banner para ' + (form.title || 'nueva obra')"
+                  onerror="this.style.display='none'"
+                />
               } @else {
-                <div class="banner-placeholder">
+                <div class="banner-placeholder" aria-hidden="true">
                   <span>🖼️ Previsualización de Banner</span>
                 </div>
               }
@@ -380,21 +435,36 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
 
           <!-- ESTADO DE PUBLICACIÓN -->
           <div class="card status-card">
-            <h3>Visibilidad</h3>
-            <div class="form-group mt-2">
-              <select class="form-control" [(ngModel)]="form.status">
-                <option value="PUBLISHED">Publicado (Visible en App)</option>
-                <option value="DRAFT">Borrador (Oculto)</option>
+            <h3>Visibilidad & Publicación</h3>
+            <div class="form-group mt-3">
+              <label for="content-status" class="form-label">Estado en la Plataforma</label>
+              <select id="content-status" class="form-control" [(ngModel)]="form.status">
+                <option value="PUBLISHED">🟢 Publicado (Visible en App)</option>
+                <option value="DRAFT">🟡 Borrador (Oculto / Privado)</option>
               </select>
             </div>
-            <button class="btn btn-primary btn-block" (click)="saveContent('PUBLISHED')" [disabled]="isSaving()">
-              🚀 Publicar Inmediatamente
-            </button>
-            <button class="btn btn-secondary btn-block mt-2" (click)="saveContent('DRAFT')" [disabled]="isSaving()">
-              💾 Guardar como Borrador
+            <p class="status-hint">
+              @if (form.status === 'PUBLISHED') {
+                La obra estará visible de inmediato para todos los usuarios en el catálogo y recomendaciones.
+              } @else {
+                La obra se guardará en modo borrador y solo será accesible para administradores.
+              }
+            </p>
+            <button
+              type="button"
+              class="btn btn-primary btn-block mt-3 cursor-pointer"
+              (click)="saveContent()"
+              [disabled]="isSaving()"
+            >
+              @if (isSaving()) {
+                <span class="spinner" aria-hidden="true"></span>
+                <span>Guardando Ficha...</span>
+              } @else {
+                <span>💾 Guardar Ficha Cinematográfica</span>
+              }
             </button>
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   `,
@@ -490,7 +560,7 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
       font-size: 14px;
     }
 
-    .section-title h3 {
+    .section-title h2 {
       font-size: 16px;
       font-weight: 700;
       color: var(--text-main);
@@ -549,11 +619,6 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
       color: var(--text-muted);
     }
 
-    .toggle-group {
-      display: flex;
-      gap: 8px;
-    }
-
     .multi-part-inputs {
       display: flex;
       flex-direction: column;
@@ -601,7 +666,7 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
       margin-bottom: 12px;
     }
 
-    .season-head h4 {
+    .season-head h3 {
       font-size: 15px;
       font-weight: 700;
     }
@@ -690,8 +755,38 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
       object-fit: cover;
     }
 
+    .status-hint {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-top: 10px;
+      background: var(--bg-input);
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border-left: 3px solid var(--primary);
+    }
+
     .btn-block {
       width: 100%;
+    }
+
+    .cursor-pointer {
+      cursor: pointer;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   `],
 })
@@ -780,7 +875,10 @@ export class CatalogCreateComponent {
     season.episodes.splice(epIndex, 1);
   }
 
-  saveContent(status: 'PUBLISHED' | 'DRAFT') {
+  saveContent(status?: 'PUBLISHED' | 'DRAFT') {
+    const finalStatus = status || this.form.status || 'PUBLISHED';
+    this.form.status = finalStatus;
+
     if (!this.form.title?.trim()) {
       this.errorMessage.set('El título de la obra es requerido.');
       return;
@@ -806,7 +904,7 @@ export class CatalogCreateComponent {
 
     const payload: CreateContentDto = {
       ...this.form,
-      status,
+      status: finalStatus,
       categories: categories.length > 0 ? categories : undefined,
       genreRaw: this.genreInput.trim() || undefined,
       audioUrls: this.multiPartUrls.filter((u) => u.trim().length > 0),
@@ -816,7 +914,7 @@ export class CatalogCreateComponent {
     this.contentService.createContent(payload).subscribe({
       next: (created) => {
         this.isSaving.set(false);
-        alert(`¡Obra "${created.title}" creada y publicada con éxito en el catálogo!`);
+        alert(`¡Obra "${created.title}" guardada con éxito en el catálogo!`);
         this.router.navigate(['/catalog']);
       },
       error: (err) => {

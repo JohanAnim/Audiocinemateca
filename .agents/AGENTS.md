@@ -74,7 +74,8 @@
       - **Enlace de Salto (Skip-Link):** Enlace directo `.skip-link` visible al tabular para saltar navegación y acceder inmediatamente al contenido principal (`#main-content`).
       - **Landmarks HTML5 Semánticos:** Estructura completa con `<header role="banner">`, `<aside role="navigation">`, `<main id="main-content" role="main">` y `<footer role="contentinfo">`.
       - **Pie de Página Institucional (Footer):** Integrado en el layout con telemetría de Oracle Cloud/Dokploy, estado de réplicas en PostgreSQL 16, Socket.IO `/ws/chat`, reloj en tiempo real sincronizado, certificaciones de lectores de pantalla (TalkBack, NVDA, JAWS) y copyright oficial.
-      - **Tablas y Diálogos Accesibles:** Tablas con `<caption class="sr-only">`, encabezados con `<th scope="col">`, botones de acción con descripciones semánticas completas (`aria-label`), modales con `role="dialog"`, `aria-modal="true"` y pestañas con patrón `role="tablist"` / `role="tab"` / `role="tabpanel"`.
+      - **Vinculación Programática Label-Input (WCAG 1.3.1 y 4.1.2):** En todas las pantallas (`catalog-create.ts`, `config-editor.ts`, `agents-config.ts`, `users-list.ts`, `community-chat.ts`), cada control interactivo (`<input>`, `<select>`, `<textarea>`, `<checkbox>`) cuenta con `id` único y su respectivo `<label for="...">`, garantizando que lectores de pantalla como TalkBack, NVDA y JAWS enuncien el propósito exacto de cada campo sin controles huérfanos.
+      - **Flujo Cohesivo de Publicación:** Eliminada la contradicción entre el selector de estado de visibilidad (`PUBLISHED` vs `DRAFT`) y los botones de acción en `catalog-create.ts`. El selector gobierna inequívocamente el estado y la acción se unifica bajo el botón principal accesible *"Guardar Ficha Cinematográfica"*.
       - **Respeto a Preferencias del Usuario:** Soporte nativo para `@media (prefers-reduced-motion: reduce)` y anillos de foco de alto contraste `:focus-visible` (3px solid `#818cf8`).
 
 

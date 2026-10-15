@@ -162,8 +162,8 @@ export interface PushNotificationPayload {
               </h3>
               <p class="text-xs text-slate-400">Controla cómo responde y asiste el modelo generativo a las personas ciegas o con baja visión.</p>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" [(ngModel)]="auraConfig.enabled" class="sr-only peer" />
+            <label for="aura-enabled" class="relative inline-flex items-center cursor-pointer">
+              <input id="aura-enabled" type="checkbox" [(ngModel)]="auraConfig.enabled" class="sr-only peer" />
               <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
               <span class="ml-3 text-sm font-medium text-slate-300">
                 {{ auraConfig.enabled ? 'Aura ACTIVA' : 'Aura DESACTIVADA' }}
@@ -173,8 +173,9 @@ export interface PushNotificationPayload {
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Modelo de Lenguaje</label>
+              <label for="aura-model" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Modelo de Lenguaje</label>
               <select
+                id="aura-model"
                 [(ngModel)]="auraConfig.model"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500"
               >
@@ -186,9 +187,10 @@ export interface PushNotificationPayload {
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Temperatura: {{ auraConfig.temperature }}</label>
+              <label for="aura-temperature" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Temperatura: {{ auraConfig.temperature }}</label>
               <div class="flex items-center gap-4 mt-2">
                 <input
+                  id="aura-temperature"
                   type="range"
                   [(ngModel)]="auraConfig.temperature"
                   min="0.1"
@@ -202,8 +204,9 @@ export interface PushNotificationPayload {
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Límite de Tokens de Salida</label>
+              <label for="aura-max-tokens" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Límite de Tokens de Salida</label>
               <input
+                id="aura-max-tokens"
                 type="number"
                 [(ngModel)]="auraConfig.maxTokens"
                 min="100"
@@ -216,8 +219,9 @@ export interface PushNotificationPayload {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">System Prompt Maestro (Personalidad de Aura)</label>
+            <label for="aura-system-prompt" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">System Prompt Maestro (Personalidad de Aura)</label>
             <textarea
+              id="aura-system-prompt"
               [(ngModel)]="auraConfig.systemPrompt"
               rows="6"
               class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-purple-500 font-mono text-xs leading-relaxed"
@@ -234,48 +238,52 @@ export interface PushNotificationPayload {
             </h4>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+              <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition">
                 <input
+                  id="aura-tool-play"
                   type="checkbox"
                   [(ngModel)]="auraConfig.enablePlayContentTool"
-                  class="mt-1 w-4 h-4 rounded bg-slate-950 border-slate-700 text-purple-600 focus:ring-0"
+                  class="mt-1 w-4 h-4 rounded bg-slate-950 border-slate-700 text-purple-600 focus:ring-0 cursor-pointer"
                 />
-                <div>
+                <label for="aura-tool-play" class="cursor-pointer">
                   <span class="text-sm font-semibold text-white block">Súper Poder: play_content</span>
                   <span class="text-xs text-slate-400">Permite a Aura reproducir directamente películas o capítulos de series tras pedirlo el usuario por voz.</span>
-                </div>
-              </label>
+                </label>
+              </div>
 
-              <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+              <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition">
                 <input
+                  id="aura-tool-catalog"
                   type="checkbox"
                   [(ngModel)]="auraConfig.enableCatalogSearch"
-                  class="mt-1 w-4 h-4 rounded bg-slate-950 border-slate-700 text-purple-600 focus:ring-0"
+                  class="mt-1 w-4 h-4 rounded bg-slate-950 border-slate-700 text-purple-600 focus:ring-0 cursor-pointer"
                 />
-                <div>
+                <label for="aura-tool-catalog" class="cursor-pointer">
                   <span class="text-sm font-semibold text-white block">Búsqueda Semántica de Catálogo</span>
                   <span class="text-xs text-slate-400">Permite buscar obras por actores, directores, narradores de audiodescripción o géneros.</span>
-                </div>
-              </label>
+                </label>
+              </div>
 
-              <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+              <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition">
                 <input
+                  id="aura-tool-chat"
                   type="checkbox"
                   [(ngModel)]="auraConfig.enableCommunityChatBot"
-                  class="mt-1 w-4 h-4 rounded bg-slate-950 border-slate-700 text-purple-600 focus:ring-0"
+                  class="mt-1 w-4 h-4 rounded bg-slate-950 border-slate-700 text-purple-600 focus:ring-0 cursor-pointer"
                 />
-                <div>
+                <label for="aura-tool-chat" class="cursor-pointer">
                   <span class="text-sm font-semibold text-white block">Presencia en Chat de la Comunidad</span>
                   <span class="text-xs text-slate-400">Aura responde en tiempo real cuando un usuario escribe una mención en el chat público.</span>
-                </div>
-              </label>
+                </label>
+              </div>
 
               <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
                 <div>
-                  <span class="text-sm font-semibold text-white block">Pausa Elegante TTS (ms)</span>
+                  <label for="aura-speech-pause" class="text-sm font-semibold text-white block">Pausa Elegante TTS (ms)</label>
                   <span class="text-xs text-slate-400">Silencio de cortesía tras hablar (evita solaparse con TalkBack).</span>
                 </div>
                 <input
+                  id="aura-speech-pause"
                   type="number"
                   [(ngModel)]="auraConfig.speechPauseMs"
                   min="0"
@@ -335,8 +343,9 @@ export interface PushNotificationPayload {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Destinatarios Objetivo</label>
+              <label for="push-target" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Destinatarios Objetivo</label>
               <select
+                id="push-target"
                 [(ngModel)]="pushPayload.target"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
               >
@@ -347,8 +356,9 @@ export interface PushNotificationPayload {
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Acción al Pulsar la Notificación</label>
+              <label for="push-action-type" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Acción al Pulsar la Notificación</label>
               <select
+                id="push-action-type"
                 [(ngModel)]="pushPayload.actionType"
                 class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
               >
@@ -360,8 +370,9 @@ export interface PushNotificationPayload {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Título de la Notificación</label>
+            <label for="push-title" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Título de la Notificación</label>
             <input
+              id="push-title"
               type="text"
               [(ngModel)]="pushPayload.title"
               placeholder="¡Nuevo Estreno con Audiodescripción!"
@@ -370,8 +381,9 @@ export interface PushNotificationPayload {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Cuerpo del Mensaje (Texto Notificación)</label>
+            <label for="push-body" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Cuerpo del Mensaje (Texto Notificación)</label>
             <textarea
+              id="push-body"
               [(ngModel)]="pushPayload.body"
               rows="3"
               placeholder="Ya puedes disfrutar de la nueva película disponible en el catálogo..."
@@ -381,8 +393,9 @@ export interface PushNotificationPayload {
 
           @if (pushPayload.actionType === 'open_content') {
             <div>
-              <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">UUID o External ID de la Obra</label>
+              <label for="push-target-id" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">UUID o External ID de la Obra</label>
               <input
+                id="push-target-id"
                 type="text"
                 [(ngModel)]="pushPayload.targetId"
                 placeholder="Ej. matrix_1999 o UUID"
@@ -431,15 +444,18 @@ export interface PushNotificationPayload {
                   <p class="text-xs text-slate-400">Elimina mensajes obsoletos para mantener alta velocidad en milisegundos.</p>
                 </div>
                 <input
+                  id="cron-autoclean-chat"
                   type="checkbox"
                   [(ngModel)]="cronConfig.autoCleanEnabled"
-                  class="w-5 h-5 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0"
+                  class="w-5 h-5 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer"
+                  aria-label="Activar purga automática de chat"
                 />
               </div>
 
               <div>
-                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Retener mensajes de los últimos (días):</label>
+                <label for="cron-clean-days" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Retener mensajes de los últimos (días):</label>
                 <input
+                  id="cron-clean-days"
                   type="number"
                   [(ngModel)]="cronConfig.cleanOldChatDays"
                   min="7"
@@ -467,8 +483,9 @@ export interface PushNotificationPayload {
               </div>
 
               <div>
-                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Intervalo de Verificación (Horas):</label>
+                <label for="cron-audit-hours" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Intervalo de Verificación (Horas):</label>
                 <input
+                  id="cron-audit-hours"
                   type="number"
                   [(ngModel)]="cronConfig.catalogLinkAuditIntervalHours"
                   min="1"
@@ -493,9 +510,11 @@ export interface PushNotificationPayload {
                   <p class="text-xs text-slate-400">Agrega reproducciones ponderadas para la sección "Tendencias".</p>
                 </div>
                 <input
+                  id="cron-recalc-rankings"
                   type="checkbox"
                   [(ngModel)]="cronConfig.recalculateRankingsDaily"
-                  class="w-5 h-5 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0"
+                  class="w-5 h-5 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer"
+                  aria-label="Activar recálculo diario de rankings"
                 />
               </div>
 
@@ -518,8 +537,9 @@ export interface PushNotificationPayload {
               </div>
 
               <div>
-                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Expresión Cron:</label>
+                <label for="cron-backup-schedule" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Expresión Cron:</label>
                 <input
+                  id="cron-backup-schedule"
                   type="text"
                   [(ngModel)]="cronConfig.backupDatabaseSchedule"
                   placeholder="0 3 * * *"
