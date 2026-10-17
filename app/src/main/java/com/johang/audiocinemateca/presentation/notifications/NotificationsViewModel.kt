@@ -13,7 +13,8 @@ class NotificationsViewModel @Inject constructor(
     private val notificationDao: NotificationDao
 ) : ViewModel() {
 
-    val notifications = notificationDao.getAllNotifications().asLiveData()
+    val notificationsFlow = notificationDao.getAllNotifications()
+    val notifications = notificationsFlow.asLiveData()
 
     fun clearNotifications() {
         viewModelScope.launch {

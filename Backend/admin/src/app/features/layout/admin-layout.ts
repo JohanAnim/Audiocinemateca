@@ -3,168 +3,153 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { CommunityService } from '../../core/services/community.service';
+import { AuraAgentService } from '../../core/services/aura-agent.service';
+import { AuraChatPanelComponent } from '../agents/aura-chat-panel';
 
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, AuraChatPanelComponent],
   template: `
-    <!-- ENLACE DIRECTO DE ACCESIBILIDAD PARA LECTORES DE PANTALLA Y TECLADO -->
     <a href="#main-content" class="skip-link">
-      Saltar al contenido principal (Skip to content)
+      Saltar al contenido principal
     </a>
 
     <div class="layout-container">
-      <!-- SIDEBAR DE NAVEGACIÓN INSTITUCIONAL -->
-      <aside class="sidebar" role="navigation" aria-label="Navegación principal de administración">
+      <aside class="sidebar" role="navigation" aria-label="Navegación principal">
         <div class="brand">
-          <span class="brand-icon" aria-hidden="true">🎬</span>
           <div class="brand-text">
             <h2>Audiocinemateca</h2>
-            <span class="brand-badge">CONSOLA ADMINISTRATIVA</span>
+            <span class="brand-badge">ADMINISTRACIÓN</span>
           </div>
         </div>
 
-        <nav class="nav-menu" aria-label="Módulos del sistema">
-          <a
-            routerLink="/dashboard"
-            routerLinkActive="active"
-            class="nav-item"
-            aria-label="Panel general y métricas en tiempo real"
-          >
-            <span class="nav-icon" aria-hidden="true">📊</span>
-            <span>Dashboard & Métricas</span>
+        <nav class="nav-menu" aria-label="Secciones">
+          <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
+            <span>Resumen</span>
           </a>
 
-          <a
-            routerLink="/catalog"
-            routerLinkActive="active"
-            class="nav-item"
-            aria-label="Catálogo cinematográfico y creador de fichas exclusivas"
-          >
-            <span class="nav-icon" aria-hidden="true">🎬</span>
-            <span>Catálogo Cinematográfico</span>
+          <a routerLink="/catalog" routerLinkActive="active" class="nav-item">
+            <span>Catálogo</span>
           </a>
 
-          <a
-            routerLink="/users"
-            routerLinkActive="active"
-            class="nav-item"
-            aria-label="Gestión de usuarios registrados, roles y moderación de sanciones"
-          >
-            <span class="nav-icon" aria-hidden="true">👥</span>
-            <span>Usuarios & Sanciones</span>
+          <a routerLink="/users" routerLinkActive="active" class="nav-item">
+            <span>Usuarios</span>
           </a>
 
-          <a
-            routerLink="/community"
-            routerLinkActive="active"
-            class="nav-item"
-            aria-label="Supervisión de chat comunitario y publicación de comunicados"
-          >
-            <span class="nav-icon" aria-hidden="true">💬</span>
-            <span>Comunidad & Chat en Vivo</span>
+          <a routerLink="/community" routerLinkActive="active" class="nav-item">
+            <span>Comunidad</span>
           </a>
 
-          <a
-            routerLink="/config"
-            routerLinkActive="active"
-            class="nav-item"
-            aria-label="Configuración remota, control de versiones APK y modo mantenimiento"
-          >
-            <span class="nav-icon" aria-hidden="true">⚙️</span>
-            <span>Configuración Remota & APK</span>
+          <a routerLink="/config" routerLinkActive="active" class="nav-item">
+            <span>Configuración</span>
           </a>
 
-          <a
-            routerLink="/agents"
-            routerLinkActive="active"
-            class="nav-item"
-            aria-label="Agente de inteligencia artificial Aura y automatizaciones programadas"
-          >
-            <span class="nav-icon" aria-hidden="true">🤖</span>
-            <span>Aura IA & Automatizaciones</span>
+          <a routerLink="/agents" routerLinkActive="active" class="nav-item">
+            <span>Aura IA</span>
+          </a>
+
+          <a routerLink="/aura-chat" routerLinkActive="active" class="nav-item">
+            <span>Chat</span>
           </a>
         </nav>
 
         <div class="sidebar-footer">
-          <div class="admin-profile" aria-label="Perfil del administrador activo">
+          <div class="admin-profile">
             <div class="avatar" aria-hidden="true">{{ userInitial() }}</div>
             <div class="profile-info">
-              <span class="profile-name" [title]="auth.currentUser()?.displayName || auth.currentUser()?.username">
+              <span class="profile-name">
                 {{ auth.currentUser()?.displayName || auth.currentUser()?.username }}
               </span>
-              <span class="profile-role badge badge-primary" aria-label="Rol asignado">{{ auth.currentUser()?.role }}</span>
+              <span class="profile-role badge badge-primary">{{ auth.currentUser()?.role }}</span>
             </div>
           </div>
           <button
             class="btn btn-secondary btn-sm btn-logout cursor-pointer"
             (click)="auth.logout()"
-            aria-label="Cerrar sesión de forma segura"
-            title="Cerrar sesión de administración"
           >
-            <span aria-hidden="true">🚪</span>
-            <span>Salir</span>
+            Salir
           </button>
         </div>
       </aside>
 
-      <!-- CONTENIDO PRINCIPAL Y HEADER -->
       <div class="main-content">
-        <!-- TOPBAR SUPERIOR ACCESIBLE -->
         <header class="topbar" role="banner">
           <div class="topbar-left">
-            <span class="site-tag" title="Dominio oficial del panel administrativo">audiocinemateca.johanag.dev</span>
-            <span class="access-pill" title="Nivel de conformidad de accesibilidad">
-              ♿ WCAG 2.1 AAA
-            </span>
+            <span class="site-tag">Panel de Control</span>
           </div>
 
           <div class="topbar-right" role="status" aria-live="polite">
-            <!-- ESTADO DE WEBSOCKETS EN VIVO -->
+            <button
+              type="button"
+              class="btn btn-primary btn-sm chat-nav-btn cursor-pointer"
+              (click)="auraAgent.toggleChat()"
+              [attr.aria-expanded]="auraAgent.isOpen()"
+              aria-label="Abrir chat con Aura"
+              title="Abrir chat con Aura"
+            >
+              <span>💬 Chat</span>
+            </button>
+
             <div
               class="live-pill"
               [class.connected]="community.isConnected()"
-              [attr.aria-label]="community.isConnected() ? 'Servicio de WebSockets conectado en tiempo real' : 'Reconectando con el servidor WebSockets'"
             >
               <span class="pulse-dot" aria-hidden="true"></span>
-              <span>{{ community.isConnected() ? 'Sockets En Vivo' : 'Reconectando...' }}</span>
+              <span>{{ community.isConnected() ? 'Conectado' : 'Reconectando...' }}</span>
             </div>
 
-            <!-- USUARIOS ACTIVOS EN VIVO -->
-            <div
-              class="badge badge-success online-counter"
-              [attr.aria-label]="community.onlineUsers().length + ' usuarios conectados en este momento'"
-              title="Usuarios actualmente activos en la plataforma"
-            >
-              <span aria-hidden="true">👥</span>
+            <div class="badge badge-success online-counter">
               <span>{{ community.onlineUsers().length }} en línea</span>
             </div>
           </div>
         </header>
 
-        <!-- ÁREA DE VISTAS HIJAS (LANDMARK MAIN) -->
         <div class="scroll-wrapper">
           <main id="main-content" class="page-body" role="main" tabindex="-1">
             <router-outlet />
           </main>
 
-          <!-- PIE DE PÁGINA ACCESIBLE Y LIMPIO -->
-          <footer class="admin-footer" role="contentinfo" aria-label="Información del panel">
+          <footer class="admin-footer" role="contentinfo">
             <div class="footer-content">
               <p class="copyright-text">
-                © {{ currentYear }} <strong>Audiocinemateca</strong>. Panel de Control y Administración.
+                © {{ currentYear }} <strong>Audiocinemateca</strong>
               </p>
-              <div class="footer-links">
-                <span class="footer-status-indicator">
-                  <span class="status-indicator-dot" aria-hidden="true"></span>
-                  Panel Activo
-                </span>
-              </div>
             </div>
           </footer>
         </div>
       </div>
+
+      <!-- DRAWER FLOTANTE DE CHAT CON AURA -->
+      @if (auraAgent.isOpen()) {
+        <div class="chat-drawer-backdrop" (click)="auraAgent.closeChat()" role="presentation">
+          <aside
+            class="chat-drawer"
+            (click)="$event.stopPropagation()"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Chat con Aura"
+          >
+            <div class="drawer-header">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 16px;">💬</span>
+                <strong>Chat con Aura</strong>
+              </div>
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm cursor-pointer"
+                (click)="auraAgent.closeChat()"
+                aria-label="Cerrar ventana de chat"
+              >
+                ✕
+              </button>
+            </div>
+            <div class="drawer-body">
+              <app-aura-chat-panel />
+            </div>
+          </aside>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -451,11 +436,71 @@ import { CommunityService } from '../../core/services/community.service';
       background-color: #10b981;
       box-shadow: 0 0 6px #10b981;
     }
+
+    .chat-nav-btn {
+      font-weight: 700;
+      padding: 6px 14px;
+    }
+
+    /* --- DRAWER FLOTANTE --- */
+    .chat-drawer-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(2px);
+      z-index: 1000;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .chat-drawer {
+      width: 500px;
+      max-width: 95vw;
+      height: 100vh;
+      background-color: var(--bg-card);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      box-shadow: -8px 0 24px rgba(0, 0, 0, 0.5);
+      animation: slideIn 0.25s ease-out;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+
+    .drawer-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: var(--bg-sidebar);
+    }
+
+    .drawer-body {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .drawer-body app-aura-chat-panel {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
   `],
 })
 export class AdminLayoutComponent implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);
   readonly community = inject(CommunityService);
+  readonly auraAgent = inject(AuraAgentService);
 
   readonly currentYear = new Date().getFullYear();
 

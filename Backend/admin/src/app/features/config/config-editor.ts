@@ -2,13 +2,14 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ConfigService } from '../../core/services/config.service';
+import { ContentService } from '../../core/services/content.service';
 import {
   VersionConfig,
   BannerConfig,
   MaintenanceConfig,
   ChatConfig,
   DonationConfig,
-  AppConfigItem
+  AppConfigItem,
 } from '../../core/models/config.models';
 
 @Component({
@@ -16,702 +17,858 @@ import {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="space-y-6">
-      <!-- HEADER -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
-            <span class="p-2 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20">
-              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </span>
-            Configuración Remota del Sistema
-          </h1>
-          <p class="text-sm text-slate-400 mt-1">
-            Control de versiones de la app Android/Escritorio, avisos globales, mantenimiento y parámetros en vivo (<1ms).
-          </p>
+    <div class="exec-page">
+      <div class="exec-header">
+        <div class="exec-title-group">
+          <h1>Configuración</h1>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="exec-header-actions">
           <button
+            type="button"
+            class="btn btn-secondary"
             (click)="seedDefaults()"
             [disabled]="isSaving()"
-            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-sm font-medium border border-slate-700 transition flex items-center gap-2 cursor-pointer"
           >
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
             Restaurar Valores por Defecto
           </button>
           <button
-            (click)="loadConfigs()"
-            [disabled]="isLoading()"
-            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
+            type="button"
+            class="btn btn-primary"
+            (click)="refreshAll()"
+            [disabled]="isLoading() || isLoadingGithub()"
           >
-            <svg [class.animate-spin]="isLoading()" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refrescar
+            {{ isLoading() || isLoadingGithub() ? 'Actualizando...' : 'Actualizar' }}
           </button>
         </div>
       </div>
 
-      <!-- STATUS NOTIFICATION -->
       @if (statusMessage()) {
-        <div
-          [class.bg-emerald-500/10]="statusType() === 'success'"
-          [class.border-emerald-500/30]="statusType() === 'success'"
-          [class.text-emerald-400]="statusType() === 'success'"
-          [class.bg-rose-500/10]="statusType() === 'error'"
-          [class.border-rose-500/30]="statusType() === 'error'"
-          [class.text-rose-400]="statusType() === 'error'"
-          class="p-4 rounded-xl border flex items-center justify-between transition-all"
-        >
-          <div class="flex items-center gap-3">
-            @if (statusType() === 'success') {
-              <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-            } @else {
-              <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            }
-            <span class="text-sm font-medium">{{ statusMessage() }}</span>
-          </div>
-          <button (click)="statusMessage.set(null)" class="text-slate-400 hover:text-white cursor-pointer">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+        <div class="status-banner" [ngClass]="statusType()" role="status" aria-live="polite">
+          <span>{{ statusMessage() }}</span>
+          <button type="button" class="btn btn-secondary btn-sm" (click)="statusMessage.set(null)" aria-label="Cerrar aviso">✕</button>
         </div>
       }
 
-      <!-- TABS NAVIGATION -->
-      <!-- TABS NAVIGATION ACCESIBLE (WCAG 2.1) -->
-      <nav class="flex border-b border-slate-800 gap-2 overflow-x-auto pb-px" role="tablist" aria-label="Secciones de configuración remota del sistema">
+      <nav class="tabs-nav" role="tablist" aria-label="Secciones de configuración">
         <button
-          (click)="activeTab.set('version')"
+          type="button"
           role="tab"
           id="tab-version"
+          class="tab-btn"
+          [class.active]="activeTab() === 'version'"
           [attr.aria-selected]="activeTab() === 'version'"
           aria-controls="tabpanel-version"
-          [class.border-indigo-500]="activeTab() === 'version'"
-          [class.text-indigo-400]="activeTab() === 'version'"
-          [class.border-transparent]="activeTab() !== 'version'"
-          [class.text-slate-400]="activeTab() !== 'version'"
-          class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
+          (click)="activeTab.set('version')"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          Actualizador de la App (APK)
+          Versiones (GitHub)
         </button>
 
         <button
-          (click)="activeTab.set('banner')"
+          type="button"
           role="tab"
           id="tab-banner"
+          class="tab-btn"
+          [class.active]="activeTab() === 'banner'"
           [attr.aria-selected]="activeTab() === 'banner'"
           aria-controls="tabpanel-banner"
-          [class.border-indigo-500]="activeTab() === 'banner'"
-          [class.text-indigo-400]="activeTab() === 'banner'"
-          [class.border-transparent]="activeTab() !== 'banner'"
-          [class.text-slate-400]="activeTab() !== 'banner'"
-          class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
+          (click)="activeTab.set('banner')"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-          </svg>
-          Banner Global del Feed
+          Banner
         </button>
 
         <button
-          (click)="activeTab.set('maintenance')"
+          type="button"
           role="tab"
           id="tab-maintenance"
+          class="tab-btn"
+          [class.active]="activeTab() === 'maintenance'"
           [attr.aria-selected]="activeTab() === 'maintenance'"
           aria-controls="tabpanel-maintenance"
-          [class.border-indigo-500]="activeTab() === 'maintenance'"
-          [class.text-indigo-400]="activeTab() === 'maintenance'"
-          [class.border-transparent]="activeTab() !== 'maintenance'"
-          [class.text-slate-400]="activeTab() !== 'maintenance'"
-          class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
+          (click)="activeTab.set('maintenance')"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          Modo Mantenimiento
+          Mantenimiento
         </button>
 
         <button
-          (click)="activeTab.set('chat')"
+          type="button"
           role="tab"
           id="tab-chat"
+          class="tab-btn"
+          [class.active]="activeTab() === 'chat'"
           [attr.aria-selected]="activeTab() === 'chat'"
           aria-controls="tabpanel-chat"
-          [class.border-indigo-500]="activeTab() === 'chat'"
-          [class.text-indigo-400]="activeTab() === 'chat'"
-          [class.border-transparent]="activeTab() !== 'chat'"
-          [class.text-slate-400]="activeTab() !== 'chat'"
-          class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
+          (click)="activeTab.set('chat')"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          Chat y Comunidad
+          Chat
         </button>
 
         <button
-          (click)="activeTab.set('donations')"
+          type="button"
           role="tab"
           id="tab-donations"
+          class="tab-btn"
+          [class.active]="activeTab() === 'donations'"
           [attr.aria-selected]="activeTab() === 'donations'"
           aria-controls="tabpanel-donations"
-          [class.border-indigo-500]="activeTab() === 'donations'"
-          [class.text-indigo-400]="activeTab() === 'donations'"
-          [class.border-transparent]="activeTab() !== 'donations'"
-          [class.text-slate-400]="activeTab() !== 'donations'"
-          class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
+          (click)="activeTab.set('donations')"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-          Donaciones y Enlaces
+          Donaciones
         </button>
 
         <button
-          (click)="activeTab.set('raw')"
+          type="button"
           role="tab"
           id="tab-raw"
+          class="tab-btn"
+          [class.active]="activeTab() === 'raw'"
           [attr.aria-selected]="activeTab() === 'raw'"
           aria-controls="tabpanel-raw"
-          [class.border-indigo-500]="activeTab() === 'raw'"
-          [class.text-indigo-400]="activeTab() === 'raw'"
-          [class.border-transparent]="activeTab() !== 'raw'"
-          [class.text-slate-400]="activeTab() !== 'raw'"
-          class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
+          (click)="activeTab.set('raw')"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-          </svg>
-          Visor de Base de Datos (Claves Raw)
+          Base de Datos
         </button>
       </nav>
 
-      <!-- 1. TAB: VERSION CONFIG -->
+      <!-- 1. PESTAÑA: VERSIONES EN GITHUB -->
       @if (activeTab() === 'version') {
         <section
           id="tabpanel-version"
           role="tabpanel"
           tabindex="0"
           aria-labelledby="tab-version"
-          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+          class="exec-page"
         >
-          <div class="flex items-center justify-between border-b border-slate-800 pb-4">
-            <div>
-              <h3 class="text-lg font-bold text-white">Actualizador Oficial de la App</h3>
-              <p class="text-xs text-slate-400">Controla las alertas de actualización que recibe la app de Android o de escritorio al iniciarse.</p>
+          <div class="card release-hero-card">
+            <div class="section-header-row">
+              <div>
+                <h2>Versiones en GitHub Releases</h2>
+                <p>
+                  Repositorio:
+                  <a [href]="githubData()?.repositoryUrl || 'https://github.com/JohanAnim/Audiocinemateca'" target="_blank" rel="noopener" class="repo-link">
+                    {{ githubData()?.repository || 'JohanAnim/Audiocinemateca' }}
+                  </a>
+                </p>
+              </div>
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  (click)="loadGithubReleases(true)"
+                  [disabled]="isLoadingGithub()"
+                >
+                  {{ isLoadingGithub() ? 'Consultando...' : 'Sincronizar con GitHub' }}
+                </button>
+              </div>
             </div>
-            <span class="px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-full text-xs font-semibold">
-              Versión Actual: {{ versionConfig.version }}
-            </span>
+
+            @if (isLoadingGithub() && !githubData()) {
+              <div style="padding: 32px; text-align: center; color: var(--text-muted);" role="status" aria-live="polite">
+                Consultando GitHub Releases...
+              </div>
+            } @else if (githubData()?.latestRelease; as latest) {
+              <div class="grid-4" style="margin-bottom: 20px;">
+                <div class="kpi-mini-card">
+                  <span class="kpi-label">Última Versión</span>
+                  <strong class="kpi-val" style="color: #818cf8;">{{ latest.tagName }}</strong>
+                  <span class="kpi-sub">{{ latest.name }}</span>
+                </div>
+
+                <div class="kpi-mini-card">
+                  <span class="kpi-label">Descargas (Última Versión)</span>
+                  <strong class="kpi-val" style="color: #34d399;">
+                    {{ latest.apkAsset?.downloadCount || 0 | number }}
+                  </strong>
+                  <span class="kpi-sub">{{ latest.apkAsset?.name || 'APK' }} ({{ latest.apkAsset?.sizeMb || 'N/A' }})</span>
+                </div>
+
+                <div class="kpi-mini-card">
+                  <span class="kpi-label">Descargas Totales</span>
+                  <strong class="kpi-val" style="color: #22d3ee;">
+                    {{ githubData()?.totalDownloadsAllTime || 0 | number }}
+                  </strong>
+                  <span class="kpi-sub">{{ githubData()?.totalReleases || 1 }} versiones publicadas</span>
+                </div>
+
+                <div class="kpi-mini-card">
+                  <span class="kpi-label">Fecha</span>
+                  <strong class="kpi-val" style="font-size: 18px;">
+                    {{ latest.publishedAt | date:'mediumDate' }}
+                  </strong>
+                  <span class="kpi-sub">{{ latest.author || 'JohanAnim' }}</span>
+                </div>
+              </div>
+
+              <div class="apk-actions-bar">
+                @if (latest.apkAsset?.browserDownloadUrl) {
+                  <a
+                    [href]="latest.apkAsset.browserDownloadUrl"
+                    target="_blank"
+                    rel="noopener"
+                    class="btn btn-primary"
+                  >
+                    Descargar APK ({{ latest.apkAsset.sizeMb }})
+                  </a>
+
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    (click)="copyText(latest.apkAsset.browserDownloadUrl, 'Enlace copiado')"
+                  >
+                    Copiar Enlace APK
+                  </button>
+                }
+
+                <a
+                  [href]="latest.htmlUrl"
+                  target="_blank"
+                  rel="noopener"
+                  class="btn btn-secondary"
+                >
+                  Abrir en GitHub
+                </a>
+
+                <button
+                  type="button"
+                  class="btn btn-success"
+                  (click)="notifyNewReleasePush(latest)"
+                  [disabled]="isSaving()"
+                >
+                  Notificar Versión por Push
+                </button>
+              </div>
+
+              <div class="changelog-panel">
+                <div class="changelog-header">
+                  <strong>Notas de la Versión ({{ latest.tagName }})</strong>
+                </div>
+                <pre class="changelog-body">{{ latest.changelog }}</pre>
+              </div>
+            } @else {
+              <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+                No se encontraron versiones disponibles.
+              </div>
+            }
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label for="cfg-version" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Versión Semántica (ej. 3.1.0)</label>
-              <input
-                id="cfg-version"
-                type="text"
-                [(ngModel)]="versionConfig.version"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div>
-              <label for="cfg-version-code" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Código de Versión (versionCode)</label>
-              <input
-                id="cfg-version-code"
-                type="number"
-                [(ngModel)]="versionConfig.versionCode"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div>
-              <label for="cfg-min-version" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Versión Mínima Requerida</label>
-              <input
-                id="cfg-min-version"
-                type="text"
-                [(ngModel)]="versionConfig.minRequiredVersion"
-                placeholder="3.0.0"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
-              />
-              <span class="text-[11px] text-slate-500">Versiones inferiores a esta serán forzadas a actualizarse.</span>
-            </div>
-          </div>
+          @if (githubData()?.releases?.length > 1) {
+            <div class="card">
+              <div class="section-header-row">
+                <div>
+                  <h3>Historial de Versiones</h3>
+                </div>
+              </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label for="cfg-release-name" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Nombre Visible de la Release</label>
-              <input
-                id="cfg-release-name"
-                type="text"
-                [(ngModel)]="versionConfig.name"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
-              />
+              <div class="table-responsive">
+                <table class="table">
+                  <caption class="sr-only">Historial de versiones en GitHub Releases</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Versión</th>
+                      <th scope="col">Nombre</th>
+                      <th scope="col">Fecha</th>
+                      <th scope="col">Archivo</th>
+                      <th scope="col">Tamaño</th>
+                      <th scope="col">Descargas</th>
+                      <th scope="col">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (rel of githubData()?.releases; track rel.id; let idx = $index) {
+                      <tr>
+                        <td>
+                          <span class="badge" [ngClass]="idx === 0 ? 'badge-success' : 'badge-primary'">
+                            {{ rel.tagName }}
+                          </span>
+                        </td>
+                        <td><strong>{{ rel.name }}</strong></td>
+                        <td>{{ rel.publishedAt | date:'mediumDate' }}</td>
+                        <td><code>{{ rel.apkAsset?.name || '—' }}</code></td>
+                        <td>{{ rel.apkAsset?.sizeMb || '—' }}</td>
+                        <td><strong>{{ rel.apkAsset?.downloadCount || 0 | number }}</strong></td>
+                        <td>
+                          <div style="display: flex; gap: 6px;">
+                            @if (rel.apkAsset?.browserDownloadUrl) {
+                              <a
+                                [href]="rel.apkAsset.browserDownloadUrl"
+                                target="_blank"
+                                rel="noopener"
+                                class="btn btn-secondary btn-sm"
+                              >
+                                Descargar
+                              </a>
+                            }
+                            <a
+                              [href]="rel.htmlUrl"
+                              target="_blank"
+                              rel="noopener"
+                              class="btn btn-secondary btn-sm"
+                            >
+                              GitHub
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div>
-              <label for="cfg-download-count" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Contador de Descargas Mostrado</label>
-              <input
-                id="cfg-download-count"
-                type="number"
-                [(ngModel)]="versionConfig.downloadCount"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-          </div>
+          }
 
-          <div>
-            <label for="cfg-download-url" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">URL Directa de Descarga (.APK)</label>
-            <div class="relative">
-              <input
-                id="cfg-download-url"
-                type="url"
-                [(ngModel)]="versionConfig.downloadUrl"
-                placeholder="https://github.com/.../Audiocinemateca.apk"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 font-mono text-xs"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label for="cfg-changelog" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Registro de Cambios (Changelog / Novedades)</label>
-            <textarea
-              id="cfg-changelog"
-              [(ngModel)]="versionConfig.changelog"
-              rows="5"
-              placeholder="- Nueva función...\n- Corrección de errores..."
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-indigo-500 font-mono text-xs leading-relaxed"
-            ></textarea>
-            <span class="text-[11px] text-slate-500">Este texto se presentará de forma accesible en el diálogo "Novedades" al iniciar la app.</span>
-          </div>
-
-          <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <input
-                id="cfg-force-update"
-                type="checkbox"
-                [(ngModel)]="versionConfig.forceUpdate"
-                class="w-5 h-5 rounded bg-slate-950 border-slate-800 text-rose-600 focus:ring-0 focus:ring-offset-0 cursor-pointer"
-              />
-              <label for="cfg-force-update" class="cursor-pointer">
-                <span class="text-sm font-semibold text-white block">Forzar Actualización Obligatoria</span>
-                <span class="text-xs text-rose-400">Si se activa, los usuarios no podrán saltarse la actualización ni usar la app sin actualizar.</span>
-              </label>
+          <div class="card">
+            <div class="section-header-row">
+              <div>
+                <h3>Versión Mínima Requerida</h3>
+              </div>
             </div>
 
-            <button
-              (click)="saveVersionConfig()"
-              [disabled]="isSaving()"
-              class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
-            >
-              @if (isSaving()) {
-                <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              }
-              Guardar Configuración de Versión
-            </button>
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="cfg-min-version" class="form-label">Versión Mínima Permitida</label>
+                <input
+                  id="cfg-min-version"
+                  type="text"
+                  class="form-control"
+                  [(ngModel)]="versionConfig.minRequiredVersion"
+                  placeholder="3.0.0"
+                />
+              </div>
+
+              <div class="form-group" style="display: flex; align-items: center; padding-top: 18px;">
+                <label for="cfg-force-update" class="toggle-box" style="width: 100%;">
+                  <input
+                    id="cfg-force-update"
+                    type="checkbox"
+                    [(ngModel)]="versionConfig.forceUpdate"
+                  />
+                  <span>Exigir actualización obligatoria</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="card-footer-actions">
+              <span></span>
+              <button
+                type="button"
+                class="btn btn-primary"
+                (click)="saveVersionConfig()"
+                [disabled]="isSaving()"
+              >
+                Guardar
+              </button>
+            </div>
           </div>
         </section>
       }
 
-      <!-- 2. TAB: BANNER CONFIG -->
+      <!-- 2. PESTAÑA: BANNER -->
       @if (activeTab() === 'banner') {
         <section
           id="tabpanel-banner"
           role="tabpanel"
           tabindex="0"
           aria-labelledby="tab-banner"
-          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+          class="card"
         >
-          <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div class="section-header-row">
             <div>
-              <h3 class="text-lg font-bold text-white">Banner Global Destacado</h3>
-              <p class="text-xs text-slate-400">Mensaje fijado en la parte superior del Feed principal de la aplicación para avisos masivos.</p>
+              <h2>Banner Principal</h2>
             </div>
-            <label for="cfg-banner-enabled" class="relative inline-flex items-center cursor-pointer">
-              <input id="cfg-banner-enabled" type="checkbox" [(ngModel)]="bannerConfig.enabled" class="sr-only peer" />
-              <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-              <span class="ml-3 text-sm font-medium text-slate-300">
-                {{ bannerConfig.enabled ? 'Banner Activado' : 'Banner Oculto' }}
-              </span>
+            <label for="cfg-banner-enabled" class="toggle-box">
+              <input id="cfg-banner-enabled" type="checkbox" [(ngModel)]="bannerConfig.enabled" />
+              <strong>{{ bannerConfig.enabled ? 'Visible' : 'Oculto' }}</strong>
             </label>
           </div>
 
-          <!-- BANNER PREVIEW -->
-          <div class="p-4 rounded-xl border"
-               [class.bg-blue-500/10]="bannerConfig.type === 'info'"
-               [class.border-blue-500/30]="bannerConfig.type === 'info'"
-               [class.bg-amber-500/10]="bannerConfig.type === 'warning'"
-               [class.border-amber-500/30]="bannerConfig.type === 'warning'"
-               [class.bg-rose-500/10]="bannerConfig.type === 'alert'"
-               [class.border-rose-500/30]="bannerConfig.type === 'alert'"
-               [class.bg-emerald-500/10]="bannerConfig.type === 'update'"
-               [class.border-emerald-500/30]="bannerConfig.type === 'update'"
-          >
-            <div class="text-[11px] uppercase font-bold tracking-wider mb-2 text-slate-400">Previsualización en Pantalla</div>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <h4 class="font-bold text-white text-base">{{ bannerConfig.title || 'Título del Banner' }}</h4>
-                <p class="text-sm text-slate-300 mt-1">{{ bannerConfig.message || 'Cuerpo del mensaje que verán los usuarios en su feed...' }}</p>
-                @if (bannerConfig.actionText) {
-                  <button class="mt-3 px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-semibold transition">
-                    {{ bannerConfig.actionText }}
-                  </button>
-                }
-              </div>
-              @if (bannerConfig.dismissible) {
-                <span class="text-xs text-slate-400 border border-slate-700 px-2 py-0.5 rounded">Descartable</span>
-              }
+          <div class="smart-lookup-box">
+            <label for="cfg-banner-action-url" class="form-label">
+              Enlace o ID del Contenido
+            </label>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <input
+                id="cfg-banner-action-url"
+                type="text"
+                class="form-control"
+                style="flex: 1; min-width: 260px;"
+                [(ngModel)]="bannerConfig.actionUrl"
+                placeholder="https://audiocinemateca.com/peliculas?id=150"
+              />
+              <button
+                type="button"
+                class="btn btn-secondary"
+                (click)="lookupBannerWork()"
+                [disabled]="isLookingUpWork()"
+              >
+                {{ isLookingUpWork() ? 'Buscando...' : 'Autocompletar desde Catálogo' }}
+              </button>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label for="cfg-banner-id" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">ID Único del Banner (Cambiar para volver a mostrar a quienes lo descartaron)</label>
+          <div class="grid-2" style="margin-top: 16px;">
+            <div class="form-group">
+              <label for="cfg-banner-title" class="form-label">Título *</label>
               <input
-                id="cfg-banner-id"
+                id="cfg-banner-title"
                 type="text"
-                [(ngModel)]="bannerConfig.id"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
+                class="form-control"
+                [(ngModel)]="bannerConfig.title"
+                placeholder="Título del banner"
               />
             </div>
-            <div>
-              <label for="cfg-banner-type" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tipo de Alerta Visual</label>
-              <select
-                id="cfg-banner-type"
-                [(ngModel)]="bannerConfig.type"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
-              >
-                <option value="info">Información (Azul)</option>
-                <option value="warning">Advertencia (Ámbar)</option>
-                <option value="alert">Alerta Crítica (Rojo)</option>
-                <option value="update">Actualización / Nueva Versión (Verde)</option>
+
+            <div class="form-group">
+              <label for="cfg-banner-type" class="form-label">Tipo</label>
+              <select id="cfg-banner-type" class="form-control" [(ngModel)]="bannerConfig.type">
+                <option value="info">Información</option>
+                <option value="update">Actualización</option>
+                <option value="warning">Aviso</option>
+                <option value="alert">Alerta</option>
               </select>
             </div>
           </div>
 
-          <div>
-            <label for="cfg-banner-title" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Título del Banner</label>
-            <input
-              id="cfg-banner-title"
-              type="text"
-              [(ngModel)]="bannerConfig.title"
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div>
-            <label for="cfg-banner-message" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Mensaje Explicativo</label>
+          <div class="form-group">
+            <label for="cfg-banner-message" class="form-label">Descripción *</label>
             <textarea
               id="cfg-banner-message"
-              [(ngModel)]="bannerConfig.message"
+              class="form-control"
               rows="3"
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-indigo-500 leading-relaxed"
+              [(ngModel)]="bannerConfig.message"
+              placeholder="Texto del banner..."
             ></textarea>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label for="cfg-banner-action-text" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Texto del Botón de Acción (Opcional)</label>
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="cfg-banner-action-text" class="form-label">Texto del Botón</label>
               <input
                 id="cfg-banner-action-text"
                 type="text"
+                class="form-control"
                 [(ngModel)]="bannerConfig.actionText"
-                placeholder="Ver más / Donar / Actualizar"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
+                placeholder="Escuchar ahora"
               />
             </div>
-            <div>
-              <label for="cfg-banner-action-url" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">URL o Destino del Botón (Opcional)</label>
+
+            <div class="form-group">
+              <label for="cfg-banner-id" class="form-label">Identificador</label>
               <input
-                id="cfg-banner-action-url"
+                id="cfg-banner-id"
                 type="text"
-                [(ngModel)]="bannerConfig.actionUrl"
-                placeholder="https://..."
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
+                class="form-control"
+                [(ngModel)]="bannerConfig.id"
+                placeholder="banner_1"
               />
             </div>
           </div>
 
-          <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <input
-                id="cfg-banner-dismissible"
-                type="checkbox"
-                [(ngModel)]="bannerConfig.dismissible"
-                class="w-5 h-5 rounded bg-slate-950 border-slate-800 text-indigo-600 focus:ring-0 focus:ring-offset-0 cursor-pointer"
-              />
-              <label for="cfg-banner-dismissible" class="text-sm font-medium text-slate-300 cursor-pointer">
-                Permitir que el usuario cierre o descarte este banner
-              </label>
-            </div>
+          <div class="push-banner-options">
+            <label for="cfg-banner-dismissible" class="toggle-box">
+              <input id="cfg-banner-dismissible" type="checkbox" [(ngModel)]="bannerConfig.dismissible" />
+              <span>Permitir cerrar el banner</span>
+            </label>
 
+            <label for="cfg-banner-send-push" class="toggle-box">
+              <input id="cfg-banner-send-push" type="checkbox" [(ngModel)]="bannerSendPush" />
+              <span>Enviar notificación Push al publicar</span>
+            </label>
+
+            @if (bannerSendPush) {
+              <label for="cfg-banner-ai-push" class="toggle-box">
+                <input id="cfg-banner-ai-push" type="checkbox" [(ngModel)]="bannerOptimizePushWithAi" />
+                <span>Redactar texto Push con IA</span>
+              </label>
+            }
+          </div>
+
+          <div class="card-footer-actions">
+            <span></span>
             <button
+              type="button"
+              class="btn btn-primary"
               (click)="saveBannerConfig()"
               [disabled]="isSaving()"
-              class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
             >
-              Guardar Banner
+              {{ isSaving() ? 'Guardando...' : 'Guardar Banner' }}
             </button>
           </div>
         </section>
       }
 
-      <!-- 3. TAB: MAINTENANCE MODE -->
+      <!-- 3. PESTAÑA: MODO MANTENIMIENTO -->
       @if (activeTab() === 'maintenance') {
         <section
           id="tabpanel-maintenance"
           role="tabpanel"
           tabindex="0"
           aria-labelledby="tab-maintenance"
-          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+          class="card"
         >
-          <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div class="section-header-row">
             <div>
-              <h3 class="text-lg font-bold text-white">Modo Mantenimiento</h3>
-              <p class="text-xs text-slate-400">Bloquea temporalmente el uso de la aplicación móvil y muestra una pantalla explicativa.</p>
+              <h2>Modo Mantenimiento</h2>
             </div>
-            <label for="cfg-maint-enabled" class="relative inline-flex items-center cursor-pointer">
-              <input id="cfg-maint-enabled" type="checkbox" [(ngModel)]="maintenanceConfig.enabled" class="sr-only peer" />
-              <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
-              <span class="ml-3 text-sm font-medium text-slate-300">
-                {{ maintenanceConfig.enabled ? 'Mantenimiento ACTIVO' : 'Sistema Operativo' }}
-              </span>
+            <label for="cfg-maint-enabled" class="toggle-box">
+              <input id="cfg-maint-enabled" type="checkbox" [(ngModel)]="maintenanceConfig.enabled" />
+              <strong>
+                {{ maintenanceConfig.enabled ? 'Mantenimiento Activo' : 'Desactivado' }}
+              </strong>
             </label>
           </div>
 
-          @if (maintenanceConfig.enabled) {
-            <div class="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-sm flex items-center gap-3">
-              <svg class="w-6 h-6 flex-shrink-0 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span><strong>¡Atención!</strong> El modo mantenimiento está activo. Todos los usuarios de la app móvil verán la pantalla de mantenimiento y no podrán reproducir audio.</span>
-            </div>
-          }
-
-          <div>
-            <label for="cfg-maint-message" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Mensaje para los Usuarios</label>
+          <div class="form-group">
+            <label for="cfg-maint-message" class="form-label">Mensaje para los usuarios</label>
             <textarea
               id="cfg-maint-message"
+              class="form-control"
+              rows="3"
               [(ngModel)]="maintenanceConfig.message"
-              rows="4"
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-indigo-500 leading-relaxed"
             ></textarea>
           </div>
 
-          <div>
-            <label for="cfg-maint-estimated-end" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Hora / Fecha Estimada de Retorno (Opcional)</label>
+          <div class="form-group">
+            <label for="cfg-maint-estimated-end" class="form-label">Tiempo estimado de finalización</label>
             <input
               id="cfg-maint-estimated-end"
               type="text"
+              class="form-control"
               [(ngModel)]="maintenanceConfig.estimatedEndTime"
-              placeholder="Ej. Hoy a las 22:00 UTC / En unos minutos"
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
+              placeholder="Ej. 18:00"
             />
           </div>
 
-          <div class="pt-4 border-t border-slate-800 flex justify-end">
+          <div class="card-footer-actions">
+            <span></span>
             <button
+              type="button"
+              class="btn btn-primary"
               (click)="saveMaintenanceConfig()"
               [disabled]="isSaving()"
-              class="px-6 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-rose-600/30 transition flex items-center gap-2 cursor-pointer"
             >
-              Guardar Estado de Mantenimiento
+              Guardar
             </button>
           </div>
         </section>
       }
 
-      <!-- 4. TAB: CHAT & COMMUNITY -->
+      <!-- 4. PESTAÑA: CHAT -->
       @if (activeTab() === 'chat') {
         <section
           id="tabpanel-chat"
           role="tabpanel"
           tabindex="0"
           aria-labelledby="tab-chat"
-          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+          class="card"
         >
-          <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div class="section-header-row">
             <div>
-              <h3 class="text-lg font-bold text-white">Parámetros del Chat Global</h3>
-              <p class="text-xs text-slate-400">Límites contra spam, lentitud y bienvenida en el chat en tiempo real.</p>
+              <h2>Configuración del Chat</h2>
             </div>
-            <label for="cfg-chat-enabled" class="relative inline-flex items-center cursor-pointer">
-              <input id="cfg-chat-enabled" type="checkbox" [(ngModel)]="chatConfig.enabled" class="sr-only peer" />
-              <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-              <span class="ml-3 text-sm font-medium text-slate-300">
-                {{ chatConfig.enabled ? 'Chat Habilitado' : 'Chat Apagado' }}
-              </span>
+            <label for="cfg-chat-enabled" class="toggle-box">
+              <input id="cfg-chat-enabled" type="checkbox" [(ngModel)]="chatConfig.enabled" />
+              <strong>{{ chatConfig.enabled ? 'Habilitado' : 'Deshabilitado' }}</strong>
             </label>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label for="cfg-chat-slowmode" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Modo Lento / Enfriamiento (Segundos entre mensajes)</label>
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="cfg-chat-slowmode" class="form-label">Espera entre mensajes (segundos)</label>
               <input
                 id="cfg-chat-slowmode"
                 type="number"
+                class="form-control"
                 [(ngModel)]="chatConfig.slowModeSeconds"
                 min="0"
                 max="60"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
               />
-              <span class="text-[11px] text-slate-500">Evita que usuarios envíen ráfagas de spam seguidas.</span>
             </div>
 
-            <div>
-              <label for="cfg-chat-max-len" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Longitud Máxima por Mensaje (Caracteres)</label>
+            <div class="form-group">
+              <label for="cfg-chat-max-len" class="form-label">Longitud máxima por mensaje</label>
               <input
                 id="cfg-chat-max-len"
                 type="number"
+                class="form-control"
                 [(ngModel)]="chatConfig.maxMessageLength"
                 min="50"
                 max="2000"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
               />
-              <span class="text-[11px] text-slate-500">Recomendado: 500 caracteres para TalkBack.</span>
             </div>
           </div>
 
-          <div>
-            <label for="cfg-chat-welcome" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Mensaje de Bienvenida / Reglas del Chat</label>
+          <div class="form-group">
+            <label for="cfg-chat-welcome" class="form-label">Mensaje de bienvenida</label>
             <textarea
               id="cfg-chat-welcome"
-              [(ngModel)]="chatConfig.welcomeMessage"
+              class="form-control"
               rows="3"
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-indigo-500 leading-relaxed"
+              [(ngModel)]="chatConfig.welcomeMessage"
             ></textarea>
           </div>
 
-          <div class="pt-4 border-t border-slate-800 flex justify-end">
+          <div class="card-footer-actions">
+            <span></span>
             <button
+              type="button"
+              class="btn btn-primary"
               (click)="saveChatConfig()"
               [disabled]="isSaving()"
-              class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
             >
-              Guardar Configuración de Chat
+              Guardar
             </button>
           </div>
         </section>
       }
 
-      <!-- 5. TAB: DONATIONS -->
+      <!-- 5. PESTAÑA: DONACIONES -->
       @if (activeTab() === 'donations') {
         <section
           id="tabpanel-donations"
           role="tabpanel"
           tabindex="0"
           aria-labelledby="tab-donations"
-          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+          class="card"
         >
-          <div class="border-b border-slate-800 pb-4">
-            <h3 class="text-lg font-bold text-white">Canales Oficiales de Donación y Soporte</h3>
-            <p class="text-xs text-slate-400">Configura los enlaces que aparecen en los diálogos de soporte y botón "Invitame un café".</p>
+          <div class="section-header-row">
+            <div>
+              <h2>Donaciones y Soporte</h2>
+            </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label for="cfg-donations-paypal" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Enlace PayPal Principal</label>
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="cfg-donations-paypal" class="form-label">Enlace PayPal</label>
               <input
                 id="cfg-donations-paypal"
                 type="url"
+                class="form-control"
                 [(ngModel)]="donationConfig.paypal"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
               />
             </div>
-            <div>
-              <label for="cfg-donations-paypalme" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Enlace PayPal.Me ("Invitame un Café")</label>
+
+            <div class="form-group">
+              <label for="cfg-donations-paypalme" class="form-label">Enlace PayPal.Me</label>
               <input
                 id="cfg-donations-paypalme"
                 type="url"
+                class="form-control"
                 [(ngModel)]="donationConfig.paypalMe"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
               />
             </div>
           </div>
 
-          <div>
-            <label for="cfg-donations-email" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Correo de Soporte Oficial</label>
+          <div class="form-group">
+            <label for="cfg-donations-email" class="form-label">Correo de Soporte</label>
             <input
               id="cfg-donations-email"
               type="email"
+              class="form-control"
               [(ngModel)]="donationConfig.supportEmail"
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
             />
           </div>
 
-          <div class="pt-4 border-t border-slate-800 flex justify-end">
+          <div class="card-footer-actions">
+            <span></span>
             <button
+              type="button"
+              class="btn btn-primary"
               (click)="saveDonationsConfig()"
               [disabled]="isSaving()"
-              class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
             >
-              Guardar Canales de Donación
+              Guardar
             </button>
           </div>
         </section>
       }
 
-      <!-- 6. TAB: RAW CONFIGS -->
+      <!-- 6. PESTAÑA: BASE DE DATOS -->
       @if (activeTab() === 'raw') {
         <section
           id="tabpanel-raw"
           role="tabpanel"
           tabindex="0"
           aria-labelledby="tab-raw"
-          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+          class="card"
         >
-          <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div class="section-header-row">
             <div>
-              <h3 class="text-lg font-bold text-white">Todas las Claves Almacenadas en PostgreSQL</h3>
-              <p class="text-xs text-slate-400">Inspección directa de los registros de la tabla app_configs.</p>
+              <h2>Registros en <code>app_configs</code></h2>
             </div>
           </div>
 
-          <div class="space-y-4">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
             @for (item of rawConfigs(); track item.key) {
-              <div class="p-4 bg-slate-950 border border-slate-800/80 rounded-xl space-y-2">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <span class="font-mono text-sm font-bold text-indigo-400">{{ item.key }}</span>
+              <div class="raw-config-item">
+                <div class="raw-config-head">
+                  <div>
+                    <strong style="color: #818cf8; font-family: monospace; font-size: 14px;">{{ item.key }}</strong>
                     @if (item.description) {
-                      <span class="text-xs text-slate-400">• {{ item.description }}</span>
+                      <span style="color: var(--text-muted); font-size: 12px; margin-left: 8px;">• {{ item.description }}</span>
                     }
                   </div>
-                  <span class="text-[11px] text-slate-500 font-mono">{{ item.updatedAt | date:'medium' }}</span>
+                  <small style="color: var(--text-dim); font-family: monospace;">{{ item.updatedAt | date:'short' }}</small>
                 </div>
-                <pre class="bg-slate-900/60 p-3 rounded-lg text-xs font-mono text-slate-300 overflow-x-auto max-h-48">{{ item.value | json }}</pre>
+                <pre class="raw-config-pre">{{ item.value | json }}</pre>
               </div>
             }
           </div>
         </section>
       }
     </div>
-  `
+  `,
+  styles: [`
+    .repo-link {
+      color: #818cf8;
+      font-weight: 700;
+      text-decoration: underline;
+    }
+
+    .apk-actions-bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 16px;
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      margin-bottom: 20px;
+    }
+
+    .changelog-panel {
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+
+    .changelog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 16px;
+      background-color: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border-color);
+      font-size: 13px;
+    }
+
+    .changelog-header small {
+      color: var(--text-dim);
+    }
+
+    .changelog-body {
+      padding: 16px;
+      font-family: inherit;
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+
+    .banner-preview-card {
+      padding: 20px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.14), rgba(15, 23, 42, 0.9));
+      margin-bottom: 20px;
+    }
+
+    .banner-preview-card.preview-warning {
+      border-color: rgba(245, 158, 11, 0.4);
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(15, 23, 42, 0.9));
+    }
+
+    .banner-preview-card.preview-alert {
+      border-color: rgba(239, 68, 68, 0.4);
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(15, 23, 42, 0.9));
+    }
+
+    .banner-preview-card.preview-update {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.14), rgba(15, 23, 42, 0.9));
+    }
+
+    .preview-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .banner-preview-card h3 {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .banner-preview-card p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .smart-lookup-box {
+      padding: 16px;
+      background-color: var(--bg-input);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: var(--radius-sm);
+    }
+
+    .push-banner-options {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .raw-config-item {
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+    }
+
+    .raw-config-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .raw-config-pre {
+      background-color: rgba(0, 0, 0, 0.35);
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #cbd5e1;
+      overflow-x: auto;
+      max-height: 220px;
+    }
+  `],
 })
 export class ConfigEditorComponent implements OnInit {
   private readonly configService = inject(ConfigService);
+  private readonly contentService = inject(ContentService);
 
   readonly isLoading = signal(false);
+  readonly isLoadingGithub = signal(false);
   readonly isSaving = signal(false);
+  readonly isLookingUpWork = signal(false);
+
   readonly activeTab = signal<'version' | 'banner' | 'maintenance' | 'chat' | 'donations' | 'raw'>('version');
   readonly statusMessage = signal<string | null>(null);
-  readonly statusType = signal<'success' | 'error'>('success');
+  readonly statusType = signal<'success' | 'error' | 'info'>('success');
   readonly rawConfigs = signal<AppConfigItem[]>([]);
+  readonly githubData = signal<any | null>(null);
+  readonly bannerMatchedWork = signal<any | null>(null);
+
+  bannerSendPush = false;
+  bannerOptimizePushWithAi = true;
 
   versionConfig: VersionConfig = {
     version: '3.1.0',
@@ -722,7 +879,7 @@ export class ConfigEditorComponent implements OnInit {
     minRequiredVersion: '3.0.0',
     forceUpdate: false,
     updatedAt: new Date().toISOString(),
-    downloadCount: 0
+    downloadCount: 0,
   };
 
   bannerConfig: BannerConfig = {
@@ -733,30 +890,51 @@ export class ConfigEditorComponent implements OnInit {
     type: 'info',
     dismissible: true,
     actionUrl: null,
-    actionText: null
+    actionText: 'Escuchar ahora',
   };
 
   maintenanceConfig: MaintenanceConfig = {
     enabled: false,
     message: 'Audiocinemateca se encuentra en mantenimiento programado. Volveremos muy pronto.',
-    estimatedEndTime: null
+    estimatedEndTime: null,
   };
 
   chatConfig: ChatConfig = {
     enabled: true,
     slowModeSeconds: 3,
     maxMessageLength: 500,
-    welcomeMessage: ''
+    welcomeMessage: '',
   };
 
   donationConfig: DonationConfig = {
     paypal: '',
     paypalMe: '',
-    supportEmail: ''
+    supportEmail: '',
   };
 
   ngOnInit() {
+    this.refreshAll();
+  }
+
+  refreshAll() {
     this.loadConfigs();
+    this.loadGithubReleases(false);
+  }
+
+  loadGithubReleases(forceRefresh = false) {
+    this.isLoadingGithub.set(true);
+    this.configService.getGithubReleases(forceRefresh).subscribe({
+      next: (data) => {
+        this.githubData.set(data);
+        this.isLoadingGithub.set(false);
+        if (forceRefresh) {
+          this.showStatus('Datos de GitHub Releases sincronizados en tiempo real', 'success');
+        }
+      },
+      error: () => {
+        this.isLoadingGithub.set(false);
+      },
+    });
   }
 
   loadConfigs() {
@@ -779,110 +957,198 @@ export class ConfigEditorComponent implements OnInit {
         }
         this.isLoading.set(false);
       },
-      error: (err) => {
+      error: () => {
         this.isLoading.set(false);
         this.showStatus('Error al cargar configuraciones remotas', 'error');
-      }
+      },
+    });
+  }
+
+  copyText(text: string, msg: string) {
+    if (typeof navigator !== 'undefined' && text) {
+      navigator.clipboard.writeText(text);
+      this.showStatus(msg, 'success');
+    }
+  }
+
+  notifyNewReleasePush(latest: any) {
+    if (!latest) return;
+    if (!confirm(`¿Deseas enviar una notificación Push global anunciando la versión ${latest.tagName} (${latest.name})?`)) {
+      return;
+    }
+    this.isSaving.set(true);
+    this.configService
+      .sendPushNotification({
+        title: `📲 Nueva actualización disponible: ${latest.name || latest.tagName}`,
+        body: `Ya puedes actualizar Audiocinemateca a la versión ${latest.tagName} desde la pestaña Cuenta.`,
+        destination: 'app',
+      })
+      .subscribe({
+        next: (res) => {
+          this.isSaving.set(false);
+          this.showStatus(res?.message || 'Notificación de nueva versión enviada con éxito', 'success');
+        },
+        error: () => {
+          this.isSaving.set(false);
+          this.showStatus('Error al enviar notificación push de versión', 'error');
+        },
+      });
+  }
+
+  lookupBannerWork() {
+    const query = (this.bannerConfig.actionUrl || '').trim();
+    if (!query) {
+      this.showStatus('Escribe una URL o ID del catálogo para buscar la obra', 'info');
+      return;
+    }
+    this.isLookingUpWork.set(true);
+    this.contentService.lookupCatalogItem(query).subscribe({
+      next: (res) => {
+        this.isLookingUpWork.set(false);
+        if (res?.found && res.item) {
+          this.bannerMatchedWork.set(res.item);
+          if (!this.bannerConfig.title || this.bannerConfig.title === '¡Bienvenido a Audiocinemateca!') {
+            this.bannerConfig.title = `🎬 Destacado: ${res.item.title}`;
+          }
+          if (!this.bannerConfig.message && res.item.synopsis) {
+            this.bannerConfig.message = res.item.synopsis.substring(0, 220);
+          }
+          this.showStatus(
+            `Obra detectada: "${res.item.title}" (${res.item.itemType.toUpperCase()} • Géneros: ${(res.item.genres || []).join(', ')})`,
+            'success',
+          );
+        } else {
+          this.bannerMatchedWork.set(null);
+          this.showStatus('No se encontró coincidencia exacta en el catálogo maestro; se usará como enlace general.', 'info');
+        }
+      },
+      error: () => {
+        this.isLookingUpWork.set(false);
+        this.showStatus('Error al consultar el catálogo maestro', 'error');
+      },
     });
   }
 
   saveVersionConfig() {
     this.isSaving.set(true);
     this.versionConfig.updatedAt = new Date().toISOString();
-    this.configService.updateConfig('app_version', this.versionConfig, 'Información y control de versión para el actualizador de la app').subscribe({
-      next: () => {
-        this.isSaving.set(false);
-        this.showStatus('Configuración de versión guardada con éxito', 'success');
-        this.loadConfigs();
-      },
-      error: () => {
-        this.isSaving.set(false);
-        this.showStatus('Error al guardar la configuración de versión', 'error');
-      }
-    });
+    this.configService
+      .updateConfig('app_version', this.versionConfig, 'Política de versión y compatibilidad')
+      .subscribe({
+        next: () => {
+          this.isSaving.set(false);
+          this.showStatus('Política de versión guardada correctamente', 'success');
+          this.loadConfigs();
+        },
+        error: () => {
+          this.isSaving.set(false);
+          this.showStatus('Error al guardar política de versión', 'error');
+        },
+      });
   }
 
   saveBannerConfig() {
+    if (!this.bannerConfig.title?.trim() || !this.bannerConfig.message?.trim()) {
+      this.showStatus('El título y la descripción del banner son obligatorios', 'error');
+      return;
+    }
     this.isSaving.set(true);
-    this.configService.updateConfig('featured_banner', this.bannerConfig, 'Banner superior global para comunicados en el feed').subscribe({
-      next: () => {
-        this.isSaving.set(false);
-        this.showStatus('Banner global guardado y publicado', 'success');
-        this.loadConfigs();
-      },
-      error: () => {
-        this.isSaving.set(false);
-        this.showStatus('Error al guardar el banner', 'error');
-      }
-    });
+    this.configService
+      .publishBanner({
+        ...this.bannerConfig,
+        sendPush: this.bannerSendPush,
+        optimizePushWithAi: this.bannerOptimizePushWithAi,
+      })
+      .subscribe({
+        next: (res) => {
+          this.isSaving.set(false);
+          const extra = res?.matchedCatalogWork ? ` (Vinculado a "${res.matchedCatalogWork}")` : '';
+          this.showStatus(`Banner global publicado exitosamente${extra}`, 'success');
+          this.loadConfigs();
+        },
+        error: () => {
+          this.isSaving.set(false);
+          this.showStatus('Error al publicar el banner global', 'error');
+        },
+      });
   }
 
   saveMaintenanceConfig() {
     this.isSaving.set(true);
-    this.configService.updateConfig('maintenance_mode', this.maintenanceConfig, 'Estado global de modo mantenimiento').subscribe({
-      next: () => {
-        this.isSaving.set(false);
-        this.showStatus(this.maintenanceConfig.enabled ? '¡Modo mantenimiento ACTIVADO!' : 'Modo mantenimiento DESACTIVADO', 'success');
-        this.loadConfigs();
-      },
-      error: () => {
-        this.isSaving.set(false);
-        this.showStatus('Error al cambiar modo de mantenimiento', 'error');
-      }
-    });
+    this.configService
+      .updateConfig('maintenance_mode', this.maintenanceConfig, 'Estado global de modo mantenimiento')
+      .subscribe({
+        next: () => {
+          this.isSaving.set(false);
+          this.showStatus(
+            this.maintenanceConfig.enabled
+              ? 'Modo Mantenimiento ACTIVADO en toda la plataforma'
+              : 'Sistema puesto en modo operativo normal',
+            'success',
+          );
+          this.loadConfigs();
+        },
+        error: () => {
+          this.isSaving.set(false);
+          this.showStatus('Error al actualizar el modo mantenimiento', 'error');
+        },
+      });
   }
 
   saveChatConfig() {
     this.isSaving.set(true);
-    this.configService.updateConfig('chat_config', this.chatConfig, 'Parámetros de operación y límites del chat global').subscribe({
-      next: () => {
-        this.isSaving.set(false);
-        this.showStatus('Configuración del chat actualizada', 'success');
-        this.loadConfigs();
-      },
-      error: () => {
-        this.isSaving.set(false);
-        this.showStatus('Error al actualizar chat', 'error');
-      }
-    });
+    this.configService
+      .updateConfig('chat_config', this.chatConfig, 'Parámetros de operación y límites del chat global')
+      .subscribe({
+        next: () => {
+          this.isSaving.set(false);
+          this.showStatus('Configuración del chat guardada con éxito', 'success');
+          this.loadConfigs();
+        },
+        error: () => {
+          this.isSaving.set(false);
+          this.showStatus('Error al guardar la configuración del chat', 'error');
+        },
+      });
   }
 
   saveDonationsConfig() {
     this.isSaving.set(true);
-    this.configService.updateConfig('donation_links', this.donationConfig, 'Enlaces oficiales de donación y soporte del proyecto').subscribe({
-      next: () => {
-        this.isSaving.set(false);
-        this.showStatus('Canales de donación actualizados', 'success');
-        this.loadConfigs();
-      },
-      error: () => {
-        this.isSaving.set(false);
-        this.showStatus('Error al guardar enlaces de donación', 'error');
-      }
-    });
+    this.configService
+      .updateConfig('donation_links', this.donationConfig, 'Enlaces oficiales de donación y soporte')
+      .subscribe({
+        next: () => {
+          this.isSaving.set(false);
+          this.showStatus('Canales de donación actualizados correctamente', 'success');
+          this.loadConfigs();
+        },
+        error: () => {
+          this.isSaving.set(false);
+          this.showStatus('Error al actualizar canales de donación', 'error');
+        },
+      });
   }
 
   seedDefaults() {
-    if (!confirm('¿Deseas restaurar o re-sembrar las configuraciones por defecto?')) return;
     this.isSaving.set(true);
     this.configService.seedDefaults().subscribe({
       next: () => {
         this.isSaving.set(false);
-        this.showStatus('Valores por defecto restablecidos con éxito', 'success');
+        this.showStatus('Valores por defecto verificados y restaurados', 'success');
         this.loadConfigs();
       },
       error: () => {
         this.isSaving.set(false);
-        this.showStatus('Error al restaurar configuraciones', 'error');
-      }
+        this.showStatus('Error al restaurar valores por defecto', 'error');
+      },
     });
   }
 
-  private showStatus(msg: string, type: 'success' | 'error') {
+  private showStatus(msg: string, type: 'success' | 'error' | 'info') {
     this.statusMessage.set(msg);
     this.statusType.set(type);
     setTimeout(() => {
       this.statusMessage.set(null);
-    }, 4000);
+    }, 5000);
   }
 }

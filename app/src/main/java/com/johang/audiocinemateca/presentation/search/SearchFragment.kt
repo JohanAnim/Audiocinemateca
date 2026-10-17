@@ -3,53 +3,31 @@ package com.johang.audiocinemateca.presentation.search
 import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.RecognizerIntent
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputMethodManager
-import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.LinearLayout
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.johang.audiocinemateca.R
-import com.johang.audiocinemateca.domain.model.CatalogItem
+import com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class SearchFragment : Fragment() {
 
     private val viewModel: SearchViewModel by viewModels()
-    private lateinit var searchEditText: EditText
-    private lateinit var voiceSearchButton: ImageButton
-    private lateinit var clearTextButton: ImageButton
-    private lateinit var searchResultsRecyclerView: RecyclerView
-    private lateinit var emptyResultsTextView: TextView
-    private lateinit var searchAdapter: SearchAdapter
-
-    private lateinit var searchHistoryRecyclerView: RecyclerView
-    private lateinit var searchHistoryContainer: LinearLayout
-    private lateinit var searchHistoryAdapter: SearchHistoryAdapter
-
-    private var focusFirstResultAfterVoiceSearch = false
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -69,107 +47,65 @@ class SearchFragment : Fragment() {
                 it[0]
             }
             spokenText?.let {
-                searchEditText.setText(it)
+                viewModel.setSearchQuery(it)
                 viewModel.saveQueryToHistory(it)
-                focusFirstResultAfterVoiceSearch = true
             }
         } else if (result.resultCode == Activity.RESULT_CANCELED) {
             Toast.makeText(requireContext(), "Búsqueda por voz cancelada.", Toast.LENGTH_SHORT).show()
         }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        return inflater.inflate(R.layout.fragment_search, container, false)
+    override fun onResume() {
+        super.onResume()
+        (activity as? AppCompatActivity)?.supportActionBar?.hide()
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        Log.d("SearchFragment", "onViewCreated: Fragment started")
+    override fun onPause() {
+        super.onPause()
+        (activity as? AppCompatActivity)?.supportActionBar?.show()
+    }
 
-        (activity as? AppCompatActivity)?.supportActionBar?.apply {
-            title = getString(R.string.search_title)
-            setDisplayHomeAsUpEnabled(true)
-        }
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        return ComposeView(requireContext()).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                AudiocinematecaTheme {
+                    val searchQuery by viewModel.searchQuery.collectAsState()
+                    val searchState by viewModel.searchState.collectAsState()
+                    val recentSearches by viewModel.recentSearches.collectAsState()
 
-        (activity as? AppCompatActivity)?.findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)?.setNavigationOnClickListener {
-            if (isAdded) {
-                findNavController().popBackStack()
+                    SearchScreen(
+                        searchQuery = searchQuery,
+                        searchState = searchState,
+                        recentSearches = recentSearches,
+                        onQueryChange = { viewModel.setSearchQuery(it) },
+                        onSearchAction = { viewModel.saveQueryToHistory(it) },
+                        onVoiceClick = { checkPermissionAndStartVoiceRecognition() },
+                        onItemClick = { item ->
+                            val itemType = when (item.javaClass.simpleName.lowercase()) {
+                                "movie" -> "peliculas"
+                                "serie" -> "series"
+                                "documentary" -> "documentales"
+                                "shortfilm" -> "cortometrajes"
+                                else -> "peliculas"
+                            }
+                            val action = SearchFragmentDirections.actionSearchFragmentToContentDetailFragment(
+                                itemId = item.id,
+                                itemType = itemType
+                            )
+                            findNavController().navigate(action)
+                        },
+                        onDeleteRecentItem = { viewModel.deleteSearchHistoryItem(it) },
+                        onClearHistory = { viewModel.clearSearchHistory() },
+                        onNavigateBack = { findNavController().navigateUp() }
+                    )
+                }
             }
         }
-
-        searchEditText = view.findViewById(R.id.search_edit_text)
-        voiceSearchButton = view.findViewById(R.id.voice_search_button)
-        clearTextButton = view.findViewById(R.id.clear_text_button)
-        searchResultsRecyclerView = view.findViewById(R.id.search_results_recycler_view)
-        emptyResultsTextView = view.findViewById(R.id.empty_search_results_text)
-        searchHistoryRecyclerView = view.findViewById(R.id.search_history_recycler_view)
-        searchHistoryContainer = view.findViewById(R.id.search_history_container)
-        Log.d("SearchFragment", "onViewCreated: Views initialized")
-
-        searchResultsRecyclerView.layoutManager = LinearLayoutManager(context)
-        searchAdapter = SearchAdapter(emptyList()) { catalogItem ->
-            val itemType = when (catalogItem.javaClass.simpleName.lowercase()) {
-                "movie" -> "peliculas"
-                "serie" -> "series"
-                "documentary" -> "documentales"
-                "shortfilm" -> "cortometrajes"
-                else -> ""
-            }
-            val action = SearchFragmentDirections.actionSearchFragmentToContentDetailFragment(catalogItem.id, itemType)
-            findNavController().navigate(action)
-        }
-        searchResultsRecyclerView.adapter = searchAdapter
-        Log.d("SearchFragment", "onViewCreated: Search Results RecyclerView and Adapter set")
-
-        searchHistoryRecyclerView.layoutManager = LinearLayoutManager(context)
-        searchHistoryAdapter = SearchHistoryAdapter(
-            historyList = emptyList(),
-            onItemClick = { query ->
-                searchEditText.setText(query)
-            },
-            onItemLongClick = { query ->
-                showDeleteConfirmationDialog(query)
-                true
-            }
-        )
-        searchHistoryRecyclerView.adapter = searchHistoryAdapter
-        Log.d("SearchFragment", "onViewCreated: Search History RecyclerView and Adapter set")
-
-        voiceSearchButton.setOnClickListener { checkPermissionAndStartVoiceRecognition() }
-        clearTextButton.setOnClickListener { searchEditText.text.clear() }
-
-        searchEditText.addTextChangedListener(object : android.text.TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: android.text.Editable?) {
-                viewModel.setSearchQuery(s.toString())
-                clearTextButton.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
-            }
-        })
-
-        searchEditText.setOnEditorActionListener { v, actionId, event ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                val query = searchEditText.text.toString()
-                viewModel.saveQueryToHistory(query)
-                val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-                imm?.hideSoftInputFromWindow(view?.windowToken, 0)
-                true
-            }
-            false
-        }
-
-        searchEditText.requestFocus()
-        searchEditText.postDelayed({
-            val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-            imm?.showSoftInput(searchEditText, InputMethodManager.SHOW_IMPLICIT)
-        }, 200)
-
-        observeViewModel()
-        observeRecentSearches()
-        Log.d("SearchFragment", "onViewCreated: ViewModel observed")
     }
 
     private fun checkPermissionAndStartVoiceRecognition() {
@@ -198,90 +134,8 @@ class SearchFragment : Fragment() {
         }
         try {
             startVoiceRecognitionLauncher.launch(intent)
-        } catch (a: ActivityNotFoundException) {
+        } catch (_: ActivityNotFoundException) {
             Toast.makeText(requireContext(), "Tu dispositivo no soporta el reconocimiento de voz.", Toast.LENGTH_SHORT).show()
         }
     }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        (activity as? AppCompatActivity)?.supportActionBar?.apply {
-            title = getString(R.string.app_name)
-            setDisplayHomeAsUpEnabled(false)
-            show()
-        }
-        (activity as? AppCompatActivity)?.findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)?.setNavigationOnClickListener(null)
-        searchEditText.setOnEditorActionListener(null)
-    }
-
-    private fun observeViewModel() {
-        lifecycleScope.launch {
-            viewModel.searchState.collect { state ->
-                when (state) {
-                    is SearchState.Initial -> {
-                        searchAdapter.updateList(emptyList(), "")
-                        emptyResultsTextView.text = "Los resultados de búsqueda irán apareciendo aquí"
-                        emptyResultsTextView.visibility = View.VISIBLE
-                        searchResultsRecyclerView.visibility = View.GONE
-                        searchHistoryContainer.visibility = View.VISIBLE
-                    }
-                    is SearchState.Loading -> {
-                        searchAdapter.updateList(emptyList(), "")
-                        emptyResultsTextView.text = "Buscando resultados..."
-                        emptyResultsTextView.visibility = View.VISIBLE
-                        searchResultsRecyclerView.visibility = View.GONE
-                        searchHistoryContainer.visibility = View.GONE
-                    }
-                    is SearchState.NoResults -> {
-                        searchAdapter.updateList(emptyList(), state.query)
-                        emptyResultsTextView.text = "Ups, al parecer aún no contamos con el titulo de ${state.query}, ven más adelante para comprovar la disponivilidad"
-                        emptyResultsTextView.visibility = View.VISIBLE
-                        searchResultsRecyclerView.visibility = View.GONE
-                        searchHistoryContainer.visibility = View.GONE
-                    }
-                    is SearchState.HasResults -> {
-                        searchAdapter.updateList(state.results, state.query)
-                        emptyResultsTextView.visibility = View.GONE
-                        searchResultsRecyclerView.visibility = View.VISIBLE
-                        searchHistoryContainer.visibility = View.GONE
-
-                        if (focusFirstResultAfterVoiceSearch) {
-                            searchResultsRecyclerView.post {
-                                val firstItemView = searchResultsRecyclerView.layoutManager?.findViewByPosition(0)
-                                firstItemView?.requestFocus()
-                                // Forzar el cierre del teclado
-                                val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-                                imm?.hideSoftInputFromWindow(view?.windowToken, 0)
-                            }
-                            focusFirstResultAfterVoiceSearch = false
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun observeRecentSearches() {
-        lifecycleScope.launch {
-            viewModel.recentSearches.collect { history ->
-                searchHistoryAdapter.updateList(history)
-            }
-        }
-    }
-
-    private fun showDeleteConfirmationDialog(queryToDelete: String) {
-        AlertDialog.Builder(requireContext())
-            .setTitle("Eliminar del historial")
-            .setMessage("¿Estás seguro de que quieres eliminar \"$queryToDelete\" del historial de búsqueda?")
-            .setPositiveButton("Eliminar") { dialog, _ ->
-                viewModel.deleteSearchHistoryItem(queryToDelete)
-                Toast.makeText(requireContext(), "\"$queryToDelete\" eliminado del historial.", Toast.LENGTH_SHORT).show()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancelar") { dialog, _ ->
-                dialog.dismiss()
-            }
-            .show()
-    }
 }
-

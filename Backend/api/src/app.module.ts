@@ -11,6 +11,10 @@ import { CommentsModule } from './modules/comments/comments.module.js';
 import { CommunityModule } from './modules/community/community.module.js';
 import { AppConfigModule } from './modules/app-config/app-config.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
+import { PushModule } from './modules/notifications/push.module.js';
+import { AiModule } from './modules/ai/ai.module.js';
+import { CatalogSyncModule } from './modules/catalog-sync/catalog-sync.module.js';
+import { StreamProxyModule } from './modules/stream-proxy/stream-proxy.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -21,6 +25,11 @@ import { AppService } from './app.service.js';
       envFilePath: ['.env', '../.env'],
     }),
     PrismaModule,
+    AppConfigModule,
+    PushModule,
+    AiModule,
+    CatalogSyncModule,
+    StreamProxyModule,
     UsersModule,
     AuthModule,
     ContentsModule,
@@ -29,7 +38,6 @@ import { AppService } from './app.service.js';
     RatingsModule,
     CommentsModule,
     CommunityModule,
-    AppConfigModule,
     AdminModule,
   ],
   controllers: [AppController],

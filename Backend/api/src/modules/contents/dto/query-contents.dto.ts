@@ -57,4 +57,12 @@ export class QueryContentsDto {
   @IsOptional()
   @IsString()
   country?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  isExclusive?: string;
 }

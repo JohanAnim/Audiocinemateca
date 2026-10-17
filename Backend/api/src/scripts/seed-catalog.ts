@@ -20,7 +20,7 @@ function generateSlug(text: string): string {
 async function main() {
   console.log('🎬 Iniciando proceso de siembra de catálogo...');
 
-  const catalogPath = path.resolve(__dirname, '../../../../back_otros/data/catalogo.json');
+  const catalogPath = path.resolve(__dirname, '../../data/catalogo.json');
   if (!fs.existsSync(catalogPath)) {
     console.error(`❌ No se encontró catalogo.json en ${catalogPath}`);
     return;

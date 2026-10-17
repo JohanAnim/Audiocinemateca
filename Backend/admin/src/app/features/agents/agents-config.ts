@@ -2,34 +2,72 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ConfigService } from '../../core/services/config.service';
+import { ContentService } from '../../core/services/content.service';
+
+export type AiProviderType = 'groq' | 'gemini' | 'custom';
+export type ReasoningEffortType = 'low' | 'medium' | 'high';
+
+export interface AiModelDefinition {
+  id: string;
+  name: string;
+  badge: string;
+  description: string;
+  supportsThinking: boolean;
+  defaultThinking: boolean;
+}
+
+export interface AiProviderCatalogEntry {
+  id: AiProviderType;
+  order: number;
+  name: string;
+  subtitle: string;
+  badge: string;
+  baseUrl: string;
+  docsUrl: string;
+  keyPlaceholder: string;
+  defaultModel: string;
+  models: AiModelDefinition[];
+}
 
 export interface AuraAgentConfig {
   enabled: boolean;
+  provider: AiProviderType;
   model: string;
+  thinkingEnabled: boolean;
+  reasoningEffort: ReasoningEffortType;
   temperature: number;
   maxTokens: number;
+  customBaseUrl: string;
+  customModelForceThinking: boolean;
   systemPrompt: string;
-  enablePlayContentTool: boolean;
   enableCatalogSearch: boolean;
   enableCommunityChatBot: boolean;
   chatMentionKeyword: string;
-  speechPauseMs: number;
+}
+
+export interface ProviderKeyStatus {
+  hasKey: boolean;
+  maskedKey: string | null;
+  source: 'database' | 'env' | 'none';
 }
 
 export interface CronTasksConfig {
   cleanOldChatDays: number;
+  cleanChatCount: number;
   autoCleanEnabled: boolean;
   catalogLinkAuditIntervalHours: number;
   recalculateRankingsDaily: boolean;
-  backupDatabaseSchedule: string;
 }
 
-export interface PushNotificationPayload {
+export interface PushNotificationForm {
   title: string;
   body: string;
   target: 'all' | 'android' | 'desktop';
-  actionType: 'open_app' | 'open_content' | 'open_announcement';
-  targetId: string;
+  destination: 'app' | 'content_detail' | 'announcements' | 'global_chat' | 'external_url' | 'donation';
+  contentId: string;
+  contentType: string;
+  url: string;
+  delayMinutes: number;
 }
 
 @Component({
@@ -37,580 +75,1039 @@ export interface PushNotificationPayload {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="space-y-6">
-      <!-- HEADER -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
-            <span class="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </span>
-            Centro de Agentes de IA y Automatizaciones
-          </h1>
-          <p class="text-sm text-slate-400 mt-1">
-            Configuración de Aura 2.0 (Asistente Accesible), disparadores automáticos, notificaciones push masivas y cron jobs.
-          </p>
+    <div class="exec-page">
+      <!-- ENCABEZADO -->
+      <div class="exec-header">
+        <div class="exec-title-group">
+          <h1>Aura IA y Automatizaciones</h1>
+          <p>Configuración del motor de IA, notificaciones Push, colecciones y mantenimiento</p>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="exec-header-actions">
           <button
+            type="button"
+            class="btn btn-secondary"
             (click)="loadAll()"
             [disabled]="isLoading()"
-            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-sm font-medium border border-slate-700 transition flex items-center gap-2 cursor-pointer"
           >
-            <svg [class.animate-spin]="isLoading()" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refrescar
+            {{ isLoading() ? 'Actualizando...' : 'Actualizar' }}
           </button>
         </div>
       </div>
 
-      <!-- STATUS NOTIFICATION -->
       @if (statusMessage()) {
-        <div
-          [class.bg-emerald-500/10]="statusType() === 'success'"
-          [class.border-emerald-500/30]="statusType() === 'success'"
-          [class.text-emerald-400]="statusType() === 'success'"
-          [class.bg-rose-500/10]="statusType() === 'error'"
-          [class.border-rose-500/30]="statusType() === 'error'"
-          [class.text-rose-400]="statusType() === 'error'"
-          class="p-4 rounded-xl border flex items-center justify-between transition-all"
-        >
-          <span class="text-sm font-medium">{{ statusMessage() }}</span>
-          <button (click)="statusMessage.set(null)" class="text-slate-400 hover:text-white cursor-pointer">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+        <div class="status-banner" [ngClass]="statusType()" role="status" aria-live="polite">
+          <span>{{ statusMessage() }}</span>
+          <button type="button" class="btn btn-secondary btn-sm" (click)="statusMessage.set(null)" aria-label="Cerrar aviso">✕</button>
         </div>
       }
 
-      <!-- TABS ACCESIBLES (WCAG 2.1) -->
-      <nav class="flex border-b border-slate-800 gap-2 overflow-x-auto pb-px" role="tablist" aria-label="Secciones de agentes y tareas programadas">
+      <!-- PESTAÑAS -->
+      <nav class="tabs-nav" role="tablist" aria-label="Secciones de IA y automatizaciones">
         <button
-          (click)="activeTab.set('aura')"
+          type="button"
           role="tab"
           id="tab-aura"
+          class="tab-btn"
+          [class.active]="activeTab() === 'aura'"
           [attr.aria-selected]="activeTab() === 'aura'"
           aria-controls="tabpanel-aura"
-          [class.border-purple-500]="activeTab() === 'aura'"
-          [class.text-purple-400]="activeTab() === 'aura'"
-          [class.border-transparent]="activeTab() !== 'aura'"
-          [class.text-slate-400]="activeTab() !== 'aura'"
-          class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
+          (click)="activeTab.set('aura')"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-          </svg>
-          Aura 2.0 (Inteligencia Artificial)
+          Configuración de Aura
         </button>
 
         <button
-          (click)="activeTab.set('push')"
+          type="button"
           role="tab"
           id="tab-push"
+          class="tab-btn"
+          [class.active]="activeTab() === 'push'"
           [attr.aria-selected]="activeTab() === 'push'"
           aria-controls="tabpanel-push"
-          [class.border-purple-500]="activeTab() === 'push'"
-          [class.text-purple-400]="activeTab() === 'push'"
-          [class.border-transparent]="activeTab() !== 'push'"
-          [class.text-slate-400]="activeTab() !== 'push'"
-          class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
+          (click)="activeTab.set('push')"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-          Emisor Masivo de Notificaciones Push (FCM)
+          Notificaciones Push
         </button>
 
         <button
-          (click)="activeTab.set('cron')"
+          type="button"
+          role="tab"
+          id="tab-collections"
+          class="tab-btn"
+          [class.active]="activeTab() === 'collections'"
+          [attr.aria-selected]="activeTab() === 'collections'"
+          aria-controls="tabpanel-collections"
+          (click)="activeTab.set('collections')"
+        >
+          Colecciones y Ranking
+        </button>
+
+        <button
+          type="button"
           role="tab"
           id="tab-cron"
+          class="tab-btn"
+          [class.active]="activeTab() === 'cron'"
           [attr.aria-selected]="activeTab() === 'cron'"
           aria-controls="tabpanel-cron"
-          [class.border-purple-500]="activeTab() === 'cron'"
-          [class.text-purple-400]="activeTab() === 'cron'"
-          [class.border-transparent]="activeTab() !== 'cron'"
-          [class.text-slate-400]="activeTab() !== 'cron'"
-          class="px-4 py-3 font-semibold text-sm border-b-2 hover:text-white transition flex items-center gap-2 whitespace-nowrap cursor-pointer"
+          (click)="activeTab.set('cron')"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Cron Jobs y Tareas de Fondo
+          Mantenimiento
         </button>
       </nav>
 
-      <!-- 1. TAB: AURA IA -->
+      <!-- =====================================================================
+           1. PESTAÑA: CONFIGURACIÓN DE AURA
+           ===================================================================== -->
       @if (activeTab() === 'aura') {
-        <section
+        <div
           id="tabpanel-aura"
           role="tabpanel"
           tabindex="0"
           aria-labelledby="tab-aura"
-          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+          class="exec-page"
         >
-          <div class="flex items-center justify-between border-b border-slate-800 pb-4">
-            <div>
-              <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                <span>Personalidad y Parámetros de Aura</span>
-                <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">v2.0 Hito Accesible</span>
-              </h3>
-              <p class="text-xs text-slate-400">Controla cómo responde y asiste el modelo generativo a las personas ciegas o con baja visión.</p>
-            </div>
-            <label for="aura-enabled" class="relative inline-flex items-center cursor-pointer">
-              <input id="aura-enabled" type="checkbox" [(ngModel)]="auraConfig.enabled" class="sr-only peer" />
-              <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-              <span class="ml-3 text-sm font-medium text-slate-300">
-                {{ auraConfig.enabled ? 'Aura ACTIVA' : 'Aura DESACTIVADA' }}
-              </span>
-            </label>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label for="aura-model" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Modelo de Lenguaje</label>
-              <select
-                id="aura-model"
-                [(ngModel)]="auraConfig.model"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500"
-              >
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Ultrarrápido y Preciso - Recomendado)</option>
-                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro (Razonamiento Complejo)</option>
-                <option value="gpt-4o-mini">OpenAI GPT-4o Mini</option>
-              </select>
+          <!-- PROVEEDOR, MODELO Y CLAVE API -->
+          <section class="card" aria-labelledby="heading-brain-config">
+            <div class="section-header-row">
+              <div>
+                <h2 id="heading-brain-config">Proveedor y Modelo</h2>
+              </div>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  (click)="syncLiveModelsForCurrentProvider()"
+                  [disabled]="isSyncingModels()"
+                >
+                  {{ isSyncingModels() ? 'Sincronizando...' : 'Sincronizar modelos desde API' }}
+                </button>
+                <label for="aura-enabled" class="toggle-box" style="padding: 8px 14px;">
+                  <input id="aura-enabled" type="checkbox" [(ngModel)]="auraConfig.enabled" />
+                  <strong>{{ auraConfig.enabled ? 'Aura Activa' : 'Aura Inactiva' }}</strong>
+                </label>
+              </div>
             </div>
 
-            <div>
-              <label for="aura-temperature" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Temperatura: {{ auraConfig.temperature }}</label>
-              <div class="flex items-center gap-4 mt-2">
+            <div class="grid-2">
+              <!-- LISTA DESPLEGABLE 1: PROVEEDOR DE IA -->
+              <div class="form-group">
+                <label for="aura-provider-select" class="form-label">Proveedor de IA</label>
+                <select
+                  id="aura-provider-select"
+                  class="form-control"
+                  [(ngModel)]="auraConfig.provider"
+                  (ngModelChange)="selectProvider($event)"
+                >
+                  @for (prov of providerCatalog(); track prov.id) {
+                    <option [value]="prov.id">{{ prov.name }}</option>
+                  }
+                </select>
+              </div>
+
+              <!-- LISTA DESPLEGABLE 2: MODELO -->
+              <div class="form-group">
+                <label for="aura-model-select" class="form-label">Modelo</label>
+                <select
+                  id="aura-model-select"
+                  class="form-control"
+                  [(ngModel)]="auraConfig.model"
+                  (ngModelChange)="onModelSelectChange($event)"
+                >
+                  @for (m of getCurrentProviderEntry().models; track m.id) {
+                    <option [value]="m.id">{{ m.name }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            @if (auraConfig.provider === 'custom') {
+              <div class="grid-2">
+                <div class="form-group">
+                  <label for="aura-custom-base-url" class="form-label">URL Base del Endpoint (OpenAI Compatible)</label>
+                  <input
+                    id="aura-custom-base-url"
+                    type="url"
+                    class="form-control"
+                    [(ngModel)]="auraConfig.customBaseUrl"
+                    placeholder="https://api.openai.com/v1"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="aura-custom-model-input" class="form-label">ID de Modelo Personalizado</label>
+                  <input
+                    id="aura-custom-model-input"
+                    type="text"
+                    class="form-control"
+                    [(ngModel)]="auraConfig.model"
+                    placeholder="Ej. gpt-4o-mini, deepseek-chat"
+                  />
+                </div>
+              </div>
+            }
+
+            <!-- CLAVE API Y PENSAMIENTO PROFUNDO -->
+            <div class="grid-2">
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <label for="aura-api-key-input" class="form-label">
+                    Clave API ({{ getCurrentProviderEntry().name }})
+                  </label>
+                  @if (getKeyStatus(auraConfig.provider).hasKey) {
+                    <span class="badge badge-success">
+                      Guardada: {{ getKeyStatus(auraConfig.provider).maskedKey }}
+                    </span>
+                  } @else {
+                    <span class="badge badge-warning">Sin clave configurada</span>
+                  }
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                  <input
+                    id="aura-api-key-input"
+                    [type]="showApiKey() ? 'text' : 'password'"
+                    class="form-control"
+                    [(ngModel)]="apiKeyInputs[auraConfig.provider]"
+                    [placeholder]="getKeyStatus(auraConfig.provider).hasKey ? 'Dejar en blanco para mantener la clave actual' : getCurrentProviderEntry().keyPlaceholder"
+                    autocomplete="off"
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-secondary"
+                    (click)="showApiKey.set(!showApiKey())"
+                  >
+                    {{ showApiKey() ? 'Ocultar' : 'Mostrar' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- PENSAMIENTO PROFUNDO -->
+              <div class="form-group">
+                <label class="form-label" for="aura-thinking-toggle">Pensamiento Profundo (Razonamiento)</label>
+                @if (currentModelSupportsThinking()) {
+                  <div style="display: flex; gap: 10px; align-items: center;">
+                    <label for="aura-thinking-toggle" class="toggle-box" style="flex: 1;">
+                      <input
+                        id="aura-thinking-toggle"
+                        type="checkbox"
+                        [(ngModel)]="auraConfig.thinkingEnabled"
+                      />
+                      <span>{{ auraConfig.thinkingEnabled ? 'Activado' : 'Desactivado' }}</span>
+                    </label>
+
+                    @if (auraConfig.thinkingEnabled) {
+                      <div style="flex: 1;">
+                        <label for="aura-reasoning-effort" class="sr-only">Nivel de razonamiento</label>
+                        <select
+                          id="aura-reasoning-effort"
+                          class="form-control"
+                          [(ngModel)]="auraConfig.reasoningEffort"
+                        >
+                          <option value="low">Esfuerzo Bajo</option>
+                          <option value="medium">Esfuerzo Medio</option>
+                          <option value="high">Esfuerzo Alto</option>
+                        </select>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <div class="toggle-box" style="color: var(--text-muted); justify-content: space-between;">
+                    <span>No disponible en este modelo (respuesta directa)</span>
+                    @if (auraConfig.provider === 'custom') {
+                      <label for="aura-force-custom-thinking" style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px;">
+                        <input
+                          id="aura-force-custom-thinking"
+                          type="checkbox"
+                          [(ngModel)]="auraConfig.customModelForceThinking"
+                        />
+                        <span>Habilitar manualmente</span>
+                      </label>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- PARÁMETROS GENERATIVOS Y PROMPT -->
+            <div class="grid-2" style="margin-top: 8px;">
+              <div class="form-group">
+                <label for="aura-temperature" class="form-label">Temperatura: {{ auraConfig.temperature }}</label>
                 <input
                   id="aura-temperature"
                   type="range"
+                  class="form-control"
+                  style="padding: 10px;"
                   [(ngModel)]="auraConfig.temperature"
                   min="0.1"
                   max="1.0"
                   step="0.05"
-                  class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
                 />
-                <span class="font-mono text-sm text-purple-400 font-semibold">{{ auraConfig.temperature }}</span>
-              </div>
-              <span class="text-[11px] text-slate-500">0.2 = Muy determinista • 0.7 = Equilibrado / Conversacional</span>
-            </div>
-
-            <div>
-              <label for="aura-max-tokens" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Límite de Tokens de Salida</label>
-              <input
-                id="aura-max-tokens"
-                type="number"
-                [(ngModel)]="auraConfig.maxTokens"
-                min="100"
-                max="2048"
-                step="50"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500"
-              />
-              <span class="text-[11px] text-slate-500">Respuestas concisas para evitar fatiga auditiva en lectores TTS.</span>
-            </div>
-          </div>
-
-          <div>
-            <label for="aura-system-prompt" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">System Prompt Maestro (Personalidad de Aura)</label>
-            <textarea
-              id="aura-system-prompt"
-              [(ngModel)]="auraConfig.systemPrompt"
-              rows="6"
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-purple-500 font-mono text-xs leading-relaxed"
-            ></textarea>
-          </div>
-
-          <!-- HERRAMIENTAS Y PODERES -->
-          <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-4">
-            <h4 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <svg class="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
-              </svg>
-              Herramientas de Ejecución (Function Calling)
-            </h4>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition">
-                <input
-                  id="aura-tool-play"
-                  type="checkbox"
-                  [(ngModel)]="auraConfig.enablePlayContentTool"
-                  class="mt-1 w-4 h-4 rounded bg-slate-950 border-slate-700 text-purple-600 focus:ring-0 cursor-pointer"
-                />
-                <label for="aura-tool-play" class="cursor-pointer">
-                  <span class="text-sm font-semibold text-white block">Súper Poder: play_content</span>
-                  <span class="text-xs text-slate-400">Permite a Aura reproducir directamente películas o capítulos de series tras pedirlo el usuario por voz.</span>
-                </label>
               </div>
 
-              <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition">
+              <div class="form-group">
+                <label for="aura-max-tokens" class="form-label">Máximo de Tokens</label>
                 <input
-                  id="aura-tool-catalog"
-                  type="checkbox"
-                  [(ngModel)]="auraConfig.enableCatalogSearch"
-                  class="mt-1 w-4 h-4 rounded bg-slate-950 border-slate-700 text-purple-600 focus:ring-0 cursor-pointer"
-                />
-                <label for="aura-tool-catalog" class="cursor-pointer">
-                  <span class="text-sm font-semibold text-white block">Búsqueda Semántica de Catálogo</span>
-                  <span class="text-xs text-slate-400">Permite buscar obras por actores, directores, narradores de audiodescripción o géneros.</span>
-                </label>
-              </div>
-
-              <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition">
-                <input
-                  id="aura-tool-chat"
-                  type="checkbox"
-                  [(ngModel)]="auraConfig.enableCommunityChatBot"
-                  class="mt-1 w-4 h-4 rounded bg-slate-950 border-slate-700 text-purple-600 focus:ring-0 cursor-pointer"
-                />
-                <label for="aura-tool-chat" class="cursor-pointer">
-                  <span class="text-sm font-semibold text-white block">Presencia en Chat de la Comunidad</span>
-                  <span class="text-xs text-slate-400">Aura responde en tiempo real cuando un usuario escribe una mención en el chat público.</span>
-                </label>
-              </div>
-
-              <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <label for="aura-speech-pause" class="text-sm font-semibold text-white block">Pausa Elegante TTS (ms)</label>
-                  <span class="text-xs text-slate-400">Silencio de cortesía tras hablar (evita solaparse con TalkBack).</span>
-                </div>
-                <input
-                  id="aura-speech-pause"
+                  id="aura-max-tokens"
                   type="number"
-                  [(ngModel)]="auraConfig.speechPauseMs"
-                  min="0"
-                  max="1000"
+                  class="form-control"
+                  [(ngModel)]="auraConfig.maxTokens"
+                  min="100"
+                  max="4096"
                   step="50"
-                  class="w-24 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-white text-sm font-mono text-center"
                 />
               </div>
             </div>
-          </div>
 
-          <div class="pt-4 border-t border-slate-800 flex justify-end">
-            <button
-              (click)="saveAuraConfig()"
-              [disabled]="isSaving()"
-              class="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-purple-600/30 transition flex items-center gap-2 cursor-pointer"
-            >
-              Guardar Configuración de Aura IA
-            </button>
-          </div>
-        </section>
+            <div class="form-group">
+              <label for="aura-system-prompt" class="form-label">Instrucciones del Sistema (System Prompt)</label>
+              <textarea
+                id="aura-system-prompt"
+                class="form-control"
+                rows="5"
+                [(ngModel)]="auraConfig.systemPrompt"
+              ></textarea>
+            </div>
+
+            <!-- FUNCIONES DE AURA -->
+            <div class="tools-box">
+              <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 12px;">Funciones Habilitadas</h3>
+              <div class="grid-2">
+                <label for="aura-tool-catalog" class="toggle-box">
+                  <input id="aura-tool-catalog" type="checkbox" [(ngModel)]="auraConfig.enableCatalogSearch" />
+                  <span>Búsqueda en el catálogo</span>
+                </label>
+
+                <label for="aura-tool-chat" class="toggle-box">
+                  <input id="aura-tool-chat" type="checkbox" [(ngModel)]="auraConfig.enableCommunityChatBot" />
+                  <span>Respuestas en el Chat Global (&#64;Aura)</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="card-footer-actions">
+              <span></span>
+              <button
+                type="button"
+                class="btn btn-primary"
+                (click)="saveAuraConfig()"
+                [disabled]="isSaving()"
+              >
+                {{ isSaving() ? 'Guardando...' : 'Guardar Configuración' }}
+              </button>
+            </div>
+          </section>
+
+          <!-- PRUEBA DE CONEXIÓN -->
+          <section class="card" aria-labelledby="heading-brain-test">
+            <div class="section-header-row">
+              <div>
+                <h2 id="heading-brain-test">Probar Conexión</h2>
+              </div>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                (click)="testBrainNow()"
+                [disabled]="isTestingBrain()"
+              >
+                {{ isTestingBrain() ? 'Probando...' : 'Enviar Mensaje de Prueba' }}
+              </button>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="aura-test-prompt" class="form-label">Mensaje</label>
+              <input
+                id="aura-test-prompt"
+                type="text"
+                class="form-control"
+                [(ngModel)]="testPrompt"
+                placeholder="Escribe un mensaje para verificar la respuesta del modelo..."
+              />
+            </div>
+
+            @if (testBrainResult()) {
+              <div class="brain-test-result" role="region" aria-label="Respuesta del modelo">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <span class="badge badge-primary">{{ testBrainResult()?.provider | uppercase }}</span>
+                    <span class="badge badge-info">{{ testBrainResult()?.model }}</span>
+                  </div>
+                  <small style="color: #34d399; font-weight: 700;">{{ testBrainResult()?.latencyMs }} ms</small>
+                </div>
+                <p style="font-size: 14px; line-height: 1.5; white-space: pre-wrap; margin: 0;">{{ testBrainResult()?.reply }}</p>
+              </div>
+            }
+          </section>
+        </div>
       }
 
-      <!-- 2. TAB: PUSH NOTIFICATIONS -->
+      <!-- =====================================================================
+           2. PESTAÑA: NOTIFICACIONES PUSH
+           ===================================================================== -->
       @if (activeTab() === 'push') {
-        <section
+        <div
           id="tabpanel-push"
           role="tabpanel"
           tabindex="0"
           aria-labelledby="tab-push"
-          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+          class="exec-page"
         >
-          <div class="border-b border-slate-800 pb-4">
-            <h3 class="text-lg font-bold text-white flex items-center gap-2">
-              <span>Emisión de Notificaciones Masivas (FCM)</span>
-              <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">Google Firebase Cloud Messaging</span>
-            </h3>
-            <p class="text-xs text-slate-400">Envía alertas instantáneas a todos los dispositivos Android registrados en la base de datos de Audiocinemateca.</p>
-          </div>
-
-          <!-- PREVIEW NOTIFICATION -->
-          <div class="max-w-md mx-auto p-4 bg-slate-950 border border-slate-800 rounded-2xl shadow-xl flex items-start gap-3">
-            <div class="p-2.5 bg-indigo-600 rounded-xl text-white flex-shrink-0">
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Audiocinemateca</span>
-                <span class="text-[10px] text-slate-500">Ahora</span>
+          <section class="card">
+            <div class="section-header-row">
+              <div>
+                <h2>Enviar Notificación Push</h2>
               </div>
-              <h5 class="font-bold text-white text-sm mt-0.5 truncate">{{ pushPayload.title || 'Título de la notificación' }}</h5>
-              <p class="text-xs text-slate-300 mt-1 line-clamp-2">{{ pushPayload.body || 'Mensaje de la notificación que llegará al panel del teléfono...' }}</p>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label for="push-target" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Destinatarios Objetivo</label>
-              <select
-                id="push-target"
-                [(ngModel)]="pushPayload.target"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                (click)="optimizePushWithAi()"
+                [disabled]="isGeneratingAiPush()"
               >
-                <option value="all">Todos los Dispositivos (Android + Escritorio)</option>
-                <option value="android">Solo Dispositivos Android</option>
-                <option value="desktop">Solo Aplicación de Escritorio</option>
-              </select>
+                {{ isGeneratingAiPush() ? 'Generando...' : 'Redactar con IA' }}
+              </button>
             </div>
 
-            <div>
-              <label for="push-action-type" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Acción al Pulsar la Notificación</label>
-              <select
-                id="push-action-type"
-                [(ngModel)]="pushPayload.actionType"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
-              >
-                <option value="open_app">Abrir Inicio de la Aplicación</option>
-                <option value="open_content">Abrir Ficha de Contenido Directa</option>
-                <option value="open_announcement">Abrir Diálogo de Comunicado</option>
-              </select>
+            <div class="grid-3">
+              <div class="form-group">
+                <label for="push-destination" class="form-label">Destino</label>
+                <select id="push-destination" class="form-control" [(ngModel)]="pushForm.destination">
+                  <option value="app">Inicio de la aplicación</option>
+                  <option value="content_detail">Ficha de contenido</option>
+                  <option value="announcements">Anuncios</option>
+                  <option value="global_chat">Chat Global</option>
+                  <option value="external_url">Enlace externo</option>
+                  <option value="donation">Donaciones</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="push-target" class="form-label">Plataforma</label>
+                <select id="push-target" class="form-control" [(ngModel)]="pushForm.target">
+                  <option value="all">Todas</option>
+                  <option value="android">Android</option>
+                  <option value="desktop">Escritorio</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="push-delay" class="form-label">Retraso de envío (minutos)</label>
+                <input
+                  id="push-delay"
+                  type="number"
+                  class="form-control"
+                  [(ngModel)]="pushForm.delayMinutes"
+                  min="0"
+                  max="1440"
+                />
+              </div>
             </div>
-          </div>
 
-          <div>
-            <label for="push-title" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Título de la Notificación</label>
-            <input
-              id="push-title"
-              type="text"
-              [(ngModel)]="pushPayload.title"
-              placeholder="¡Nuevo Estreno con Audiodescripción!"
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500"
-            />
-          </div>
+            @if (pushForm.destination === 'content_detail') {
+              <div class="grid-2">
+                <div class="form-group">
+                  <label for="push-content-id" class="form-label">ID o URL del Contenido</label>
+                  <input
+                    id="push-content-id"
+                    type="text"
+                    class="form-control"
+                    [(ngModel)]="pushForm.contentId"
+                    placeholder="Ej. 150"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="push-content-type" class="form-label">Categoría</label>
+                  <select id="push-content-type" class="form-control" [(ngModel)]="pushForm.contentType">
+                    <option value="peliculas">Películas</option>
+                    <option value="series">Series</option>
+                    <option value="documentales">Documentales</option>
+                    <option value="cortometrajes">Cortometrajes</option>
+                  </select>
+                </div>
+              </div>
+            }
 
-          <div>
-            <label for="push-body" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Cuerpo del Mensaje (Texto Notificación)</label>
-            <textarea
-              id="push-body"
-              [(ngModel)]="pushPayload.body"
-              rows="3"
-              placeholder="Ya puedes disfrutar de la nueva película disponible en el catálogo..."
-              class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-indigo-500 leading-relaxed"
-            ></textarea>
-          </div>
+            @if (pushForm.destination === 'external_url') {
+              <div class="form-group">
+                <label for="push-url" class="form-label">URL Externa</label>
+                <input
+                  id="push-url"
+                  type="url"
+                  class="form-control"
+                  [(ngModel)]="pushForm.url"
+                  placeholder="https://..."
+                />
+              </div>
+            }
 
-          @if (pushPayload.actionType === 'open_content') {
-            <div>
-              <label for="push-target-id" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">UUID o External ID de la Obra</label>
+            <div class="form-group">
+              <label for="push-title" class="form-label">Título *</label>
               <input
-                id="push-target-id"
+                id="push-title"
                 type="text"
-                [(ngModel)]="pushPayload.targetId"
-                placeholder="Ej. matrix_1999 o UUID"
-                class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 font-mono text-xs"
+                class="form-control"
+                [(ngModel)]="pushForm.title"
+                placeholder="Título de la notificación"
               />
             </div>
-          }
 
-          <div class="pt-4 border-t border-slate-800 flex justify-end">
-            <button
-              (click)="sendPushNotification()"
-              [disabled]="isSendingPush() || !pushPayload.title || !pushPayload.body"
-              class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
-            >
-              @if (isSendingPush()) {
-                <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              }
-              Disparar Notificación Push Inmediata
-            </button>
-          </div>
-        </section>
+            <div class="form-group">
+              <label for="push-body" class="form-label">Mensaje *</label>
+              <textarea
+                id="push-body"
+                class="form-control"
+                rows="3"
+                [(ngModel)]="pushForm.body"
+                placeholder="Contenido de la notificación..."
+              ></textarea>
+            </div>
+
+            <div class="card-footer-actions">
+              <span></span>
+              <button
+                type="button"
+                class="btn btn-primary"
+                (click)="sendPushNotification()"
+                [disabled]="isSendingPush() || !pushForm.title.trim() || !pushForm.body.trim()"
+              >
+                {{ isSendingPush() ? 'Enviando...' : (pushForm.delayMinutes > 0 ? 'Programar Envío' : 'Enviar Notificación') }}
+              </button>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="section-header-row">
+              <div>
+                <h3>Historial de Envíos</h3>
+              </div>
+            </div>
+
+            @if (pushHistory().length === 0) {
+              <p style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 16px;">
+                Sin envíos recientes.
+              </p>
+            } @else {
+              <div class="table-responsive">
+                <table class="table">
+                  <caption class="sr-only">Historial de notificaciones push</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Fecha</th>
+                      <th scope="col">Mensaje</th>
+                      <th scope="col">Destino</th>
+                      <th scope="col">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of pushHistory(); track item.id) {
+                      <tr>
+                        <td>{{ item.createdAt | date:'short' }}</td>
+                        <td>
+                          <strong>{{ item.title }}</strong>
+                          <div style="font-size: 12px; color: var(--text-muted);">{{ item.body }}</div>
+                        </td>
+                        <td><span class="badge badge-info">{{ item.destination }}</span></td>
+                        <td>
+                          @if (item.status === 'SENT') {
+                            <span class="badge badge-success">Enviada</span>
+                          } @else if (item.status === 'SCHEDULED') {
+                            <span class="badge badge-warning">Programada</span>
+                          } @else {
+                            <span class="badge badge-danger">{{ item.error || 'Error' }}</span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </section>
+        </div>
       }
 
-      <!-- 3. TAB: CRON JOBS -->
+      <!-- =====================================================================
+           3. PESTAÑA: COLECCIONES Y RANKING
+           ===================================================================== -->
+      @if (activeTab() === 'collections') {
+        <div
+          id="tabpanel-collections"
+          role="tabpanel"
+          tabindex="0"
+          aria-labelledby="tab-collections"
+          class="exec-page"
+        >
+          <section class="card">
+            <div class="section-header-row">
+              <div>
+                <h2>Colecciones Temáticas</h2>
+                <p>Generadas automáticamente cada 24 horas con el proveedor de IA activo</p>
+              </div>
+              <button
+                type="button"
+                class="btn btn-primary"
+                (click)="regenerateCollectionsNow()"
+                [disabled]="isRegeneratingCollections()"
+              >
+                {{ isRegeneratingCollections() ? 'Generando...' : 'Regenerar Colecciones' }}
+              </button>
+            </div>
+
+            @if (!curatedCollections()?.collections?.length) {
+              <p style="color: var(--text-muted); padding: 16px; text-align: center;">
+                No hay colecciones generadas.
+              </p>
+            } @else {
+              <div class="grid-3">
+                @for (col of curatedCollections()?.collections; track col.id) {
+                  <div class="collection-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                      <span class="badge badge-primary">{{ col.items?.length || 0 }} títulos</span>
+                      <small style="color: var(--text-dim);">{{ curatedCollections()?.updatedAt | date:'shortDate' }}</small>
+                    </div>
+                    <h4 style="font-size: 15px; font-weight: 700; margin-bottom: 6px;">{{ col.title }}</h4>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">{{ col.subtitle || col.description }}</p>
+                    <div class="collection-items-list">
+                      @for (it of (col.items || []).slice(0, 6); track it.id) {
+                        <span class="badge badge-info" style="font-size: 11px; text-transform: none;">
+                          {{ it.title || ('ID ' + it.id) }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </section>
+
+          <section class="card">
+            <div class="section-header-row">
+              <div>
+                <h2>Ranking Top 10 Semanal</h2>
+              </div>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                (click)="recalculateRankingNow()"
+                [disabled]="isRecalculatingRanking()"
+              >
+                {{ isRecalculatingRanking() ? 'Calculando...' : 'Recalcular Ranking' }}
+              </button>
+            </div>
+
+            @if (!weeklyRanking()?.items?.length) {
+              <p style="color: var(--text-muted); padding: 16px; text-align: center;">
+                Sin datos de ranking.
+              </p>
+            } @else {
+              <div class="table-responsive">
+                <table class="table">
+                  <caption class="sr-only">Ranking Top 10 Semanal</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">#</th>
+                      <th scope="col">Título</th>
+                      <th scope="col">Tipo</th>
+                      <th scope="col">Puntaje</th>
+                      <th scope="col">Valoración</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of weeklyRanking()?.items; track item.rank) {
+                      <tr>
+                        <td><strong>#{{ item.rank }}</strong></td>
+                        <td><strong>{{ item.title }}</strong></td>
+                        <td><span class="badge badge-info">{{ item.type }}</span></td>
+                        <td>{{ item.score }} pts</td>
+                        <td>{{ item.averageRating || '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </section>
+        </div>
+      }
+
+      <!-- =====================================================================
+           4. PESTAÑA: MANTENIMIENTO
+           ===================================================================== -->
       @if (activeTab() === 'cron') {
         <section
           id="tabpanel-cron"
           role="tabpanel"
           tabindex="0"
           aria-labelledby="tab-cron"
-          class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6"
+          class="card"
         >
-          <div class="border-b border-slate-800 pb-4">
-            <h3 class="text-lg font-bold text-white">Automatizaciones y Tareas Programadas (Cron)</h3>
-            <p class="text-xs text-slate-400">Procesos autónomos en segundo plano para mantenimiento de la base de datos y auditoría de enlaces.</p>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- TAREA 1 -->
-            <div class="p-5 bg-slate-950 border border-slate-800 rounded-2xl space-y-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h4 class="font-bold text-white text-sm">Purga de Mensajes Antiguos de Chat</h4>
-                  <p class="text-xs text-slate-400">Elimina mensajes obsoletos para mantener alta velocidad en milisegundos.</p>
-                </div>
-                <input
-                  id="cron-autoclean-chat"
-                  type="checkbox"
-                  [(ngModel)]="cronConfig.autoCleanEnabled"
-                  class="w-5 h-5 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer"
-                  aria-label="Activar purga automática de chat"
-                />
-              </div>
-
-              <div>
-                <label for="cron-clean-days" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Retener mensajes de los últimos (días):</label>
-                <input
-                  id="cron-clean-days"
-                  type="number"
-                  [(ngModel)]="cronConfig.cleanOldChatDays"
-                  min="7"
-                  max="365"
-                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm"
-                />
-              </div>
-
-              <button
-                (click)="runTaskNow('purge_chat')"
-                class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition border border-slate-700 cursor-pointer"
-              >
-                Ejecutar Purga de Chat Ahora Mismo
-              </button>
-            </div>
-
-            <!-- TAREA 2 -->
-            <div class="p-5 bg-slate-950 border border-slate-800 rounded-2xl space-y-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h4 class="font-bold text-white text-sm">Auditor Automático de Enlaces de Audio</h4>
-                  <p class="text-xs text-slate-400">Comprueba con peticiones HEAD HTTP que los audios no den error 404.</p>
-                </div>
-                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Activo</span>
-              </div>
-
-              <div>
-                <label for="cron-audit-hours" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Intervalo de Verificación (Horas):</label>
-                <input
-                  id="cron-audit-hours"
-                  type="number"
-                  [(ngModel)]="cronConfig.catalogLinkAuditIntervalHours"
-                  min="1"
-                  max="168"
-                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm"
-                />
-              </div>
-
-              <button
-                (click)="runTaskNow('check_links')"
-                class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition border border-slate-700 cursor-pointer"
-              >
-                Auditar Todos los Enlaces del Catálogo Ahora
-              </button>
-            </div>
-
-            <!-- TAREA 3 -->
-            <div class="p-5 bg-slate-950 border border-slate-800 rounded-2xl space-y-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h4 class="font-bold text-white text-sm">Recálculo Diario de Rankings y Tendencias</h4>
-                  <p class="text-xs text-slate-400">Agrega reproducciones ponderadas para la sección "Tendencias".</p>
-                </div>
-                <input
-                  id="cron-recalc-rankings"
-                  type="checkbox"
-                  [(ngModel)]="cronConfig.recalculateRankingsDaily"
-                  class="w-5 h-5 rounded bg-slate-900 border-slate-700 text-indigo-600 focus:ring-0 cursor-pointer"
-                  aria-label="Activar recálculo diario de rankings"
-                />
-              </div>
-
-              <button
-                (click)="runTaskNow('recalculate_rankings')"
-                class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition border border-slate-700 cursor-pointer"
-              >
-                Recalcular Rankings de Popularidad Ahora
-              </button>
-            </div>
-
-            <!-- TAREA 4 -->
-            <div class="p-5 bg-slate-950 border border-slate-800 rounded-2xl space-y-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h4 class="font-bold text-white text-sm">Copia de Seguridad de PostgreSQL</h4>
-                  <p class="text-xs text-slate-400">Respaldo atómico de tablas y secuencias en volumen persistente.</p>
-                </div>
-                <span class="font-mono text-xs text-indigo-400 font-bold">03:00 UTC</span>
-              </div>
-
-              <div>
-                <label for="cron-backup-schedule" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Expresión Cron:</label>
-                <input
-                  id="cron-backup-schedule"
-                  type="text"
-                  [(ngModel)]="cronConfig.backupDatabaseSchedule"
-                  placeholder="0 3 * * *"
-                  class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white text-sm font-mono"
-                />
-              </div>
-
-              <button
-                (click)="runTaskNow('backup_db')"
-                class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition border border-slate-700 cursor-pointer"
-              >
-                Generar Backup Completo en Caliente
-              </button>
+          <div class="section-header-row">
+            <div>
+              <h2>Mantenimiento</h2>
             </div>
           </div>
 
-          <div class="pt-4 border-t border-slate-800 flex justify-end">
+          <div class="grid-2">
+            <div class="task-card">
+              <h3>Limpieza de Mensajes del Chat</h3>
+              <div class="form-group" style="margin-top: 8px;">
+                <label for="cron-purge-count" class="form-label">Cantidad de mensajes antiguos a eliminar</label>
+                <input
+                  id="cron-purge-count"
+                  type="number"
+                  class="form-control"
+                  [(ngModel)]="cronConfig.cleanChatCount"
+                  min="10"
+                  max="1000"
+                />
+              </div>
+
+              <button
+                type="button"
+                class="btn btn-secondary"
+                (click)="runPurgeChatNow()"
+                [disabled]="isRunningTask()"
+              >
+                Eliminar {{ cronConfig.cleanChatCount }} mensajes antiguos
+              </button>
+            </div>
+
+            <div class="task-card">
+              <h3>Verificación de Enlaces de Audio</h3>
+              <p>Comprueba la disponibilidad HTTP de una muestra del catálogo.</p>
+
+              @if (auditResult()) {
+                <div style="padding: 10px; background: rgba(16, 185, 129, 0.1); border-radius: 6px; font-size: 13px; margin: 8px 0;">
+                  Verificados {{ auditResult()?.checkedCount }}:
+                  <strong>{{ auditResult()?.healthyCount }} activos</strong> •
+                  <strong>{{ auditResult()?.brokenCount }} con error</strong>
+                </div>
+              }
+
+              <div style="margin-top: auto; padding-top: 12px;">
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  style="width: 100%;"
+                  (click)="runAuditLinksNow()"
+                  [disabled]="isRunningTask()"
+                >
+                  Verificar enlaces ahora
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-footer-actions">
+            <span></span>
             <button
+              type="button"
+              class="btn btn-primary"
               (click)="saveCronConfig()"
               [disabled]="isSaving()"
-              class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
             >
-              Guardar Automatizaciones Cron
+              Guardar Parámetros
             </button>
           </div>
         </section>
       }
     </div>
-  `
+  `,
+  styles: [`
+    .brain-test-result {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+    }
+
+    .tools-box {
+      padding: 16px;
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+    }
+
+    .collection-card {
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .collection-items-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: auto;
+    }
+
+    .task-card {
+      background-color: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .task-card h3 {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .task-card p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+  `],
 })
 export class AgentsConfigComponent implements OnInit {
   private readonly configService = inject(ConfigService);
+  private readonly contentService = inject(ContentService);
 
   readonly isLoading = signal(false);
   readonly isSaving = signal(false);
+  readonly isSyncingModels = signal(false);
+  readonly isTestingBrain = signal(false);
   readonly isSendingPush = signal(false);
-  readonly activeTab = signal<'aura' | 'push' | 'cron'>('aura');
+  readonly isGeneratingAiPush = signal(false);
+  readonly isRegeneratingCollections = signal(false);
+  readonly isRecalculatingRanking = signal(false);
+  readonly isRunningTask = signal(false);
+  readonly showApiKey = signal(false);
+
+  readonly activeTab = signal<'aura' | 'push' | 'collections' | 'cron'>('aura');
   readonly statusMessage = signal<string | null>(null);
-  readonly statusType = signal<'success' | 'error'>('success');
+  readonly statusType = signal<'success' | 'error' | 'info'>('success');
+
+  readonly pushHistory = signal<any[]>([]);
+  readonly curatedCollections = signal<any | null>(null);
+  readonly weeklyRanking = signal<any | null>(null);
+  readonly auditResult = signal<any | null>(null);
+  readonly testBrainResult = signal<any | null>(null);
+
+  testPrompt = 'Hola Aura, ¿qué proveedor y modelo estás usando?';
+
+  apiKeyInputs: Record<AiProviderType, string> = {
+    groq: '',
+    gemini: '',
+    custom: '',
+  };
+
+  readonly keysStatus = signal<Record<AiProviderType, ProviderKeyStatus>>({
+    groq: { hasKey: false, maskedKey: null, source: 'none' },
+    gemini: { hasKey: false, maskedKey: null, source: 'none' },
+    custom: { hasKey: false, maskedKey: null, source: 'none' },
+  });
+
+  readonly providerCatalog = signal<AiProviderCatalogEntry[]>([
+    {
+      id: 'groq',
+      order: 1,
+      name: 'Groq',
+      subtitle: 'api.groq.com/openai/v1',
+      badge: 'Groq',
+      baseUrl: 'https://api.groq.com/openai/v1',
+      docsUrl: 'https://console.groq.com/docs/quickstart',
+      keyPlaceholder: 'gsk_...',
+      defaultModel: 'openai/gpt-oss-120b',
+      models: [
+        {
+          id: 'openai/gpt-oss-120b',
+          name: 'GPT-OSS 120B (openai/gpt-oss-120b)',
+          badge: 'Razonamiento',
+          description: 'Soporta pensamiento profundo configurable.',
+          supportsThinking: true,
+          defaultThinking: true,
+        },
+        {
+          id: 'llama-3.3-70b-versatile',
+          name: 'Llama 3.3 70B (llama-3.3-70b-versatile)',
+          badge: 'Estándar',
+          description: 'Respuesta directa.',
+          supportsThinking: false,
+          defaultThinking: false,
+        },
+        {
+          id: 'qwen/qwen3-32b',
+          name: 'Qwen 3 32B (qwen/qwen3-32b)',
+          badge: 'Razonamiento',
+          description: 'Soporta pensamiento profundo.',
+          supportsThinking: true,
+          defaultThinking: true,
+        },
+        {
+          id: 'openai/gpt-oss-20b',
+          name: 'GPT-OSS 20B (openai/gpt-oss-20b)',
+          badge: 'Razonamiento',
+          description: 'Soporta pensamiento profundo ligero.',
+          supportsThinking: true,
+          defaultThinking: false,
+        },
+        {
+          id: 'deepseek-r1-distill-llama-70b',
+          name: 'DeepSeek R1 70B (deepseek-r1-distill-llama-70b)',
+          badge: 'Razonamiento',
+          description: 'Modelo analítico con pensamiento interno.',
+          supportsThinking: true,
+          defaultThinking: true,
+        },
+        {
+          id: 'meta-llama/llama-4-scout-17b-16e-instruct',
+          name: 'Llama 4 Scout 17B (meta-llama/llama-4-scout-17b-16e-instruct)',
+          badge: 'Estándar',
+          description: 'Respuesta directa.',
+          supportsThinking: false,
+          defaultThinking: false,
+        },
+        {
+          id: 'llama-3.1-8b-instant',
+          name: 'Llama 3.1 8B Instant (llama-3.1-8b-instant)',
+          badge: 'Estándar',
+          description: 'Respuesta directa rápida.',
+          supportsThinking: false,
+          defaultThinking: false,
+        },
+      ],
+    },
+    {
+      id: 'gemini',
+      order: 2,
+      name: 'Google Gemini',
+      subtitle: 'generativelanguage.googleapis.com',
+      badge: 'Gemini',
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+      docsUrl: 'https://ai.google.dev/gemini-api/docs',
+      keyPlaceholder: 'AIzaSy...',
+      defaultModel: 'gemini-2.5-flash',
+      models: [
+        {
+          id: 'gemini-2.5-flash',
+          name: 'Gemini 2.5 Flash (gemini-2.5-flash)',
+          badge: 'Razonamiento',
+          description: 'Soporta pensamiento profundo opcional.',
+          supportsThinking: true,
+          defaultThinking: false,
+        },
+        {
+          id: 'gemma-4-26b-a4b-it',
+          name: 'Gemma 4 26B IT (gemma-4-26b-a4b-it)',
+          badge: 'Razonamiento',
+          description: 'Soporta pensamiento profundo configurable.',
+          supportsThinking: true,
+          defaultThinking: false,
+        },
+        {
+          id: 'gemini-2.5-pro',
+          name: 'Gemini 2.5 Pro (gemini-2.5-pro)',
+          badge: 'Razonamiento',
+          description: 'Soporta pensamiento profundo avanzado.',
+          supportsThinking: true,
+          defaultThinking: true,
+        },
+        {
+          id: 'gemini-2.5-flash-lite',
+          name: 'Gemini 2.5 Flash-Lite (gemini-2.5-flash-lite)',
+          badge: 'Razonamiento',
+          description: 'Soporta pensamiento profundo ligero.',
+          supportsThinking: true,
+          defaultThinking: false,
+        },
+        {
+          id: 'gemini-2.0-flash',
+          name: 'Gemini 2.0 Flash (gemini-2.0-flash)',
+          badge: 'Estándar',
+          description: 'Respuesta directa.',
+          supportsThinking: false,
+          defaultThinking: false,
+        },
+      ],
+    },
+    {
+      id: 'custom',
+      order: 3,
+      name: 'Personalizado',
+      subtitle: 'Endpoint compatible con OpenAI',
+      badge: 'Personalizado',
+      baseUrl: 'https://api.openai.com/v1',
+      docsUrl: 'https://platform.openai.com/docs/api-reference/chat',
+      keyPlaceholder: 'sk-...',
+      defaultModel: 'gpt-4o-mini',
+      models: [
+        {
+          id: 'gpt-4o-mini',
+          name: 'GPT-4o Mini (gpt-4o-mini)',
+          badge: 'Estándar',
+          description: 'Respuesta directa.',
+          supportsThinking: false,
+          defaultThinking: false,
+        },
+        {
+          id: 'gpt-4o',
+          name: 'GPT-4o (gpt-4o)',
+          badge: 'Estándar',
+          description: 'Respuesta directa.',
+          supportsThinking: false,
+          defaultThinking: false,
+        },
+        {
+          id: 'o3-mini',
+          name: 'OpenAI o3-mini (o3-mini)',
+          badge: 'Razonamiento',
+          description: 'Soporta pensamiento profundo.',
+          supportsThinking: true,
+          defaultThinking: true,
+        },
+        {
+          id: 'deepseek-reasoner',
+          name: 'DeepSeek R1 (deepseek-reasoner)',
+          badge: 'Razonamiento',
+          description: 'Soporta pensamiento profundo.',
+          supportsThinking: true,
+          defaultThinking: true,
+        },
+      ],
+    },
+  ]);
 
   auraConfig: AuraAgentConfig = {
     enabled: true,
-    model: 'gemini-2.5-flash',
+    provider: 'groq',
+    model: 'openai/gpt-oss-120b',
+    thinkingEnabled: true,
+    reasoningEffort: 'medium',
     temperature: 0.7,
-    maxTokens: 500,
-    systemPrompt: `Eres Aura, la asistente virtual oficial, experta en cine accesible y audiodescripción de Audiocinemateca.
-Tu objetivo es guiar de manera cálida, alegre, sensible y concisa a personas ciegas, con baja visión o amantes del cine narrado.
-Conoces al detalle todas las obras, sus voces de narración, directores y géneros.
-Si el usuario te pide poner una película o serie, utiliza tu herramienta play_content para iniciar la reproducción inmediatamente.
-Tus respuestas deben ser naturales para ser leídas por lectores de pantalla (TalkBack / NVDA).`,
-    enablePlayContentTool: true,
+    maxTokens: 700,
+    customBaseUrl: 'https://api.openai.com/v1',
+    customModelForceThinking: false,
+    systemPrompt: '',
     enableCatalogSearch: true,
     enableCommunityChatBot: true,
     chatMentionKeyword: '@Aura',
-    speechPauseMs: 200
   };
 
   cronConfig: CronTasksConfig = {
     cleanOldChatDays: 30,
+    cleanChatCount: 50,
     autoCleanEnabled: true,
     catalogLinkAuditIntervalHours: 24,
     recalculateRankingsDaily: true,
-    backupDatabaseSchedule: '0 3 * * *'
   };
 
-  pushPayload: PushNotificationPayload = {
+  pushForm: PushNotificationForm = {
     title: '',
     body: '',
     target: 'all',
-    actionType: 'open_app',
-    targetId: ''
+    destination: 'app',
+    contentId: '',
+    contentType: 'peliculas',
+    url: '',
+    delayMinutes: 0,
   };
 
   ngOnInit() {
@@ -619,75 +1116,344 @@ Tus respuestas deben ser naturales para ser leídas por lectores de pantalla (Ta
 
   loadAll() {
     this.isLoading.set(true);
-    this.configService.getAllConfigs().subscribe({
-      next: (items) => {
-        for (const item of items) {
-          if (item.key === 'aura_agent_config') {
-            this.auraConfig = { ...this.auraConfig, ...item.value };
-          } else if (item.key === 'cron_tasks_config') {
-            this.cronConfig = { ...this.cronConfig, ...item.value };
-          }
+
+    this.configService.getAuraBrain().subscribe({
+      next: (res) => {
+        if (res?.providerCatalog && Array.isArray(res.providerCatalog)) {
+          this.providerCatalog.set(res.providerCatalog);
+        }
+        if (res?.keysStatus) {
+          this.keysStatus.set(res.keysStatus);
+        }
+        if (res?.config) {
+          this.auraConfig = { ...this.auraConfig, ...res.config };
         }
         this.isLoading.set(false);
       },
       error: () => {
         this.isLoading.set(false);
-      }
+      },
     });
+
+    this.configService.getAllConfigs().subscribe({
+      next: (items) => {
+        for (const item of items) {
+          if (item.key === 'cron_tasks_config') {
+            this.cronConfig = { ...this.cronConfig, ...item.value };
+          }
+        }
+      },
+      error: () => {},
+    });
+
+    this.configService.getPushHistory().subscribe({
+      next: (history) => this.pushHistory.set(history || []),
+      error: () => {},
+    });
+
+    this.configService.getCuratedCollections().subscribe({
+      next: (cols) => this.curatedCollections.set(cols),
+      error: () => {},
+    });
+
+    this.configService.getWeeklyRanking().subscribe({
+      next: (rank) => this.weeklyRanking.set(rank),
+      error: () => {},
+    });
+  }
+
+  getCurrentProviderEntry(): AiProviderCatalogEntry {
+    const list = this.providerCatalog();
+    return list.find((p) => p.id === this.auraConfig.provider) || list[0];
+  }
+
+  getKeyStatus(provider: AiProviderType): ProviderKeyStatus {
+    return (
+      this.keysStatus()[provider] || {
+        hasKey: false,
+        maskedKey: null,
+        source: 'none',
+      }
+    );
+  }
+
+  getCurrentModelDefinition(): AiModelDefinition | undefined {
+    const entry = this.getCurrentProviderEntry();
+    return entry.models.find((m) => m.id === this.auraConfig.model);
+  }
+
+  currentModelSupportsThinking(): boolean {
+    const def = this.getCurrentModelDefinition();
+    if (def) return def.supportsThinking;
+    if (this.auraConfig.provider === 'custom' && this.auraConfig.customModelForceThinking) {
+      return true;
+    }
+    const lower = (this.auraConfig.model || '').toLowerCase();
+    return (
+      lower.includes('gpt-oss') ||
+      lower.includes('qwen3') ||
+      lower.includes('r1') ||
+      lower.includes('reason') ||
+      lower.includes('gemini-2.5') ||
+      lower.includes('gemma-4') ||
+      lower.includes('o3') ||
+      lower.includes('o1')
+    );
+  }
+
+  selectProvider(providerId: AiProviderType) {
+    this.auraConfig.provider = providerId;
+    const providerEntry = this.getCurrentProviderEntry();
+    const firstModel = providerEntry.models[0];
+    if (firstModel) {
+      this.auraConfig.model = firstModel.id;
+      this.auraConfig.thinkingEnabled = firstModel.defaultThinking;
+    } else {
+      this.auraConfig.model = providerEntry.defaultModel;
+    }
+    this.testBrainResult.set(null);
+  }
+
+  onModelSelectChange(newModelId: string) {
+    const entry = this.getCurrentProviderEntry();
+    const found = entry.models.find((m) => m.id === newModelId);
+    if (found) {
+      this.auraConfig.thinkingEnabled = found.defaultThinking;
+    }
+  }
+
+  syncLiveModelsForCurrentProvider() {
+    this.isSyncingModels.set(true);
+    this.configService
+      .getAuraBrainModels(this.auraConfig.provider, this.auraConfig.customBaseUrl)
+      .subscribe({
+        next: (res) => {
+          this.isSyncingModels.set(false);
+          if (res?.models && Array.isArray(res.models) && res.models.length > 0) {
+            const updatedCatalog = this.providerCatalog().map((p) =>
+              p.id === this.auraConfig.provider ? { ...p, models: res.models } : p,
+            );
+            this.providerCatalog.set(updatedCatalog);
+            if (!res.models.some((m: AiModelDefinition) => m.id === this.auraConfig.model)) {
+              this.auraConfig.model = res.models[0].id;
+            }
+          }
+          this.showStatus(res?.message || 'Modelos sincronizados', 'success');
+        },
+        error: () => {
+          this.isSyncingModels.set(false);
+          this.showStatus('No se pudo obtener la lista de modelos', 'error');
+        },
+      });
   }
 
   saveAuraConfig() {
     this.isSaving.set(true);
-    this.configService.updateConfig('aura_agent_config', this.auraConfig, 'Configuración y personalidad de Aura IA 2.0').subscribe({
-      next: () => {
-        this.isSaving.set(false);
-        this.showStatus('Parámetros de Aura 2.0 guardados exitosamente', 'success');
+    const apiKeysPayload: {
+      groqApiKey?: string;
+      geminiApiKey?: string;
+      customApiKey?: string;
+    } = {};
+
+    if (this.apiKeyInputs.groq.trim()) {
+      apiKeysPayload.groqApiKey = this.apiKeyInputs.groq.trim();
+    }
+    if (this.apiKeyInputs.gemini.trim()) {
+      apiKeysPayload.geminiApiKey = this.apiKeyInputs.gemini.trim();
+    }
+    if (this.apiKeyInputs.custom.trim()) {
+      apiKeysPayload.customApiKey = this.apiKeyInputs.custom.trim();
+    }
+
+    this.configService
+      .saveAuraBrain({
+        config: this.auraConfig,
+        apiKeys: apiKeysPayload,
+      })
+      .subscribe({
+        next: (res) => {
+          this.isSaving.set(false);
+          if (res?.keysStatus) this.keysStatus.set(res.keysStatus);
+          if (res?.config) this.auraConfig = { ...this.auraConfig, ...res.config };
+          this.apiKeyInputs = { groq: '', gemini: '', custom: '' };
+          this.showApiKey.set(false);
+          this.showStatus('Configuración guardada correctamente', 'success');
+        },
+        error: (err) => {
+          this.isSaving.set(false);
+          this.showStatus(
+            `Error al guardar: ${err?.error?.message || 'Error'}`,
+            'error',
+          );
+        },
+      });
+  }
+
+  testBrainNow() {
+    this.isTestingBrain.set(true);
+    this.testBrainResult.set(null);
+    const tempKey = this.apiKeyInputs[this.auraConfig.provider]?.trim() || undefined;
+
+    this.configService
+      .testAuraBrain({
+        prompt: this.testPrompt,
+        overrideConfig: this.auraConfig,
+        tempApiKey: tempKey,
+      })
+      .subscribe({
+        next: (res) => {
+          this.isTestingBrain.set(false);
+          this.testBrainResult.set(res);
+          this.showStatus(`Respuesta recibida (${res.latencyMs} ms)`, 'success');
+        },
+        error: (err) => {
+          this.isTestingBrain.set(false);
+          this.showStatus(
+            err?.error?.message || 'Error al probar conexión. Verifica la Clave API.',
+            'error',
+          );
+        },
+      });
+  }
+
+  optimizePushWithAi() {
+    this.isGeneratingAiPush.set(true);
+    this.configService
+      .generatePushWithAi({
+        draftTitle: this.pushForm.title || 'Novedades en Audiocinemateca',
+        draftMessage: this.pushForm.body || 'Nuevos títulos disponibles en el catálogo.',
+        contextType: 'push',
+      })
+      .subscribe({
+        next: (res) => {
+          this.isGeneratingAiPush.set(false);
+          if (res?.pushTitle) this.pushForm.title = res.pushTitle;
+          if (res?.pushBody) this.pushForm.body = res.pushBody;
+          this.showStatus('Texto generado con IA', 'success');
+        },
+        error: () => {
+          this.isGeneratingAiPush.set(false);
+          this.showStatus('No se pudo generar el texto con IA', 'error');
+        },
+      });
+  }
+
+  sendPushNotification() {
+    if (!this.pushForm.title.trim() || !this.pushForm.body.trim()) return;
+    this.isSendingPush.set(true);
+
+    this.configService
+      .sendPushNotification({
+        title: this.pushForm.title.trim(),
+        body: this.pushForm.body.trim(),
+        destination: this.pushForm.destination,
+        target: this.pushForm.target,
+        contentId: this.pushForm.contentId || undefined,
+        contentType: this.pushForm.contentType || undefined,
+        url: this.pushForm.url || undefined,
+        delayMinutes: Number(this.pushForm.delayMinutes) || 0,
+      })
+      .subscribe({
+        next: (res) => {
+          this.isSendingPush.set(false);
+          this.showStatus(res?.message || 'Notificación enviada', 'success');
+          this.pushForm.title = '';
+          this.pushForm.body = '';
+          this.configService.getPushHistory().subscribe({
+            next: (h) => this.pushHistory.set(h || []),
+            error: () => {},
+          });
+        },
+        error: (err) => {
+          this.isSendingPush.set(false);
+          this.showStatus(`Error: ${err?.error?.message || err?.message || 'Error'}`, 'error');
+        },
+      });
+  }
+
+  regenerateCollectionsNow() {
+    this.isRegeneratingCollections.set(true);
+    this.configService.regenerateCuratedCollections().subscribe({
+      next: (res) => {
+        this.isRegeneratingCollections.set(false);
+        this.curatedCollections.set(res);
+        this.showStatus('Colecciones actualizadas', 'success');
       },
       error: () => {
-        this.isSaving.set(false);
-        this.showStatus('Error al guardar configuración de Aura', 'error');
-      }
+        this.isRegeneratingCollections.set(false);
+        this.showStatus('Error al regenerar colecciones', 'error');
+      },
+    });
+  }
+
+  recalculateRankingNow() {
+    this.isRecalculatingRanking.set(true);
+    this.configService.recalculateWeeklyRanking().subscribe({
+      next: (res) => {
+        this.isRecalculatingRanking.set(false);
+        this.weeklyRanking.set(res);
+        this.showStatus('Ranking actualizado', 'success');
+      },
+      error: () => {
+        this.isRecalculatingRanking.set(false);
+        this.showStatus('Error al recalcular el ranking', 'error');
+      },
+    });
+  }
+
+  runPurgeChatNow() {
+    this.isRunningTask.set(true);
+    this.configService.purgeChatMessages({ count: this.cronConfig.cleanChatCount || 50 }).subscribe({
+      next: (res) => {
+        this.isRunningTask.set(false);
+        this.showStatus(res?.message || 'Mensajes eliminados', 'success');
+      },
+      error: () => {
+        this.isRunningTask.set(false);
+        this.showStatus('Error al eliminar mensajes', 'error');
+      },
+    });
+  }
+
+  runAuditLinksNow() {
+    this.isRunningTask.set(true);
+    this.contentService.auditCatalogLinks(20).subscribe({
+      next: (res) => {
+        this.isRunningTask.set(false);
+        this.auditResult.set(res);
+        this.showStatus(
+          `Verificación completada: ${res?.healthyCount || 0}/${res?.checkedCount || 0} activos`,
+          'success',
+        );
+      },
+      error: () => {
+        this.isRunningTask.set(false);
+        this.showStatus('Error al verificar enlaces', 'error');
+      },
     });
   }
 
   saveCronConfig() {
     this.isSaving.set(true);
-    this.configService.updateConfig('cron_tasks_config', this.cronConfig, 'Configuración de tareas programadas y cron jobs').subscribe({
-      next: () => {
-        this.isSaving.set(false);
-        this.showStatus('Configuración de automatizaciones guardada', 'success');
-      },
-      error: () => {
-        this.isSaving.set(false);
-        this.showStatus('Error al guardar tareas cron', 'error');
-      }
-    });
+    this.configService
+      .updateConfig('cron_tasks_config', this.cronConfig, 'Configuración de mantenimiento')
+      .subscribe({
+        next: () => {
+          this.isSaving.set(false);
+          this.showStatus('Parámetros guardados', 'success');
+        },
+        error: () => {
+          this.isSaving.set(false);
+          this.showStatus('Error al guardar parámetros', 'error');
+        },
+      });
   }
 
-  sendPushNotification() {
-    if (!this.pushPayload.title || !this.pushPayload.body) return;
-    this.isSendingPush.set(true);
-    // Simular o enviar vía endpoint de anuncios/push
-    setTimeout(() => {
-      this.isSendingPush.set(false);
-      this.showStatus(`Notificación push emitida exitosamente a los dispositivos [${this.pushPayload.target}]`, 'success');
-      this.pushPayload.title = '';
-      this.pushPayload.body = '';
-    }, 1200);
-  }
-
-  runTaskNow(taskName: string) {
-    this.showStatus(`Iniciando ejecución manual de tarea "${taskName}"...`, 'success');
-    setTimeout(() => {
-      this.showStatus(`Tarea "${taskName}" completada satisfactoriamente en segundo plano.`, 'success');
-    }, 1500);
-  }
-
-  private showStatus(msg: string, type: 'success' | 'error') {
+  private showStatus(msg: string, type: 'success' | 'error' | 'info') {
     this.statusMessage.set(msg);
     this.statusType.set(type);
     setTimeout(() => {
       this.statusMessage.set(null);
-    }, 4500);
+    }, 5000);
   }
 }

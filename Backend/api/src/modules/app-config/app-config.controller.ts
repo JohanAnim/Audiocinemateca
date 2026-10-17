@@ -37,33 +37,49 @@ export class AppConfigController {
     return this.appConfigService.checkVersion(currentVersion);
   }
 
-  // --- 3. BANNER ACTIVO DEL FEED ---
+  // --- 3. CONSULTA EN VIVO A LA API DE GITHUB RELEASES (OFICIAL APK) ---
+  @Public()
+  @Get('github-releases')
+  async getGithubReleases(@Query('refresh') refresh?: string) {
+    return this.appConfigService.getGithubReleases(refresh === 'true');
+  }
+
+  // --- 4. BANNER ACTIVO DEL FEED ---
   @Public()
   @Get('banner')
   async getActiveBanner() {
     return this.appConfigService.getActiveBanner();
   }
 
-  // --- 4. LISTADO COMPLETO DE CONFIGURACIONES (SOLO ADMIN) ---
+  // --- 5. PUBLICAR BANNER DESTACADO CON BÚSQUEDA EN CATÁLOGO Y PUSH IA (ADMIN) ---
+  @Post('banner/publish')
+  async publishBanner(@CurrentUser() user: User, @Body() body: any) {
+    if (user.role !== Role.ADMIN && user.role !== Role.MODERATOR) {
+      throw new ForbiddenException('Solo administradores pueden publicar banners destacados');
+    }
+    return this.appConfigService.publishFeaturedBanner(body);
+  }
+
+  // --- 6. LISTADO COMPLETO DE CONFIGURACIONES (SOLO ADMIN) ---
   @Get('all')
   async getAllConfigs(@CurrentUser() user: User) {
-    if (user.role !== Role.ADMIN) {
+    if (user.role !== Role.ADMIN && user.role !== Role.MODERATOR) {
       throw new ForbiddenException('Solo administradores pueden consultar todas las configuraciones');
     }
     return this.appConfigService.getAllConfigs();
   }
 
-  // --- 5. OBTENER CONFIGURACIÓN ESPECÍFICA (SOLO ADMIN) ---
+  // --- 7. OBTENER CONFIGURACIÓN ESPECÍFICA (SOLO ADMIN) ---
   @Get(':key')
   async getConfigByKey(@CurrentUser() user: User, @Param('key') key: string) {
-    if (user.role !== Role.ADMIN) {
+    if (user.role !== Role.ADMIN && user.role !== Role.MODERATOR) {
       throw new ForbiddenException('Solo administradores pueden consultar configuraciones');
     }
     const value = await this.appConfigService.getParsedConfig(key);
     return { key, value };
   }
 
-  // --- 6. GUARDAR O EDITAR CONFIGURACIÓN (SOLO ADMIN) ---
+  // --- 8. GUARDAR O EDITAR CONFIGURACIÓN (SOLO ADMIN) ---
   @Put(':key')
   async upsertConfig(
     @CurrentUser() user: User,
@@ -76,7 +92,7 @@ export class AppConfigController {
     return this.appConfigService.upsertConfig(key, dto.value, dto.description);
   }
 
-  // --- 7. ELIMINAR CONFIGURACIÓN (SOLO ADMIN) ---
+  // --- 9. ELIMINAR CONFIGURACIÓN (SOLO ADMIN) ---
   @Delete(':key')
   async deleteConfig(@CurrentUser() user: User, @Param('key') key: string) {
     if (user.role !== Role.ADMIN) {
@@ -85,7 +101,7 @@ export class AppConfigController {
     return this.appConfigService.deleteConfig(key);
   }
 
-  // --- 8. RESTAURAR VALORES POR DEFECTO (SOLO ADMIN) ---
+  // --- 10. RESTAURAR VALORES POR DEFECTO (SOLO ADMIN) ---
   @Post('seed')
   async seedDefaults(@CurrentUser() user: User) {
     if (user.role !== Role.ADMIN) {

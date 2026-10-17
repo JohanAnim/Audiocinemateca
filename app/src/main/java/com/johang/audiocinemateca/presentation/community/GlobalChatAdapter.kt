@@ -53,12 +53,27 @@ class GlobalChatAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (viewType) {
             VIEW_TYPE_HEADER -> {
-                val view = LayoutInflater.from(parent.context).inflate(R.layout.item_history_header, parent, false)
-                HeaderViewHolder(view)
+                val tv = TextView(parent.context).apply {
+                    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    val pH = (16 * parent.context.resources.displayMetrics.density).toInt()
+                    val pV = (8 * parent.context.resources.displayMetrics.density).toInt()
+                    setPadding(pH, pV, pH, pV)
+                    textSize = 15f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                }
+                HeaderViewHolder(tv)
             }
             VIEW_TYPE_UNREAD_HEADER -> {
-                val view = LayoutInflater.from(parent.context).inflate(R.layout.item_history_header, parent, false)
-                UnreadHeaderViewHolder(view)
+                val tv = TextView(parent.context).apply {
+                    layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    val pH = (16 * parent.context.resources.displayMetrics.density).toInt()
+                    val pV = (8 * parent.context.resources.displayMetrics.density).toInt()
+                    setPadding(pH, pV, pH, pV)
+                    textSize = 14f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    textAlignment = View.TEXT_ALIGNMENT_CENTER
+                }
+                UnreadHeaderViewHolder(tv)
             }
             VIEW_TYPE_MESSAGE -> {
                 val binding = ItemChatGlobalBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -76,16 +91,14 @@ class GlobalChatAdapter(
         }
     }
 
-    class HeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        private val tvTitle: TextView = view.findViewById(R.id.header_title)
+    class HeaderViewHolder(private val tvTitle: TextView) : RecyclerView.ViewHolder(tvTitle) {
         fun bind(date: String) {
             tvTitle.text = date
             itemView.contentDescription = date
         }
     }
 
-    class UnreadHeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        private val tvTitle: TextView = view.findViewById(R.id.header_title)
+    class UnreadHeaderViewHolder(private val tvTitle: TextView) : RecyclerView.ViewHolder(tvTitle) {
         fun bind(count: Int) {
             val text = if (count == 1) "1 mensaje sin leer" else "$count mensajes sin leer"
             tvTitle.text = "--- $text ---"

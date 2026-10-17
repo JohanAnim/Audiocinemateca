@@ -12,6 +12,10 @@ export class RatingsService {
         OR: [
           { id: contentIdOrExternal },
           { externalId: contentIdOrExternal },
+          { externalId: `movie_${contentIdOrExternal}` },
+          { externalId: `series_${contentIdOrExternal}` },
+          { externalId: `doc_${contentIdOrExternal}` },
+          { externalId: `short_${contentIdOrExternal}` },
           { slug: contentIdOrExternal },
         ],
       },

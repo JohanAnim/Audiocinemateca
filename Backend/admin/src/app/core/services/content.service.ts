@@ -14,6 +14,8 @@ export class ContentService {
     limit?: number;
     search?: string;
     type?: string;
+    status?: string;
+    isExclusive?: string;
     sortBy?: string;
     order?: 'asc' | 'desc';
   }): Observable<ContentsPaginatedResponse> {
@@ -38,5 +40,26 @@ export class ContentService {
 
   getCategories(): Observable<{ id: string; name: string; slug: string; contentCount: number }[]> {
     return this.api.get('contents/categories');
+  }
+
+  // --- SINCRONIZACIÓN Y ACTUALIZACIÓN DEL CATÁLOGO ---
+  getCatalogSyncStatus(): Observable<any> {
+    return this.api.get('catalog-sync/status');
+  }
+
+  checkRemoteCatalogUpdate(sendPush = false): Observable<any> {
+    return this.api.post('catalog-sync/check', { sendPush });
+  }
+
+  syncCatalogToDatabase(sendPush = false): Observable<any> {
+    return this.api.post('catalog-sync/sync', { sendPush });
+  }
+
+  lookupCatalogItem(query: string): Observable<any> {
+    return this.api.get('catalog-sync/lookup', { q: query });
+  }
+
+  auditCatalogLinks(sampleSize = 25): Observable<any> {
+    return this.api.post('catalog-sync/audit-links', { sampleSize });
   }
 }

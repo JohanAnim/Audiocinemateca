@@ -47,6 +47,18 @@ export class ContentsController {
   }
 
   @Public()
+  @Get('rankings/weekly')
+  async getWeeklyRankings() {
+    return this.contentsService.getWeeklyRanking();
+  }
+
+  @Public()
+  @Get('collections')
+  async getCuratedCollections() {
+    return this.contentsService.getCuratedCollections();
+  }
+
+  @Public()
   @Get('categories')
   async getCategories() {
     return this.contentsService.getCategories();

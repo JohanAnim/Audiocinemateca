@@ -14,6 +14,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { CommunityService } from '../community.service.js';
 import { UsersService } from '../../users/users.service.js';
+import { PushService } from '../../notifications/push.service.js';
+import { AuraAiService } from '../../ai/aura-ai.service.js';
 import { JwtPayload } from '../../auth/interfaces/jwt-payload.interface.js';
 import { Role } from '@prisma/client';
 
@@ -50,6 +52,8 @@ export class ChatGateway
     private readonly configService: ConfigService,
     private readonly communityService: CommunityService,
     private readonly usersService: UsersService,
+    private readonly pushService: PushService,
+    private readonly auraAiService: AuraAiService,
   ) {}
 
   afterInit(server: Server) {
@@ -158,10 +162,45 @@ export class ChatGateway
     this.logger.log(`💬 Mensaje de ${user.username}: ${content}`);
 
     try {
-      const message = await this.communityService.saveMessage(user.id, content);
+      const message = await this.communityService.saveMessage(
+        user.id,
+        content,
+        user.role,
+      );
 
       // Emitir mensaje en vivo a todos los clientes del namespace
       socket.nsp.emit('new_message', message);
+
+      const senderName = user.displayName || user.username;
+
+      // 1. Notificaciones Push para menciones (@usuario, @todos) y respuestas
+      this.pushService
+        .notifyChatMentionsAndReplies({
+          messageId: message.id,
+          senderId: user.id,
+          senderName,
+          senderRole: user.role,
+          messageText: content,
+        })
+        .catch(() => {});
+
+      // 2. Respuesta automática de @Aura en vivo si fue invocada
+      const onlineUserNames = Array.from(this.connectedUsers.values()).map(
+        (u) => u.displayName || u.username,
+      );
+      this.auraAiService
+        .handleChatMentionIfNeeded({
+          senderId: user.id,
+          senderName,
+          messageText: content,
+          onlineUserNames,
+        })
+        .then((auraReply) => {
+          if (auraReply) {
+            socket.nsp.emit('new_message', auraReply);
+          }
+        })
+        .catch(() => {});
     } catch (error: any) {
       this.logger.error(`Error guardando mensaje: ${error.message}`);
       socket.emit('error', { message: error.message });

@@ -12,8 +12,8 @@ import { UserListItem } from '../../core/models/user.models';
     <div class="users-page">
       <div class="page-header">
         <div>
-          <h1>Gestión de Usuarios & Moderación</h1>
-          <p class="subtitle">Supervisa identidades, dispositivos activos, roles y aplica sanciones en caliente</p>
+          <h1>Usuarios</h1>
+          <p class="subtitle">Directorio de usuarios, roles y moderación</p>
         </div>
       </div>
 

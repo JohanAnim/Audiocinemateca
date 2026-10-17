@@ -12,8 +12,8 @@ import { ChatMessage, Announcement } from '../../core/models/community.models';
     <div class="community-page">
       <div class="page-header">
         <div>
-          <h1>Chat Global en Tiempo Real & Anuncios</h1>
-          <p class="subtitle">Monitoreo en vivo de conversaciones, moderación de mensajes y comunicados oficiales</p>
+          <h1>Comunidad y Chat</h1>
+          <p class="subtitle">Moderación de mensajes en tiempo real y comunicados</p>
         </div>
       </div>
 
@@ -22,14 +22,14 @@ import { ChatMessage, Announcement } from '../../core/models/community.models';
         <div class="card chat-card">
           <div class="chat-header">
             <div class="chat-header-title">
-              <h3>💬 Transmisión en Vivo del Chat</h3>
+              <h3>Chat Global</h3>
               <span class="live-tag" [class.connected]="community.isConnected()">
                 <span class="pulse-dot"></span>
-                {{ community.isConnected() ? 'Conectado a /ws/chat' : 'Reconectando...' }}
+                {{ community.isConnected() ? 'Conectado' : 'Reconectando...' }}
               </span>
             </div>
             <button class="btn btn-secondary btn-sm" (click)="loadHistory()">
-              🔄 Recargar
+              Recargar
             </button>
           </div>
 

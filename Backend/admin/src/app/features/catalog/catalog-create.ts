@@ -1,6 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ContentService } from '../../core/services/content.service';
 import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/content.models';
@@ -16,10 +16,10 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
           <nav class="breadcrumbs" aria-label="Ruta de navegación">
             <a routerLink="/catalog">Catálogo</a>
             <span aria-hidden="true">/</span>
-            <span aria-current="page">Nueva Ficha Exclusiva</span>
+            <span aria-current="page">{{ editId() ? 'Editar Obra' : 'Nueva Obra' }}</span>
           </nav>
-          <h1>Ficha Completa de Producción & Catálogo</h1>
-          <p class="subtitle">Creación de títulos con audiodescripción, doblaje multi-idioma y pistas de streaming</p>
+          <h1>{{ editId() ? 'Editar Obra' : 'Nueva Obra' }}</h1>
+          <p class="subtitle">Datos generales, ficha técnica y enlaces de audio</p>
         </div>
         <div class="header-actions">
           <a routerLink="/catalog" class="btn btn-secondary cursor-pointer">Cancelar</a>
@@ -28,7 +28,7 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
               <span class="spinner" aria-hidden="true"></span>
               <span>Guardando...</span>
             } @else {
-              <span>💾 Guardar Ficha Cinematográfica</span>
+              <span>{{ editId() ? 'Guardar Cambios' : 'Guardar Obra' }}</span>
             }
           </button>
         </div>
@@ -790,10 +790,12 @@ import { CreateContentDto, ContentType, SeasonDto } from '../../core/models/cont
     }
   `],
 })
-export class CatalogCreateComponent {
+export class CatalogCreateComponent implements OnInit {
   private readonly contentService = inject(ContentService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
+  readonly editId = signal<string | null>(null);
   isSaving = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
 
@@ -833,6 +835,73 @@ export class CatalogCreateComponent {
     audioUrl: '',
     filmaffinityUrl: '',
   };
+
+  ngOnInit() {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      this.editId.set(id);
+      this.loadExistingContent(id);
+    }
+  }
+
+  private loadExistingContent(id: string) {
+    this.contentService.getContent(id).subscribe({
+      next: (item: any) => {
+        this.form = {
+          title: item.title || '',
+          synopsis: item.synopsis || '',
+          type: item.type || 'MOVIE',
+          status: item.status || 'PUBLISHED',
+          dubbing: item.dubbing || 'Español Latino',
+          language: item.language || 'es',
+          isExclusive: Boolean(item.isExclusive),
+          audioDescription: item.audioDescription ?? true,
+          narrator: item.narrator || '',
+          releaseYear: item.releaseYear || 2026,
+          duration: item.duration || '',
+          country: item.country || '',
+          director: item.director || '',
+          screenplay: item.screenplay || '',
+          music: item.music || '',
+          cast: item.cast || '',
+          coverUrl: item.coverUrl || '',
+          bannerUrl: item.bannerUrl || '',
+          audioUrl: item.audioUrl || '',
+          filmaffinityUrl: item.filmaffinityUrl || '',
+        };
+
+        if (item.genreRaw) {
+          this.genreInput = item.genreRaw;
+        } else if (Array.isArray(item.categories) && item.categories.length > 0) {
+          this.genreInput = item.categories.map((c: any) => c.name || c).join(', ');
+        }
+
+        if (Array.isArray(item.audioUrls) && item.audioUrls.length > 0) {
+          this.multiPartUrls = [...item.audioUrls];
+        }
+
+        if (Array.isArray(item.seasons) && item.seasons.length > 0) {
+          this.seasons = item.seasons.map((s: any) => ({
+            seasonNumber: s.seasonNumber,
+            title: s.title || `Temporada ${s.seasonNumber}`,
+            overview: s.overview,
+            episodes: Array.isArray(s.episodes)
+              ? s.episodes.map((e: any) => ({
+                  episodeNumber: e.episodeNumber,
+                  title: e.title || `Episodio ${e.episodeNumber}`,
+                  synopsis: e.synopsis,
+                  audioUrl: e.audioUrl || '',
+                  durationMinutes: e.durationMinutes || 45,
+                }))
+              : [],
+          }));
+        }
+      },
+      error: (err) => {
+        this.errorMessage.set(`No se pudo cargar la obra solicitada: ${err?.message || 'Error'}`);
+      },
+    });
+  }
 
   generateSlug() {
     // Generación reactiva de slug en tiempo real
@@ -911,10 +980,14 @@ export class CatalogCreateComponent {
       seasons: this.form.type === 'SERIES' ? this.seasons : undefined,
     };
 
-    this.contentService.createContent(payload).subscribe({
-      next: (created) => {
+    const currentEditId = this.editId();
+    const request$ = currentEditId
+      ? this.contentService.updateContent(currentEditId, payload)
+      : this.contentService.createContent(payload);
+
+    request$.subscribe({
+      next: () => {
         this.isSaving.set(false);
-        alert(`¡Obra "${created.title}" guardada con éxito en el catálogo!`);
         this.router.navigate(['/catalog']);
       },
       error: (err) => {

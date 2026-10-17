@@ -59,7 +59,13 @@ export const routes: Routes = [
       {
         path: 'agents',
         component: AgentsConfigComponent,
-        title: 'Agentes & Aura IA | Audiocinemateca Admin',
+        title: 'Aura IA & Automatizaciones | Audiocinemateca Admin',
+      },
+      {
+        path: 'aura-chat',
+        loadComponent: () =>
+          import('./features/agents/aura-chat-panel').then((m) => m.AuraChatPanelComponent),
+        title: 'Chat con Aura | Audiocinemateca Admin',
       },
       {
         path: '',

@@ -4,35 +4,46 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { PushService } from '../notifications/push.service.js';
 import { CreateCommentDto } from './dto/create-comment.dto.js';
 import { QueryCommentsDto } from './dto/query-comments.dto.js';
 import { Role } from '@prisma/client';
 
 @Injectable()
 export class CommentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly pushService: PushService,
+  ) {}
 
-  private async resolveContentId(contentIdOrExternal: string): Promise<string> {
+  private async resolveContentId(
+    contentIdOrExternal: string,
+  ): Promise<{ id: string; title: string; type: string }> {
     const content = await this.prisma.content.findFirst({
       where: {
         OR: [
           { id: contentIdOrExternal },
           { externalId: contentIdOrExternal },
+          { externalId: `movie_${contentIdOrExternal}` },
+          { externalId: `series_${contentIdOrExternal}` },
+          { externalId: `doc_${contentIdOrExternal}` },
+          { externalId: `short_${contentIdOrExternal}` },
           { slug: contentIdOrExternal },
         ],
       },
-      select: { id: true },
+      select: { id: true, title: true, type: true },
     });
 
     if (!content) {
       throw new NotFoundException(`Contenido '${contentIdOrExternal}' no encontrado.`);
     }
 
-    return content.id;
+    return content;
   }
 
   async addComment(userId: string, dto: CreateCommentDto) {
-    const contentId = await this.resolveContentId(dto.contentId);
+    const content = await this.resolveContentId(dto.contentId);
+    const contentId = content.id;
 
     const comment = await this.prisma.comment.create({
       data: {
@@ -55,6 +66,21 @@ export class CommentsService {
       },
     });
 
+    const senderName = comment.user.displayName || comment.user.username;
+    this.pushService
+      .notifyPreviousCommenters({
+        commentId: comment.id,
+        authorId: userId,
+        authorName: senderName,
+        contentId,
+        contentTitle: content.title,
+        contentType: content.type,
+        commentText: dto.commentText.trim(),
+        partIndex: dto.partIndex ?? 0,
+        episodeIndex: dto.episodeIndex ?? 0,
+      })
+      .catch(() => {});
+
     return {
       id: comment.id,
       contentId: comment.contentId,
@@ -69,7 +95,8 @@ export class CommentsService {
   }
 
   async getComments(query: QueryCommentsDto, userId?: string) {
-    const contentId = await this.resolveContentId(query.contentId);
+    const content = await this.resolveContentId(query.contentId);
+    const contentId = content.id;
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
@@ -139,7 +166,8 @@ export class CommentsService {
     partIndex = 0,
     episodeIndex = 0,
   ) {
-    const contentId = await this.resolveContentId(contentIdOrExternal);
+    const content = await this.resolveContentId(contentIdOrExternal);
+    const contentId = content.id;
 
     const where = {
       contentId,

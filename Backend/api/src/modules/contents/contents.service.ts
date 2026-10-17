@@ -1,21 +1,41 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { AuraAiService } from '../ai/aura-ai.service.js';
 import { QueryContentsDto, SortBy, SortOrder } from './dto/query-contents.dto.js';
 import { CreateContentDto } from './dto/create-content.dto.js';
-import { Prisma } from '@prisma/client';
+import { Prisma, ContentStatus } from '@prisma/client';
 
 @Injectable()
 export class ContentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auraAiService: AuraAiService,
+  ) {}
 
   async findAll(query: QueryContentsDto, userId?: string) {
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.ContentWhereInput = {
-      status: 'PUBLISHED',
-    };
+    const where: Prisma.ContentWhereInput = {};
+
+    if (query.status === 'ALL') {
+      // No filtrar por status (usado por Admin Panel)
+    } else if (
+      query.status === 'DRAFT' ||
+      query.status === 'PUBLISHED' ||
+      query.status === 'ARCHIVED'
+    ) {
+      where.status = query.status as ContentStatus;
+    } else {
+      where.status = 'PUBLISHED';
+    }
+
+    if (query.isExclusive === 'true') {
+      where.isExclusive = true;
+    } else if (query.isExclusive === 'false') {
+      where.isExclusive = false;
+    }
 
     if (query.type) {
       where.type = query.type;
@@ -54,6 +74,7 @@ export class ContentsService {
         { director: { contains: searchTerms, mode: 'insensitive' } },
         { narrator: { contains: searchTerms, mode: 'insensitive' } },
         { cast: { contains: searchTerms, mode: 'insensitive' } },
+        { externalId: { contains: searchTerms, mode: 'insensitive' } },
       ];
     }
 
@@ -131,6 +152,10 @@ export class ContentsService {
           { id: identifier },
           { slug: identifier },
           { externalId: identifier },
+          { externalId: `movie_${identifier}` },
+          { externalId: `series_${identifier}` },
+          { externalId: `doc_${identifier}` },
+          { externalId: `short_${identifier}` },
         ],
       },
       include: {
@@ -200,7 +225,7 @@ export class ContentsService {
   }
 
   async getRankings() {
-    const [topViewed, topRated] = await Promise.all([
+    const [topViewed, topRated, weeklyRanking] = await Promise.all([
       this.prisma.content.findMany({
         where: { status: 'PUBLISHED' },
         take: 10,
@@ -217,12 +242,32 @@ export class ContentsService {
           categories: { include: { category: true } },
         },
       }),
+      this.getWeeklyRanking(),
     ]);
 
     return {
       topViewed,
       topRated,
+      weeklyTop10: weeklyRanking,
     };
+  }
+
+  async getWeeklyRanking() {
+    const saved = await this.prisma.appConfig.findUnique({
+      where: { key: 'weekly_top_10_ranking' },
+    });
+    if (saved) {
+      try {
+        return JSON.parse(saved.value);
+      } catch {
+        // continuar con cálculo dinámico
+      }
+    }
+    return null;
+  }
+
+  async getCuratedCollections() {
+    return this.auraAiService.getCuratedCollections();
   }
 
   async incrementViews(id: string): Promise<void> {
@@ -325,6 +370,28 @@ export class ContentsService {
       throw new NotFoundException(`Contenido con ID ${id} no encontrado`);
     }
 
+    if (Array.isArray(dto.seasons)) {
+      await this.prisma.season.deleteMany({ where: { contentId: id } });
+    }
+
+    if (Array.isArray(dto.categories)) {
+      await this.prisma.contentCategory.deleteMany({ where: { contentId: id } });
+    }
+
+    const categoryConnectOrCreate = Array.isArray(dto.categories)
+      ? dto.categories.map((catName: string) => {
+          const catSlug = catName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          return {
+            category: {
+              connectOrCreate: {
+                where: { name: catName },
+                create: { name: catName, slug: catSlug },
+              },
+            },
+          };
+        })
+      : undefined;
+
     return this.prisma.content.update({
       where: { id },
       data: {
@@ -353,6 +420,29 @@ export class ContentsService {
         filmaffinityUrl: dto.filmaffinityUrl !== undefined ? dto.filmaffinityUrl : undefined,
         audioUrl: dto.audioUrl !== undefined ? dto.audioUrl : undefined,
         audioUrls: dto.audioUrls !== undefined ? dto.audioUrls : undefined,
+        ...(categoryConnectOrCreate
+          ? { categories: { create: categoryConnectOrCreate } }
+          : {}),
+        ...(Array.isArray(dto.seasons)
+          ? {
+              seasons: {
+                create: dto.seasons.map((s: any) => ({
+                  seasonNumber: s.seasonNumber,
+                  title: s.title,
+                  overview: s.overview,
+                  episodes: {
+                    create: (s.episodes || []).map((e: any) => ({
+                      episodeNumber: e.episodeNumber,
+                      title: e.title,
+                      synopsis: e.synopsis,
+                      audioUrl: e.audioUrl,
+                      durationMinutes: e.durationMinutes,
+                    })),
+                  },
+                })),
+              },
+            }
+          : {}),
       },
       include: {
         categories: { include: { category: true } },

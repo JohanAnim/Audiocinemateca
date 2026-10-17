@@ -5,11 +5,17 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { PushService } from '../notifications/push.service.js';
+import { AppConfigService } from '../app-config/app-config.service.js';
 import { Role } from '@prisma/client';
 
 @Injectable()
 export class CommunityService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly pushService: PushService,
+    private readonly appConfigService: AppConfigService,
+  ) {}
 
   // --- 1. CHAT GLOBAL Y MENSAJES ---
   async getMessages(page = 1, limit = 50) {
@@ -49,10 +55,18 @@ export class CommunityService {
     };
   }
 
-  async saveMessage(userId: string, content: string) {
+  async saveMessage(userId: string, content: string, userRole?: Role) {
     const isBanned = await this.isUserBanned(userId);
     if (isBanned.banned) {
       throw new ForbiddenException(`Estás temporalmente suspendido del chat: ${isBanned.reason}`);
+    }
+
+    const chatConfig = await this.appConfigService.getParsedConfig<any>('chat_config');
+    if (chatConfig && chatConfig.enabled === false && userRole !== Role.ADMIN && userRole !== Role.MODERATOR) {
+      const closedMsg =
+        chatConfig.closedMessage ||
+        'El chat de la comunidad se encuentra temporalmente cerrado por mantenimiento o moderación.';
+      throw new ForbiddenException(closedMsg);
     }
 
     return this.prisma.chatMessage.create({
@@ -113,7 +127,7 @@ export class CommunityService {
   }
 
   async createAnnouncement(authorId: string, content: string, title?: string) {
-    return this.prisma.announcement.create({
+    const announcement = await this.prisma.announcement.create({
       data: {
         authorId,
         content: content.trim(),
@@ -130,6 +144,17 @@ export class CommunityService {
         },
       },
     });
+
+    // Disparar notificación Push FCM a todos los dispositivos
+    this.pushService
+      .sendAnnouncementPush(
+        announcement.id,
+        title?.trim() || 'Anuncio Oficial de la Comunidad',
+        content.trim(),
+      )
+      .catch(() => {});
+
+    return announcement;
   }
 
   async deleteAnnouncement(announcementId: string) {

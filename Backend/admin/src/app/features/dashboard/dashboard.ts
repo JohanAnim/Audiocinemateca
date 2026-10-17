@@ -11,29 +11,20 @@ import { ExecutiveStats } from '../../core/models/stats.models';
   imports: [CommonModule, RouterModule],
   template: `
     <div class="dashboard-page">
-      <!-- HEADER DEL DASHBOARD -->
       <header class="dash-header" aria-labelledby="dash-title">
         <div>
-          <h1 id="dash-title">Panel Ejecutivo & Métricas en Tiempo Real</h1>
-          <p class="subtitle">Monitoreo continuo de audiencia, telemetría de infraestructura y distribución de catálogo</p>
+          <h1 id="dash-title">Resumen General</h1>
         </div>
         <div class="header-actions">
           <button
             class="btn btn-secondary cursor-pointer"
             (click)="loadStats()"
             [disabled]="isLoading()"
-            aria-label="Actualizar todas las métricas ejecutivas de la base de datos"
           >
-            <span aria-hidden="true">🔄</span>
-            <span>Actualizar Métricas</span>
+            {{ isLoading() ? 'Actualizando...' : 'Actualizar' }}
           </button>
-          <a
-            routerLink="/catalog/create"
-            class="btn btn-primary cursor-pointer"
-            aria-label="Crear una nueva ficha de obra para el catálogo exclusivo"
-          >
-            <span aria-hidden="true">✨</span>
-            <span>Nueva Ficha Exclusiva</span>
+          <a routerLink="/catalog/create" class="btn btn-primary cursor-pointer">
+            Nueva Ficha
           </a>
         </div>
       </header>
@@ -41,191 +32,147 @@ import { ExecutiveStats } from '../../core/models/stats.models';
       @if (isLoading() && !stats()) {
         <div class="loading-state card" role="status" aria-live="polite">
           <div class="spinner" aria-hidden="true"></div>
-          <p>Consultando métricas en la base de datos PostgreSQL...</p>
+          <p>Cargando estadísticas...</p>
         </div>
       }
 
       @if (stats(); as s) {
-        <!-- SECCIÓN 1: INDICADORES CLAVE DE RENDIMIENTO (KPIs) -->
         <section aria-labelledby="kpi-section-title">
-          <h2 id="kpi-section-title" class="sr-only">Indicadores Clave de Rendimiento (KPIs)</h2>
+          <h2 id="kpi-section-title" class="sr-only">Métricas principales</h2>
           <div class="kpi-grid">
-            <!-- CARD 1: USUARIOS -->
             <article class="card kpi-card" aria-labelledby="kpi-users-label">
-              <div class="kpi-icon-wrap user-gradient" aria-hidden="true">👥</div>
               <div class="kpi-data">
-                <h3 id="kpi-users-label" class="kpi-label">Usuarios Registrados</h3>
-                <div class="kpi-value" aria-label="{{ s.users.total }} usuarios totales">{{ s.users.total }}</div>
+                <h3 id="kpi-users-label" class="kpi-label">Usuarios</h3>
+                <div class="kpi-value">{{ s.users.total }}</div>
                 <div class="kpi-sub">
-                  <span class="badge badge-success" role="status" aria-live="polite">
-                    🟢 {{ community.onlineUsers().length || s.users.onlineNow }} activos ahora
+                  <span class="badge badge-success">
+                    {{ community.onlineUsers().length || s.users.onlineNow }} en línea
                   </span>
                 </div>
               </div>
             </article>
 
-            <!-- CARD 2: CATÁLOGO -->
             <article class="card kpi-card" aria-labelledby="kpi-catalog-label">
-              <div class="kpi-icon-wrap catalog-gradient" aria-hidden="true">🎬</div>
               <div class="kpi-data">
-                <h3 id="kpi-catalog-label" class="kpi-label">Obras en Catálogo</h3>
+                <h3 id="kpi-catalog-label" class="kpi-label">Catálogo</h3>
                 <div class="kpi-value">{{ s.catalog.total }}</div>
                 <div class="kpi-sub">
-                  <span class="badge badge-exclusive">⭐ {{ s.catalog.exclusive }} Exclusivas</span>
-                  <span class="sub-text">{{ s.catalog.episodes }} episodios indexados</span>
+                  <span class="sub-text">{{ s.catalog.exclusive }} exclusivas • {{ s.catalog.episodes }} episodios</span>
                 </div>
               </div>
             </article>
 
-            <!-- CARD 3: AUDIENCIA Y REPRODUCCIONES -->
             <article class="card kpi-card" aria-labelledby="kpi-views-label">
-              <div class="kpi-icon-wrap views-gradient" aria-hidden="true">🎧</div>
               <div class="kpi-data">
-                <h3 id="kpi-views-label" class="kpi-label">Reproducciones Acumuladas</h3>
+                <h3 id="kpi-views-label" class="kpi-label">Reproducciones</h3>
                 <div class="kpi-value">{{ s.engagement.totalViews }}</div>
                 <div class="kpi-sub">
-                  <span class="sub-text">💬 {{ s.engagement.totalComments }} comentarios activos</span>
+                  <span class="sub-text">{{ s.engagement.totalComments }} comentarios</span>
                 </div>
               </div>
             </article>
 
-            <!-- CARD 4: CALIFICACIONES AUDITADAS -->
             <article class="card kpi-card" aria-labelledby="kpi-rating-label">
-              <div class="kpi-icon-wrap rating-gradient" aria-hidden="true">⭐</div>
               <div class="kpi-data">
-                <h3 id="kpi-rating-label" class="kpi-label">Valoración Promedio</h3>
+                <h3 id="kpi-rating-label" class="kpi-label">Valoración Media</h3>
                 <div class="kpi-value">{{ s.engagement.averageRating }} <span class="max-star">/ 5.0</span></div>
                 <div class="kpi-sub">
-                  <span class="sub-text">{{ s.engagement.totalRatings }} valoraciones auditadas</span>
+                  <span class="sub-text">{{ s.engagement.totalRatings }} calificaciones</span>
                 </div>
               </div>
             </article>
           </div>
         </section>
 
-        <!-- SECCIÓN 2: PLATAFORMAS Y SALUD DE INFRAESTRUCTURA -->
         <div class="grid-2-col">
-          <!-- PANEL DE DISPOSITIVOS Y PLATAFORMAS -->
           <section class="card" aria-labelledby="platforms-title">
             <div class="card-header-clean">
-              <h2 id="platforms-title">Distribución por Dispositivos y Clientes</h2>
-              <span class="badge badge-info">Apps Nativas & Web</span>
+              <h2 id="platforms-title">Dispositivos por Plataforma</h2>
             </div>
-            <p class="section-desc">Ecosistema de clientes reportados mediante telemetría segura:</p>
 
             <ul class="platforms-list" role="list">
               <li class="platform-row">
-                <div class="platform-meta">
-                  <span class="platform-icon" aria-hidden="true">🤖</span>
-                  <span class="platform-name">Android (Smartphones, Tablets & Android TV)</span>
-                </div>
-                <span class="platform-count badge badge-primary" aria-label="{{ s.platforms.Android }} dispositivos Android">{{ s.platforms.Android }}</span>
+                <span class="platform-name">Android</span>
+                <span class="platform-count badge badge-primary">{{ s.platforms.Android }}</span>
               </li>
-
               <li class="platform-row">
-                <div class="platform-meta">
-                  <span class="platform-icon" aria-hidden="true">🪟</span>
-                  <span class="platform-name">Windows (Audiocinemateca Desktop)</span>
-                </div>
-                <span class="platform-count badge badge-secondary" aria-label="{{ s.platforms.Windows }} dispositivos Windows">{{ s.platforms.Windows }}</span>
+                <span class="platform-name">Windows</span>
+                <span class="platform-count badge badge-secondary">{{ s.platforms.Windows }}</span>
               </li>
-
               <li class="platform-row">
-                <div class="platform-meta">
-                  <span class="platform-icon" aria-hidden="true">🍏</span>
-                  <span class="platform-name">Apple macOS (Desktop)</span>
-                </div>
-                <span class="platform-count badge badge-secondary" aria-label="{{ s.platforms.macOS }} dispositivos macOS">{{ s.platforms.macOS }}</span>
+                <span class="platform-name">macOS</span>
+                <span class="platform-count badge badge-secondary">{{ s.platforms.macOS }}</span>
               </li>
-
               <li class="platform-row">
-                <div class="platform-meta">
-                  <span class="platform-icon" aria-hidden="true">🐧</span>
-                  <span class="platform-name">GNU/Linux (Aplicación Desktop & Terminal)</span>
-                </div>
-                <span class="platform-count badge badge-secondary" aria-label="{{ s.platforms.Linux }} dispositivos Linux">{{ s.platforms.Linux }}</span>
+                <span class="platform-name">Linux</span>
+                <span class="platform-count badge badge-secondary">{{ s.platforms.Linux }}</span>
               </li>
-
               <li class="platform-row">
-                <div class="platform-meta">
-                  <span class="platform-icon" aria-hidden="true">🌐</span>
-                  <span class="platform-name">Navegadores Web & Smart TV Hubs</span>
-                </div>
-                <span class="platform-count badge badge-secondary" aria-label="{{ s.platforms.Web }} sesiones Web">{{ s.platforms.Web }}</span>
+                <span class="platform-name">Web</span>
+                <span class="platform-count badge badge-secondary">{{ s.platforms.Web }}</span>
               </li>
             </ul>
           </section>
 
-          <!-- PANEL DE SALUD Y SERVIDOR -->
           <section class="card" aria-labelledby="server-health-title">
             <div class="card-header-clean">
-              <h2 id="server-health-title">Salud de la Infraestructura Soberana</h2>
-              <span class="badge badge-success">PostgreSQL 16 Activo</span>
+              <h2 id="server-health-title">Estado del Servidor</h2>
+              <span class="badge badge-success">PostgreSQL Activo</span>
             </div>
-            <p class="section-desc">Métricas de rendimiento en tiempo real del nodo NestJS:</p>
 
             <dl class="sys-metrics">
               <div class="sys-metric-item">
-                <dt class="metric-title">Tiempo Activo (Uptime Continuo)</dt>
+                <dt class="metric-title">Tiempo activo</dt>
                 <dd class="metric-val font-mono">{{ formatUptime(s.system.uptimeSeconds) }}</dd>
               </div>
-
               <div class="sys-metric-item">
-                <dt class="metric-title">Memoria RAM Asignada (RSS)</dt>
+                <dt class="metric-title">Memoria RAM (RSS)</dt>
                 <dd class="metric-val font-mono">{{ s.system.memoryRssMb }} MB</dd>
               </div>
-
               <div class="sys-metric-item">
-                <dt class="metric-title">Memoria Heap Utilizada</dt>
+                <dt class="metric-title">Memoria Heap</dt>
                 <dd class="metric-val font-mono">{{ s.system.memoryHeapUsedMb }} MB</dd>
               </div>
-
               <div class="sys-metric-item">
-                <dt class="metric-title">Entorno de Ejecución</dt>
-                <dd class="metric-val font-mono">{{ s.system.nodeVersion }} (NestJS 12 ESM)</dd>
+                <dt class="metric-title">Node.js</dt>
+                <dd class="metric-val font-mono">{{ s.system.nodeVersion }}</dd>
               </div>
-
               <div class="sys-metric-item">
-                <dt class="metric-title">Hora Sincronizada de Base de Datos</dt>
-                <dd class="metric-val font-mono">{{ s.system.serverTime | date:'medium' }}</dd>
+                <dt class="metric-title">Hora del servidor</dt>
+                <dd class="metric-val font-mono">{{ s.system.serverTime | date:'short' }}</dd>
               </div>
             </dl>
           </section>
         </div>
 
-        <!-- SECCIÓN 3: ACCIONES RÁPIDAS DE GESTIÓN -->
         <section class="card quick-actions-card" aria-labelledby="quick-actions-title">
-          <h2 id="quick-actions-title">Acciones Directas de Administración</h2>
+          <h2 id="quick-actions-title">Accesos Rápidos</h2>
           <div class="actions-grid">
+            <a routerLink="/catalog" class="action-btn cursor-pointer">
+              <div>
+                <strong>Catálogo y Sincronización</strong>
+                <small>Gestión de títulos y sincronización con el servidor maestro</small>
+              </div>
+            </a>
+
             <a routerLink="/catalog/create" class="action-btn cursor-pointer">
-              <span class="action-icon" aria-hidden="true">➕</span>
               <div>
-                <strong>Crear Ficha Cinematográfica</strong>
-                <small>Alta de Película, Serie, Corto o Documental con selector multilingüe</small>
-              </div>
-            </a>
-
-            <a routerLink="/community" class="action-btn cursor-pointer">
-              <span class="action-icon" aria-hidden="true">📢</span>
-              <div>
-                <strong>Publicar Comunicado Oficial</strong>
-                <small>Aviso prioritario en tiempo real para todos los clientes de la app</small>
-              </div>
-            </a>
-
-            <a routerLink="/users" class="action-btn cursor-pointer">
-              <span class="action-icon" aria-hidden="true">🛡️</span>
-              <div>
-                <strong>Gestionar y Moderar Usuarios</strong>
-                <small>Asignar roles, inspeccionar UIDs y moderar sanciones en caliente</small>
+                <strong>Nueva Ficha</strong>
+                <small>Registrar película, serie, documental o corto</small>
               </div>
             </a>
 
             <a routerLink="/config" class="action-btn cursor-pointer">
-              <span class="action-icon" aria-hidden="true">📲</span>
               <div>
-                <strong>Configurar Versión del APK</strong>
-                <small>Control del actualizador automático, changelogs y descargas directas</small>
+                <strong>Versiones APK y Banner</strong>
+                <small>GitHub Releases, descargas y configuración general</small>
+              </div>
+            </a>
+
+            <a routerLink="/agents" class="action-btn cursor-pointer">
+              <div>
+                <strong>Aura IA y Notificaciones Push</strong>
+                <small>Proveedor de IA, modelo, colecciones y envíos Push</small>
               </div>
             </a>
           </div>
