@@ -68,5 +68,6 @@ class SharedPreferencesManager @Inject constructor(
         const val STORED_PASSWORD_KEY = "storedPassword"
         const val HAS_SEEN_DOWNLOADS_WELCOME_KEY = "has_seen_downloads_welcome"
         const val LAST_READ_CHAT_TIMESTAMP_KEY = "last_read_chat_timestamp"
+        const val ENABLE_ACCESSIBILITY_HINTS_KEY = "enable_accessibility_hints"
     }
 }

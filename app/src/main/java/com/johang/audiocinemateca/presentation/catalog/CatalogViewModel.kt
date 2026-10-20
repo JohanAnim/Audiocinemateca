@@ -25,13 +25,44 @@ class CatalogViewModel @Inject constructor(
     private val _currentFilterOptions = MutableStateFlow<FilterOptions?>(null)
     val currentFilterOptions: StateFlow<FilterOptions?> = _currentFilterOptions.asStateFlow()
 
-    init {
-        // No need to load initial catalog here, as category ViewModels will handle it
+    fun updateSort(categoryName: String, sortType: String, sortValue: String) {
+        viewModelScope.launch {
+            filterRepository.updateSort(categoryName, sortType, sortValue)
+            _currentFilterOptions.value = filterRepository.getFilterOptionsFlow(categoryName).first()
+        }
+    }
+
+    fun updateGenre(categoryName: String, genre: String) {
+        viewModelScope.launch {
+            filterRepository.updateGenre(categoryName, genre)
+            _currentFilterOptions.value = filterRepository.getFilterOptionsFlow(categoryName).first()
+        }
+    }
+
+    fun updateLanguage(categoryName: String, language: String) {
+        viewModelScope.launch {
+            filterRepository.updateLanguage(categoryName, language)
+            _currentFilterOptions.value = filterRepository.getFilterOptionsFlow(categoryName).first()
+        }
+    }
+
+    fun updateCountry(categoryName: String, country: String) {
+        viewModelScope.launch {
+            filterRepository.updateCountry(categoryName, country)
+            _currentFilterOptions.value = filterRepository.getFilterOptionsFlow(categoryName).first()
+        }
     }
 
     fun updateFilter(categoryName: String, filterType: String, filterValue: String) {
         viewModelScope.launch {
             filterRepository.updateFilter(categoryName, filterType, filterValue)
+            _currentFilterOptions.value = filterRepository.getFilterOptionsFlow(categoryName).first()
+        }
+    }
+
+    fun resetFilters(categoryName: String) {
+        viewModelScope.launch {
+            filterRepository.resetFilters(categoryName)
             _currentFilterOptions.value = filterRepository.getFilterOptionsFlow(categoryName).first()
         }
     }

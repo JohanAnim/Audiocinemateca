@@ -5,14 +5,23 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -25,8 +34,12 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.ui.platform.LocalContext
+import com.johang.audiocinemateca.data.local.SharedPreferencesManager
+import com.johang.audiocinemateca.util.buildInteractionDescription
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -74,6 +87,7 @@ fun MyListsScreen(
 
     var showClearHistoryDialog by remember { mutableStateOf(false) }
     var historyItemToDelete by remember { mutableStateOf<PlaybackProgressEntity?>(null) }
+    var historyItemForOptionsMenu by remember { mutableStateOf<HistoryListItem.Item?>(null) }
     var favoriteToDelete by remember { mutableStateOf<FavoriteEntity?>(null) }
     var favoriteForOptionsMenu by remember { mutableStateOf<FavoriteEntity?>(null) }
     var showDeleteAllDownloadsDialog by remember { mutableStateOf(false) }
@@ -187,7 +201,9 @@ fun MyListsScreen(
                                 onNavigateToPlayer(item, progress.partIndex, progress.episodeIndex, progress.currentPositionMs)
                             }
                         },
-                        onDeleteClick = { progress -> historyItemToDelete = progress }
+                        onOptionsClick = { item -> historyItemForOptionsMenu = item },
+                        onDeleteClick = { progress -> historyItemToDelete = progress },
+                        onViewDetail = { contentId, contentType -> onNavigateToContentDetail(contentId, contentType) }
                     )
                     1 -> FavoritesTabContent(
                         favorites = favorites,
@@ -210,9 +226,11 @@ fun MyListsScreen(
                         totalSizeMb = totalSizeMb,
                         totalDurationMs = totalDurationMs,
                         currentFilter = currentFilter,
+                        onFilterClick = { showFilterDialog = true },
                         onToggleSeries = { contentId -> downloadsViewModel.onSeriesGroupToggled(contentId) },
                         onPlayDownload = { entity -> downloadsViewModel.onPlayItem(entity) },
-                        onDeleteDownload = { entity -> downloadItemToDelete = entity }
+                        onDeleteDownload = { entity -> downloadItemToDelete = entity },
+                        onNavigateToContentDetail = onNavigateToContentDetail
                     )
                 }
             }
@@ -314,35 +332,130 @@ fun MyListsScreen(
                 ListItem(
                     headlineContent = { Text("Ver detalles de la obra", fontWeight = FontWeight.Medium) },
                     leadingContent = { Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                    modifier = Modifier.clickable {
-                        val typeForNav = when (fav.contentType.lowercase()) {
-                            "movie", "peliculas" -> "peliculas"
-                            "serie", "series" -> "series"
-                            "documentary", "documentales" -> "documentales"
-                            "shortfilm", "short", "cortometrajes" -> "cortometrajes"
-                            else -> "unknown"
+                    modifier = Modifier
+                        .clickable {
+                            val typeForNav = when (fav.contentType.lowercase()) {
+                                "movie", "peliculas" -> "peliculas"
+                                "serie", "series" -> "series"
+                                "documentary", "documentales" -> "documentales"
+                                "shortfilm", "short", "cortometrajes" -> "cortometrajes"
+                                else -> "unknown"
+                            }
+                            favoriteForOptionsMenu = null
+                            onNavigateToContentDetail(fav.contentId, typeForNav)
                         }
-                        favoriteForOptionsMenu = null
-                        onNavigateToContentDetail(fav.contentId, typeForNav)
-                    }
+                        .audiocinematecaAccessibility(
+                            label = "Ver detalles de la obra",
+                            role = Role.Button
+                        )
                 )
 
                 ListItem(
                     headlineContent = { Text("Reproducir ahora", fontWeight = FontWeight.Medium) },
                     leadingContent = { Icon(Icons.Default.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                    modifier = Modifier.clickable {
-                        favoriteForOptionsMenu = null
-                        favoritosViewModel.playFavorite(fav)
-                    }
+                    modifier = Modifier
+                        .clickable {
+                            favoriteForOptionsMenu = null
+                            favoritosViewModel.playFavorite(fav)
+                        }
+                        .audiocinematecaAccessibility(
+                            label = "Reproducir ahora",
+                            role = Role.Button
+                        )
                 )
 
                 ListItem(
                     headlineContent = { Text("Eliminar de favoritos", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium) },
                     leadingContent = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-                    modifier = Modifier.clickable {
-                        favoriteForOptionsMenu = null
-                        favoriteToDelete = fav
-                    }
+                    modifier = Modifier
+                        .clickable {
+                            favoriteForOptionsMenu = null
+                            favoriteToDelete = fav
+                        }
+                        .audiocinematecaAccessibility(
+                            label = "Eliminar de favoritos",
+                            role = Role.Button
+                        )
+                )
+            }
+        }
+    }
+
+    // Menú de opciones de historial (abierto por mantener presionado o acciones de accesibilidad)
+    historyItemForOptionsMenu?.let { displayItem ->
+        val progress = displayItem.playbackProgress
+        val title = displayItem.catalogItem?.title ?: progress.contentId
+        val typeForNav = when (progress.contentType.lowercase()) {
+            "movie", "peliculas", "pelicula" -> "peliculas"
+            "serie", "series" -> "series"
+            "documentary", "documentales", "documental" -> "documentales"
+            "shortfilm", "short", "cortometrajes", "cortometraje" -> "cortometrajes"
+            else -> "unknown"
+        }
+
+        ModalBottomSheet(
+            onDismissRequest = { historyItemForOptionsMenu = null }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(bottom = 4.dp))
+
+                ListItem(
+                    headlineContent = { Text("Continuar escuchando", fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier
+                        .clickable {
+                            val item = displayItem.catalogItem
+                            historyItemForOptionsMenu = null
+                            if (item != null) {
+                                onNavigateToPlayer(item, progress.partIndex, progress.episodeIndex, progress.currentPositionMs)
+                            }
+                        }
+                        .audiocinematecaAccessibility(
+                            label = "Continuar escuchando",
+                            role = Role.Button
+                        )
+                )
+
+                ListItem(
+                    headlineContent = { Text("Ver detalles de la obra", fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier
+                        .clickable {
+                            historyItemForOptionsMenu = null
+                            onNavigateToContentDetail(progress.contentId, typeForNav)
+                        }
+                        .audiocinematecaAccessibility(
+                            label = "Ver detalles de la obra",
+                            role = Role.Button
+                        )
+                )
+
+                ListItem(
+                    headlineContent = { Text("Olvidar del historial", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    modifier = Modifier
+                        .clickable {
+                            historyItemForOptionsMenu = null
+                            historyItemToDelete = progress
+                        }
+                        .audiocinematecaAccessibility(
+                            label = "Olvidar del historial",
+                            role = Role.Button
+                        )
                 )
             }
         }
@@ -417,13 +530,18 @@ fun MyListsScreen(
                                     showFilterDialog = false
                                 }
                                 .padding(vertical = 8.dp)
+                                .audiocinematecaAccessibility(
+                                    label = "${filter.displayName}${if (currentFilter == filter) ", seleccionado" else ""}",
+                                    role = Role.RadioButton,
+                                    onClickAction = {
+                                        downloadsViewModel.setFilter(filter)
+                                        showFilterDialog = false
+                                    }
+                                )
                         ) {
                             RadioButton(
                                 selected = currentFilter == filter,
-                                onClick = {
-                                    downloadsViewModel.setFilter(filter)
-                                    showFilterDialog = false
-                                }
+                                onClick = null
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(text = filter.displayName, fontSize = 16.sp)
@@ -448,7 +566,9 @@ fun MyListsScreen(
 fun HistoryTabContent(
     historyItems: List<HistoryListItem>,
     onItemClick: (PlaybackProgressEntity, CatalogItem?) -> Unit,
-    onDeleteClick: (PlaybackProgressEntity) -> Unit
+    onOptionsClick: (HistoryListItem.Item) -> Unit,
+    onDeleteClick: (PlaybackProgressEntity) -> Unit,
+    onViewDetail: (String, String) -> Unit
 ) {
     val itemsOnly = remember(historyItems) { historyItems.filterIsInstance<HistoryListItem.Item>() }
 
@@ -475,33 +595,37 @@ fun HistoryTabContent(
             ) { listItem ->
                 when (listItem) {
                     is HistoryListItem.Header -> {
-                        Box(
+                        Text(
+                            text = listItem.date,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.clearAndSetSemantics {
-                                    contentDescription = "Fecha: ${listItem.date}"
+                                .padding(vertical = 4.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                .clearAndSetSemantics {
+                                    heading()
+                                    contentDescription = "${listItem.date}, Encabezado"
                                 }
-                            ) {
-                                Text(
-                                    text = listItem.date,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                                )
-                            }
-                        }
+                        )
                     }
                     is HistoryListItem.Item -> {
+                        val progress = listItem.playbackProgress
+                        val typeForNav = when (progress.contentType.lowercase()) {
+                            "movie", "peliculas", "pelicula" -> "peliculas"
+                            "serie", "series" -> "series"
+                            "documentary", "documentales", "documental" -> "documentales"
+                            "shortfilm", "short", "cortometrajes", "cortometraje" -> "cortometrajes"
+                            else -> "unknown"
+                        }
                         HistoryItemCard(
                             displayItem = listItem,
                             onClick = { onItemClick(listItem.playbackProgress, listItem.catalogItem) },
+                            onLongClick = { onOptionsClick(listItem) },
+                            onViewDetail = { onViewDetail(progress.contentId, typeForNav) },
                             onDeleteClick = { onDeleteClick(listItem.playbackProgress) }
                         )
                     }
@@ -511,23 +635,68 @@ fun HistoryTabContent(
     }
 }
 
+private fun formatRemainingTimeSpanish(remainingMs: Long): String {
+    if (remainingMs <= 0L) return "Completado"
+
+    val totalSeconds = remainingMs / 1000L
+    val hours = totalSeconds / 3600L
+    val minutes = (totalSeconds % 3600L) / 60L
+    val seconds = totalSeconds % 60L
+
+    return when {
+        hours > 0 -> {
+            if (minutes > 0) {
+                "$hours ${if (hours == 1L) "hora" else "horas"} y $minutes ${if (minutes == 1L) "minuto" else "minutos"} restantes"
+            } else {
+                "$hours ${if (hours == 1L) "hora" else "horas"} restantes"
+            }
+        }
+        minutes > 0 -> {
+            if (seconds > 0) {
+                "$minutes ${if (minutes == 1L) "minuto" else "minutos"} y $seconds ${if (seconds == 1L) "segundo" else "segundos"} restantes"
+            } else {
+                "$minutes ${if (minutes == 1L) "minuto" else "minutos"} restantes"
+            }
+        }
+        else -> {
+            "$seconds ${if (seconds == 1L) "segundo" else "segundos"} restantes"
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HistoryItemCard(
     displayItem: HistoryListItem.Item,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onViewDetail: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
     val progress = displayItem.playbackProgress
     val title = displayItem.catalogItem?.title ?: progress.contentId
 
-    val typeLabel = remember(progress.contentType, progress.partIndex, progress.episodeIndex) {
+    val lastSeenLabel = remember(displayItem.catalogItem, progress.contentType, progress.partIndex, progress.episodeIndex) {
+        val seasonNum = progress.partIndex + 1
+        val episodeNum = progress.episodeIndex + 1
         when (progress.contentType.lowercase()) {
-            "serie" -> "Serie • T${progress.partIndex + 1}:E${progress.episodeIndex + 1}"
-            "movie", "pelicula" -> if (progress.partIndex > 0) "Película • Parte ${progress.partIndex + 1}" else "Película"
-            "documentary", "documental" -> "Documental"
-            "shortfilm", "cortometraje" -> "Cortometraje"
-            else -> progress.contentType.replaceFirstChar { it.uppercase() }
+            "serie", "series" -> {
+                val serie = displayItem.catalogItem as? com.johang.audiocinemateca.data.model.Serie
+                val episodeTitle = serie?.capitulos?.get(seasonNum.toString())?.getOrNull(progress.episodeIndex)?.titulo
+                    ?: serie?.capitulos?.get("temporada $seasonNum")?.getOrNull(progress.episodeIndex)?.titulo
+                if (!episodeTitle.isNullOrBlank()) {
+                    "T$seasonNum:E$episodeNum • $episodeTitle"
+                } else {
+                    "T$seasonNum:E$episodeNum"
+                }
+            }
+            else -> {
+                if (progress.partIndex > 0) {
+                    "Parte ${progress.partIndex + 1}"
+                } else {
+                    ""
+                }
+            }
         }
     }
 
@@ -542,94 +711,78 @@ fun HistoryItemCard(
     }
 
     val remainingText = remember(remainingMs) {
-        if (remainingMs > 0) "Resta: ${TimeFormatUtils.formatDuration(remainingMs)}" else "Completado"
+        formatRemainingTimeSpanish(remainingMs)
     }
 
-    val percentText = (progressFraction * 100).toInt()
+    val context = LocalContext.current
+    val showAccessibilityHints = remember(context) {
+        SharedPreferencesManager(context).getBoolean("enable_accessibility_hints", true)
+    }
 
     Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onDeleteClick
+                onLongClick = onLongClick
             )
-            .clearAndSetSemantics {
-                contentDescription = "$title, $typeLabel. Progreso: $percentText por ciento, $remainingText"
-                onClick(label = "Continuar escuchando") {
-                    onClick()
-                    true
-                }
-                customActions = listOf(
-                    CustomAccessibilityAction("Olvidar del historial") {
-                        onDeleteClick()
-                        true
-                    }
-                )
-            },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = typeLabel,
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = onDeleteClick) {
-                    Icon(
-                        imageVector = Icons.Default.DeleteOutline,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.outline
-                    )
+            .semantics(mergeDescendants = true) {
+                if (showAccessibilityHints) {
+                    stateDescription = "Mantén presionado para opciones del historial"
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            LinearProgressIndicator(
-                progress = { progressFraction },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = "$percentText% escuchado",
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (lastSeenLabel.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = lastSeenLabel,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = remainingText,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
                 )
-                Text(
-                    text = remainingText,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.outline
-                )
             }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Barra de progreso real de Compose con ProgressBarRangeInfo
+            LinearProgressIndicator(
+                progress = { progressFraction },
+                modifier = Modifier
+                    .width(48.dp)
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         }
     }
 }
@@ -655,11 +808,11 @@ fun FavoritesTabContent(
         val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 155.dp),
+            columns = GridCells.Fixed(5),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(
                 items = favorites,
@@ -691,15 +844,30 @@ fun FavoriteGridCard(
     val dateStr = remember(favorite.addedAt) { dateFormat.format(Date(favorite.addedAt)) }
     val typeBadge = remember(favorite.contentType) {
         when (favorite.contentType.lowercase()) {
-            "movie", "peliculas" -> "PELÍCULA"
-            "serie", "series" -> "SERIE"
-            "documentary", "documentales" -> "DOCUMENTAL"
-            "shortfilm", "cortometraje" -> "CORTO"
-            else -> favorite.contentType.uppercase()
+            "movie", "peliculas" -> "Película"
+            "serie", "series" -> "Serie"
+            "documentary", "documentales" -> "Documental"
+            "shortfilm", "cortometraje" -> "Corto"
+            else -> favorite.contentType.replaceFirstChar { it.uppercase() }
         }
     }
 
-    Card(
+    val context = LocalContext.current
+    val showAccessibilityHints = remember(context) {
+        SharedPreferencesManager(context).getBoolean("enable_accessibility_hints", true)
+    }
+
+    val fullContentDescription = remember(favorite.title, typeBadge, showAccessibilityHints) {
+        buildInteractionDescription(
+            mainContent = "${favorite.title}. $typeBadge",
+            hintText = "Mantén presionado para opciones de favoritos",
+            showHint = showAccessibilityHints
+        )
+    }
+
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
@@ -707,95 +875,78 @@ fun FavoriteGridCard(
                 onLongClick = onOptionsClick
             )
             .clearAndSetSemantics {
-                contentDescription = "${favorite.title}, $typeBadge, guardado el $dateStr"
-                onClick(label = "Ver detalles") {
-                    onItemClick()
-                    true
-                }
-                customActions = listOf(
-                    CustomAccessibilityAction("Opciones") {
-                        onOptionsClick()
-                        true
-                    },
-                    CustomAccessibilityAction("Reproducir ahora") {
-                        onPlayClick()
-                        true
-                    },
-                    CustomAccessibilityAction("Eliminar de favoritos") {
-                        onDeleteClick()
-                        true
-                    }
-                )
-            },
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                contentDescription = fullContentDescription
+            }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
+                .padding(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+                contentAlignment = Alignment.Center
             ) {
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Text(
-                        text = typeBadge,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = when (favorite.contentType.lowercase()) {
+                                "serie", "series" -> Icons.Default.VideoLibrary
+                                else -> Icons.Default.Favorite
+                            },
+                            contentDescription = null,
+                            tint = if (favorite.contentType.lowercase().contains("serie")) MaterialTheme.colorScheme.primary else Color(0xFFE57373),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
-
-                Icon(
-                    imageVector = Icons.Default.Favorite,
-                    contentDescription = null,
-                    tint = Color(0xFFE57373),
-                    modifier = Modifier.size(18.dp)
-                )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = favorite.title,
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 11.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                lineHeight = 13.sp,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                text = "Guardado: $dateStr",
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.outline
+                text = "$typeBadge • $dateStr",
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center
             )
         }
     }
 }
 
-// ==========================================
-// PESTAÑA 3: DESCARGAS
-// ==========================================
 @Composable
 fun DownloadsTabContent(
     uiState: DownloadsUiState,
     totalSizeMb: Double,
     totalDurationMs: Long,
     currentFilter: DownloadFilter,
+    onFilterClick: () -> Unit = {},
     onToggleSeries: (String) -> Unit,
     onPlayDownload: (DownloadEntity) -> Unit,
-    onDeleteDownload: (DownloadEntity) -> Unit
+    onDeleteDownload: (DownloadEntity) -> Unit,
+    onNavigateToContentDetail: (contentId: String, contentType: String) -> Unit
 ) {
     when (uiState) {
         is DownloadsUiState.Loading -> {
@@ -820,7 +971,8 @@ fun DownloadsTabContent(
                         StorageSummaryCard(
                             totalSizeMb = totalSizeMb,
                             totalDurationMs = totalDurationMs,
-                            currentFilter = currentFilter
+                            currentFilter = currentFilter,
+                            onFilterClick = onFilterClick
                         )
                     }
 
@@ -833,13 +985,17 @@ fun DownloadsTabContent(
                                 group = item,
                                 onToggle = { onToggleSeries(item.contentId) },
                                 onPlayEpisode = onPlayDownload,
-                                onDeleteEpisode = onDeleteDownload
+                                onDeleteEpisode = onDeleteDownload,
+                                onViewDetail = { onNavigateToContentDetail(item.contentId, item.contentType) }
                             )
                         } else {
                             SingleDownloadCard(
                                 download = item,
                                 onPlay = {
                                     item.episodes.firstOrNull()?.let { onPlayDownload(it) }
+                                },
+                                onViewDetail = {
+                                    onNavigateToContentDetail(item.contentId, item.contentType)
                                 },
                                 onDelete = {
                                     item.episodes.firstOrNull()?.let { onDeleteDownload(it) }
@@ -857,7 +1013,8 @@ fun DownloadsTabContent(
 fun StorageSummaryCard(
     totalSizeMb: Double,
     totalDurationMs: Long,
-    currentFilter: DownloadFilter
+    currentFilter: DownloadFilter,
+    onFilterClick: () -> Unit = {}
 ) {
     val sizeText = remember(totalSizeMb) {
         if (totalSizeMb >= 1024) {
@@ -874,11 +1031,7 @@ fun StorageSummaryCard(
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clearAndSetSemantics {
-                contentDescription = "Almacenamiento ocupado: $sizeText, Duración total: $durationText${if (currentFilter != DownloadFilter.All) ", Filtro: ${currentFilter.displayName}" else ""}"
-            }
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -886,7 +1039,11 @@ fun StorageSummaryCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics(mergeDescendants = true) { }
+                ) {
                     Text(
                         text = "Almacenamiento ocupado: $sizeText",
                         fontWeight = FontWeight.Bold,
@@ -902,8 +1059,13 @@ fun StorageSummaryCard(
                 }
                 if (currentFilter != DownloadFilter.All) {
                     SuggestionChip(
-                        onClick = {},
-                        label = { Text(text = currentFilter.displayName, fontSize = 11.sp) }
+                        onClick = onFilterClick,
+                        label = { Text(text = currentFilter.displayName, fontSize = 11.sp) },
+                        modifier = Modifier.audiocinematecaAccessibility(
+                            label = "Filtro activo: ${currentFilter.displayName}. Toca para cambiar filtro",
+                            role = Role.Button,
+                            onClickAction = onFilterClick
+                        )
                     )
                 }
             }
@@ -911,10 +1073,12 @@ fun StorageSummaryCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SingleDownloadCard(
     download: GroupedDownload,
     onPlay: () -> Unit,
+    onViewDetail: () -> Unit,
     onDelete: () -> Unit
 ) {
     val entity = download.episodes.firstOrNull() ?: return
@@ -926,25 +1090,33 @@ fun SingleDownloadCard(
         else -> "Error en descarga"
     }
 
-    Card(
+    var showOptionsSheet by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val showAccessibilityHints = remember(context) {
+        SharedPreferencesManager(context).getBoolean("enable_accessibility_hints", true)
+    }
+
+    val fullContentDescription = remember(download.title, statusText, sizeText, showAccessibilityHints) {
+        buildInteractionDescription(
+            mainContent = "${download.title}. $statusText. $sizeText",
+            hintText = "Mantén presionado para opciones de descarga",
+            showHint = showAccessibilityHints
+        )
+    }
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onPlay)
+            .combinedClickable(
+                onClick = onPlay,
+                onLongClick = { showOptionsSheet = true }
+            )
             .clearAndSetSemantics {
-                contentDescription = "${download.title}, $statusText, $sizeText"
-                onClick(label = "Reproducir") {
-                    onPlay()
-                    true
-                }
-                customActions = listOf(
-                    CustomAccessibilityAction("Eliminar descarga") {
-                        onDelete()
-                        true
-                    }
-                )
-            },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                contentDescription = fullContentDescription
+            }
     ) {
         Row(
             modifier = Modifier
@@ -952,7 +1124,9 @@ fun SingleDownloadCard(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
                 Text(
                     text = download.title,
                     fontWeight = FontWeight.Bold,
@@ -968,7 +1142,13 @@ fun SingleDownloadCard(
                 )
             }
 
-            IconButton(onClick = onPlay) {
+            IconButton(
+                onClick = onPlay,
+                modifier = Modifier.semantics {
+                    contentDescription = "Reproducir ${download.title}"
+                    role = Role.Button
+                }
+            ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
                     contentDescription = null,
@@ -977,11 +1157,68 @@ fun SingleDownloadCard(
                 )
             }
 
-            IconButton(onClick = onDelete) {
+            IconButton(
+                onClick = { showOptionsSheet = true },
+                modifier = Modifier.semantics {
+                    contentDescription = "Opciones para ${download.title}"
+                    role = Role.Button
+                }
+            ) {
                 Icon(
-                    imageVector = Icons.Default.DeleteOutline,
+                    imageVector = Icons.Default.MoreVert,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.outline
+                )
+            }
+        }
+    }
+
+    if (showOptionsSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showOptionsSheet = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = download.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(bottom = 4.dp))
+
+                ListItem(
+                    headlineContent = { Text("Reproducir contenido", fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier.clickable {
+                        showOptionsSheet = false
+                        onPlay()
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Ver detalles de la obra", fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier.clickable {
+                        showOptionsSheet = false
+                        onViewDetail()
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Eliminar de descargas", fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    modifier = Modifier.clickable {
+                        showOptionsSheet = false
+                        onDelete()
+                    }
                 )
             }
         }
@@ -993,14 +1230,30 @@ fun SeriesDownloadGroupCard(
     group: GroupedDownload,
     onToggle: () -> Unit,
     onPlayEpisode: (DownloadEntity) -> Unit,
-    onDeleteEpisode: (DownloadEntity) -> Unit
+    onDeleteEpisode: (DownloadEntity) -> Unit,
+    onViewDetail: () -> Unit = {}
 ) {
     val sizeText = String.format(Locale.getDefault(), "%.1f MB", group.totalSizeMb)
     val countText = "${group.episodes.size} episodios descargados"
 
-    Card(
+    val context = LocalContext.current
+    val showAccessibilityHints = remember(context) {
+        SharedPreferencesManager(context).getBoolean("enable_accessibility_hints", true)
+    }
+
+    val fullContentDescription = remember(group.title, countText, sizeText, group.isExpanded, showAccessibilityHints) {
+        val stateText = if (group.isExpanded) "Expandido" else "Contraído"
+        val hintText = if (group.isExpanded) "Toca para contraer" else "Toca para expandir"
+        buildInteractionDescription(
+            mainContent = "${group.title}. $countText. $sizeText. $stateText",
+            hintText = hintText,
+            showHint = showAccessibilityHints
+        )
+    }
+
+    Surface(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
@@ -1008,17 +1261,15 @@ fun SeriesDownloadGroupCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = onToggle)
-                    .padding(14.dp)
                     .clearAndSetSemantics {
-                        contentDescription = "${group.title}, $countText, $sizeText, ${if (group.isExpanded) "Expandido" else "Contraído"}"
-                        onClick(label = if (group.isExpanded) "Contraer" else "Expandir") {
-                            onToggle()
-                            true
-                        }
-                    },
+                        contentDescription = fullContentDescription
+                    }
+                    .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
                         text = group.title,
                         fontWeight = FontWeight.Bold,
@@ -1050,55 +1301,73 @@ fun SeriesDownloadGroupCard(
                     HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
                     group.episodes.forEach { episode ->
                         val epSize = String.format(Locale.getDefault(), "%.1f MB", episode.totalSizeMb)
-                        Row(
+                        val epDescription = remember(episode.title, epSize, showAccessibilityHints) {
+                            buildInteractionDescription(
+                                mainContent = "${episode.title}. $epSize",
+                                showHint = showAccessibilityHints
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.Transparent,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onPlayEpisode(episode) }
-                                .padding(vertical = 8.dp)
+                                .clickable(onClick = { onPlayEpisode(episode) })
                                 .clearAndSetSemantics {
-                                    contentDescription = "${episode.title}, $epSize"
-                                    onClick(label = "Reproducir episodio") {
-                                        onPlayEpisode(episode)
-                                        true
-                                    }
-                                    customActions = listOf(
-                                        CustomAccessibilityAction("Eliminar episodio") {
-                                            onDeleteEpisode(episode)
-                                            true
-                                        }
-                                    )
-                                },
-                            verticalAlignment = Alignment.CenterVertically
+                                    contentDescription = epDescription
+                                }
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = episode.title,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = epSize,
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = episode.title,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        text = epSize,
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.outline
+                                    )
+                                }
 
-                            IconButton(onClick = { onPlayEpisode(episode) }) {
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+                                IconButton(
+                                    onClick = { onPlayEpisode(episode) },
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Reproducir ${episode.title}"
+                                        role = Role.Button
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
 
-                            IconButton(onClick = { onDeleteEpisode(episode) }) {
-                                Icon(
-                                    imageVector = Icons.Default.DeleteOutline,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                                IconButton(
+                                    onClick = { onDeleteEpisode(episode) },
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "Eliminar ${episode.title}"
+                                        role = Role.Button
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DeleteOutline,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
                     }

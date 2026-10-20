@@ -40,6 +40,9 @@ class SettingsViewModel @Inject constructor(
     private val _autoCheckApp = MutableStateFlow(prefs.getBoolean("auto_check_app", true))
     val autoCheckApp: StateFlow<Boolean> = _autoCheckApp
 
+    private val _enableAccessibilityHints = MutableStateFlow(prefs.getBoolean("enable_accessibility_hints", true))
+    val enableAccessibilityHints: StateFlow<Boolean> = _enableAccessibilityHints
+
     // Playback
     private val _autoplay = MutableStateFlow(prefs.getBoolean("autoplay", true))
     val autoplay: StateFlow<Boolean> = _autoplay
@@ -70,6 +73,7 @@ class SettingsViewModel @Inject constructor(
             }
             "auto_check_catalog" -> _autoCheckCatalog.value = value
             "auto_check_app" -> _autoCheckApp.value = value
+            "enable_accessibility_hints" -> _enableAccessibilityHints.value = value
             "autoplay" -> _autoplay.value = value
             "sleep_timer_enabled" -> _sleepTimerEnabled.value = value
             "community_show_presence" -> {

@@ -144,6 +144,16 @@ fun GeneralSettingsScreen(
             onCheckedChange = { viewModel.updateBoolean("auto_check_app", it) }
         )
 
+        SettingsCategoryHeader("Accesibilidad")
+
+        val enableAccessibilityHints by viewModel.enableAccessibilityHints.collectAsState()
+        SettingsSwitchItem(
+            title = "Consejos de interacción contextuales",
+            summary = "Anuncia recomendaciones breves en TalkBack y Jieshuo al enfocar elementos (ej. 'Mantén presionado para opciones').",
+            checked = enableAccessibilityHints,
+            onCheckedChange = { viewModel.updateBoolean("enable_accessibility_hints", it) }
+        )
+
         SettingsCategoryHeader("Permisos y Enlaces")
 
         SettingsClickItem(

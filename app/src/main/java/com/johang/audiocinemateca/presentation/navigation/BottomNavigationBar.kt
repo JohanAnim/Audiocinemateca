@@ -13,6 +13,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.navigation.NavController
 import androidx.navigation.NavOptions
 import com.johang.audiocinemateca.R
@@ -156,17 +157,6 @@ fun AudiocinematecaBottomNavigation(
                     },
                     label = {
                         Text(text = item.label)
-                    },
-                    modifier = Modifier.clearAndSetSemantics {
-                        contentDescription = item.label
-                        role = Role.Tab
-                        selected = isSelected
-                        if (!isSelected) {
-                            onClick(label = "Ir a ${item.label}") {
-                                onNavigationClick()
-                                true
-                            }
-                        }
                     }
                 )
             }

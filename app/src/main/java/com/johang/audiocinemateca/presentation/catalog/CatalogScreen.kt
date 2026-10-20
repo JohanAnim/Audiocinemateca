@@ -3,17 +3,26 @@ package com.johang.audiocinemateca.presentation.catalog
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
@@ -29,6 +38,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.platform.LocalContext
+import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.data.model.Documentary
 import com.johang.audiocinemateca.data.model.Movie
 import com.johang.audiocinemateca.data.model.Serie
@@ -36,7 +47,9 @@ import com.johang.audiocinemateca.data.model.ShortFilm
 import com.johang.audiocinemateca.domain.model.CatalogItem
 import com.johang.audiocinemateca.domain.model.FilterOptions
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
+import com.johang.audiocinemateca.util.buildInteractionDescription
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 private val FILTER_TYPES = listOf("Alfabéticamente", "Fecha", "Género", "Idiomas", "Países")
 private val ALPHABETICAL_OPTIONS = listOf("A-Z", "Z-A")
@@ -76,10 +89,11 @@ fun CatalogScreen(
         .collectAsState(initial = FilterOptions("Fecha", "Más nuevo"))
 
     // Dialog states
-    var showFilterTypeDialog by remember { mutableStateOf(false) }
-    var showFilterValueDialog by remember { mutableStateOf(false) }
+    var showSortDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
     var showSearchableDialog by remember { mutableStateOf(false) }
     var searchableDialogTitle by remember { mutableStateOf("") }
+    var searchableDialogType by remember { mutableStateOf("") }
     var searchableDialogItems by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoadingSearchableItems by remember { mutableStateOf(false) }
 
@@ -154,7 +168,7 @@ fun CatalogScreen(
                 }
             }
 
-            // Filters Bar
+            // Advanced Multi-Filter Bar
             Surface(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 modifier = Modifier.fillMaxWidth()
@@ -162,91 +176,111 @@ fun CatalogScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Filter Type Button
+                    // 1. Orden Button
                     OutlinedButton(
-                        onClick = { showFilterTypeDialog = true },
-                        modifier = Modifier
-                            .weight(1f)
-                            .audiocinematecaAccessibility(
-                                label = "Filtrar por: ${currentFilterOptions.filterType}",
-                                role = Role.Button,
-                                onClickAction = { showFilterTypeDialog = true }
-                            ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        onClick = { showSortDialog = true },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Criterio de ordenamiento actual: ${currentFilterOptions.sortType}, ${currentFilterOptions.sortValue}. Toca dos veces para cambiar el ordenamiento"
+                            role = Role.Button
+                        },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.FilterList,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = currentFilterOptions.filterType,
+                            text = "Orden: ${currentFilterOptions.sortValue}",
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.bodyMedium
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
-                    // Filter Value Button
-                    Button(
+                    // 2. Género Filter Chip
+                    val isGenreActive = currentFilterOptions.genre != "Todos"
+                    FilterChip(
+                        selected = isGenreActive,
                         onClick = {
-                            when (currentFilterOptions.filterType) {
-                                "Género", "Países" -> {
-                                    val isGenre = currentFilterOptions.filterType == "Género"
-                                    searchableDialogTitle = if (isGenre) "Seleccionar género" else "Seleccionar país"
-                                    showSearchableDialog = true
-                                    isLoadingSearchableItems = true
-                                    coroutineScope.launch {
-                                        searchableDialogItems = if (isGenre) {
-                                            catalogViewModel.getGenresForCategory(currentCategory)
-                                        } else {
-                                            catalogViewModel.getCountriesForCategory(currentCategory)
-                                        }
-                                        isLoadingSearchableItems = false
-                                    }
-                                }
-                                else -> {
-                                    showFilterValueDialog = true
-                                }
+                            searchableDialogTitle = "Seleccionar género"
+                            searchableDialogType = "genre"
+                            showSearchableDialog = true
+                            isLoadingSearchableItems = true
+                            coroutineScope.launch {
+                                searchableDialogItems = catalogViewModel.getGenresForCategory(currentCategory)
+                                isLoadingSearchableItems = false
                             }
                         },
-                        modifier = Modifier
-                            .weight(1f)
-                            .audiocinematecaAccessibility(
-                                label = "Criterio de filtro: ${currentFilterOptions.filterValue}",
-                                role = Role.Button,
-                                onClickAction = {
-                                    if (currentFilterOptions.filterType == "Género" || currentFilterOptions.filterType == "Países") {
-                                        val isGenre = currentFilterOptions.filterType == "Género"
-                                        searchableDialogTitle = if (isGenre) "Seleccionar género" else "Seleccionar país"
-                                        showSearchableDialog = true
-                                        isLoadingSearchableItems = true
-                                        coroutineScope.launch {
-                                            searchableDialogItems = if (isGenre) {
-                                                catalogViewModel.getGenresForCategory(currentCategory)
-                                            } else {
-                                                catalogViewModel.getCountriesForCategory(currentCategory)
-                                            }
-                                            isLoadingSearchableItems = false
-                                        }
-                                    } else {
-                                        showFilterValueDialog = true
-                                    }
-                                }
-                            ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = currentFilterOptions.filterValue,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        label = { Text("Género: ${currentFilterOptions.genre}") },
+                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Filtro de género actual: ${currentFilterOptions.genre}. Toca dos veces para cambiar este filtro"
+                            role = Role.Button
+                        }
+                    )
+
+                    // 3. Idioma Filter Chip
+                    val isLangActive = currentFilterOptions.language != "Todos"
+                    FilterChip(
+                        selected = isLangActive,
+                        onClick = { showLanguageDialog = true },
+                        label = { Text("Idioma: ${currentFilterOptions.language}") },
+                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Filtro de idioma actual: ${currentFilterOptions.language}. Toca dos veces para cambiar este filtro"
+                            role = Role.Button
+                        }
+                    )
+
+                    // 4. País Filter Chip
+                    val isCountryActive = currentFilterOptions.country != "Todos"
+                    FilterChip(
+                        selected = isCountryActive,
+                        onClick = {
+                            searchableDialogTitle = "Seleccionar país"
+                            searchableDialogType = "country"
+                            showSearchableDialog = true
+                            isLoadingSearchableItems = true
+                            coroutineScope.launch {
+                                searchableDialogItems = catalogViewModel.getCountriesForCategory(currentCategory)
+                                isLoadingSearchableItems = false
+                            }
+                        },
+                        label = { Text("País: ${currentFilterOptions.country}") },
+                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Filtro de país actual: ${currentFilterOptions.country}. Toca dos veces para cambiar este filtro"
+                            role = Role.Button
+                        }
+                    )
+
+                    // 5. Restablecer Filtros
+                    if (isGenreActive || isLangActive || isCountryActive) {
+                        IconButton(
+                            onClick = { catalogViewModel.resetFilters(currentCategory) },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Restablecer todos los filtros a sus valores por defecto"
+                                role = Role.Button
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 }
             }
@@ -271,7 +305,7 @@ fun CatalogScreen(
                         },
                         onShareItem = onShareItem,
                         onResetFilters = {
-                            catalogViewModel.updateFilter("peliculas", "Fecha", "Más nuevo")
+                            catalogViewModel.resetFilters("peliculas")
                         }
                     )
                     1 -> CatalogList(
@@ -287,7 +321,7 @@ fun CatalogScreen(
                         },
                         onShareItem = onShareItem,
                         onResetFilters = {
-                            catalogViewModel.updateFilter("series", "Fecha", "Más nuevo")
+                            catalogViewModel.resetFilters("series")
                         }
                     )
                     2 -> CatalogList(
@@ -303,7 +337,7 @@ fun CatalogScreen(
                         },
                         onShareItem = onShareItem,
                         onResetFilters = {
-                            catalogViewModel.updateFilter("cortometrajes", "Fecha", "Más nuevo")
+                            catalogViewModel.resetFilters("cortometrajes")
                         }
                     )
                     3 -> CatalogList(
@@ -319,7 +353,7 @@ fun CatalogScreen(
                         },
                         onShareItem = onShareItem,
                         onResetFilters = {
-                            catalogViewModel.updateFilter("documentales", "Fecha", "Más nuevo")
+                            catalogViewModel.resetFilters("documentales")
                         }
                     )
                 }
@@ -327,48 +361,37 @@ fun CatalogScreen(
         }
     }
 
-    // Filter Type Dialog
-    if (showFilterTypeDialog) {
+    // Sort Options Dialog
+    if (showSortDialog) {
+        val sortOptions = listOf(
+            Triple("Fecha", "Más nuevo", "Fecha de inclusión: Más nuevo"),
+            Triple("Fecha", "Más antiguo", "Fecha de inclusión: Más antiguo"),
+            Triple("Alfabéticamente", "A-Z", "Alfabéticamente: A-Z"),
+            Triple("Alfabéticamente", "Z-A", "Alfabéticamente: Z-A"),
+            Triple("Año", "Más reciente", "Año de estreno: Más reciente"),
+            Triple("Año", "Más antiguo", "Año de estreno: Más antiguo")
+        )
+
         AlertDialog(
-            onDismissRequest = { showFilterTypeDialog = false },
-            title = { Text("Filtrar por", fontWeight = FontWeight.Bold) },
+            onDismissRequest = { showSortDialog = false },
+            title = { Text("Ordenar lista por", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FILTER_TYPES.forEach { filterType ->
-                        val isSelected = filterType == currentFilterOptions.filterType
+                    sortOptions.forEach { (sType, sValue, display) ->
+                        val isSelected = currentFilterOptions.sortType == sType && currentFilterOptions.sortValue == sValue
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    val defaultValue = when (filterType) {
-                                        "Alfabéticamente" -> "A-Z"
-                                        "Fecha" -> "Más nuevo"
-                                        "Género" -> "Todos"
-                                        "Idiomas" -> "Español Latino"
-                                        "Países" -> "Todos"
-                                        else -> ""
-                                    }
-                                    catalogViewModel.updateFilter(currentCategory, filterType, defaultValue)
-                                    showFilterTypeDialog = false
-                                }
-                                .padding(vertical = 8.dp)
-                                .audiocinematecaAccessibility(
-                                    label = filterType,
-                                    role = Role.RadioButton,
-                                    onClickAction = {
-                                        val defaultValue = when (filterType) {
-                                            "Alfabéticamente" -> "A-Z"
-                                            "Fecha" -> "Más nuevo"
-                                            "Género" -> "Todos"
-                                            "Idiomas" -> "Español Latino"
-                                            "Países" -> "Todos"
-                                            else -> ""
-                                        }
-                                        catalogViewModel.updateFilter(currentCategory, filterType, defaultValue)
-                                        showFilterTypeDialog = false
-                                    }
+                                .selectable(
+                                    selected = isSelected,
+                                    onClick = {
+                                        catalogViewModel.updateSort(currentCategory, sType, sValue)
+                                        showSortDialog = false
+                                    },
+                                    role = Role.RadioButton
                                 )
+                                .padding(vertical = 8.dp)
                         ) {
                             RadioButton(
                                 selected = isSelected,
@@ -376,7 +399,7 @@ fun CatalogScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = filterType,
+                                text = display,
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
@@ -385,54 +408,37 @@ fun CatalogScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showFilterTypeDialog = false }) {
+                TextButton(onClick = { showSortDialog = false }) {
                     Text("Cerrar")
                 }
             }
         )
     }
 
-    // Filter Value Options Dialog (Alfabéticamente, Fecha, Idiomas)
-    if (showFilterValueDialog) {
-        val options = when (currentFilterOptions.filterType) {
-            "Alfabéticamente" -> ALPHABETICAL_OPTIONS
-            "Fecha" -> DATE_OPTIONS
-            "Idiomas" -> LANGUAGE_OPTIONS
-            else -> emptyList()
-        }
+    // Language Filter Dialog
+    if (showLanguageDialog) {
+        val languageOptions = listOf("Todos", "Español Latino", "Español de España")
 
         AlertDialog(
-            onDismissRequest = { showFilterValueDialog = false },
-            title = { Text("Selecciona un valor", fontWeight = FontWeight.Bold) },
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text("Filtrar por Idioma / Doblaje", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    options.forEach { option ->
-                        val isSelected = option == currentFilterOptions.filterValue
+                    languageOptions.forEach { option ->
+                        val isSelected = currentFilterOptions.language == option
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    catalogViewModel.updateFilter(
-                                        currentCategory,
-                                        currentFilterOptions.filterType,
-                                        option
-                                    )
-                                    showFilterValueDialog = false
-                                }
-                                .padding(vertical = 8.dp)
-                                .audiocinematecaAccessibility(
-                                    label = option,
-                                    role = Role.RadioButton,
-                                    onClickAction = {
-                                        catalogViewModel.updateFilter(
-                                            currentCategory,
-                                            currentFilterOptions.filterType,
-                                            option
-                                        )
-                                        showFilterValueDialog = false
-                                    }
+                                .selectable(
+                                    selected = isSelected,
+                                    onClick = {
+                                        catalogViewModel.updateLanguage(currentCategory, option)
+                                        showLanguageDialog = false
+                                    },
+                                    role = Role.RadioButton
                                 )
+                                .padding(vertical = 8.dp)
                         ) {
                             RadioButton(
                                 selected = isSelected,
@@ -449,7 +455,7 @@ fun CatalogScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showFilterValueDialog = false }) {
+                TextButton(onClick = { showLanguageDialog = false }) {
                     Text("Cerrar")
                 }
             }
@@ -461,21 +467,21 @@ fun CatalogScreen(
         SearchableCatalogFilterDialog(
             title = searchableDialogTitle,
             items = searchableDialogItems,
-            currentOption = currentFilterOptions.filterValue,
+            currentOption = if (searchableDialogType == "genre") currentFilterOptions.genre else currentFilterOptions.country,
             isLoading = isLoadingSearchableItems,
             onDismissRequest = { showSearchableDialog = false },
             onItemSelected = { selectedValue ->
-                catalogViewModel.updateFilter(
-                    currentCategory,
-                    currentFilterOptions.filterType,
-                    selectedValue
-                )
+                if (searchableDialogType == "genre") {
+                    catalogViewModel.updateGenre(currentCategory, selectedValue)
+                } else {
+                    catalogViewModel.updateCountry(currentCategory, selectedValue)
+                }
                 showSearchableDialog = false
             }
         )
     }
 }
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun <T : CatalogItem> CatalogList(
     items: List<T>,
@@ -489,6 +495,8 @@ private fun <T : CatalogItem> CatalogList(
     onShareItem: (CatalogItem) -> Unit,
     onResetFilters: () -> Unit
 ) {
+    var selectedItemForMenu by remember { mutableStateOf<CatalogItem?>(null) }
+
     // Infinite scroll detection
     val shouldLoadMore = remember {
         derivedStateOf {
@@ -551,12 +559,7 @@ private fun <T : CatalogItem> CatalogList(
                     textAlign = TextAlign.Center
                 )
                 Button(
-                    onClick = onResetFilters,
-                    modifier = Modifier.audiocinematecaAccessibility(
-                        label = "Restablecer filtros a valores por defecto",
-                        role = Role.Button,
-                        onClickAction = onResetFilters
-                    )
+                    onClick = onResetFilters
                 ) {
                     Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -581,6 +584,7 @@ private fun <T : CatalogItem> CatalogList(
                     isFavorite = isFavorite,
                     categoryKey = categoryKey,
                     onClick = { onItemClick(item.id) },
+                    onOptionsClick = { selectedItemForMenu = item },
                     onFavoriteToggle = { onFavoriteToggle(item, !isFavorite) },
                     onShareClick = { onShareItem(item) }
                 )
@@ -600,32 +604,122 @@ private fun <T : CatalogItem> CatalogList(
             }
         }
     }
+
+    selectedItemForMenu?.let { item ->
+        val isFav = favoriteIds.contains(item.id)
+        ModalBottomSheet(
+            onDismissRequest = { selectedItemForMenu = null }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(bottom = 4.dp))
+
+                ListItem(
+                    headlineContent = { Text("Ver detalles de la obra", fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier
+                        .clickable {
+                            selectedItemForMenu = null
+                            onItemClick(item.id)
+                        }
+                )
+
+                ListItem(
+                    headlineContent = { Text(if (isFav) "Quitar de favoritos" else "Guardar en favoritos", fontWeight = FontWeight.Medium) },
+                    leadingContent = {
+                        Icon(
+                            imageVector = if (isFav) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = null,
+                            tint = if (isFav) Color(0xFFE57373) else MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    modifier = Modifier
+                        .clickable {
+                            selectedItemForMenu = null
+                            onFavoriteToggle(item, isFav)
+                        }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Compartir obra", fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier
+                        .clickable {
+                            selectedItemForMenu = null
+                            onShareItem(item)
+                        }
+                )
+            }
+        }
+    }
 }
 
+private fun getDubbingText(rawIdioma: String): String {
+    val trimmed = rawIdioma.trim()
+    if (trimmed == "2") return "Doblaje Latino"
+    if (trimmed == "1") return "Doblaje Español de España"
+    val lower = rawIdioma.lowercase(Locale.ROOT)
+    if (lower.contains("latino") || lower.contains("latina")) return "Doblaje Latino"
+    if (lower.contains("españa") || lower.contains("castellano") || lower.contains("iberico")) return "Doblaje Español de España"
+    if (trimmed.isNotBlank()) return "Doblaje $trimmed"
+    return "Doblaje Latino"
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CatalogItemCard(
     item: CatalogItem,
     isFavorite: Boolean,
     categoryKey: String,
     onClick: () -> Unit,
+    onOptionsClick: () -> Unit,
     onFavoriteToggle: () -> Unit,
     onShareClick: () -> Unit
 ) {
-    val categoryBadgeText = remember(item, categoryKey) {
-        when {
-            item is Serie -> if (item.temporadas.isNotBlank() && item.temporadas != "0") "${item.temporadas} temp." else "Serie"
-            item is Movie -> "Película"
-            item is Documentary -> "Documental"
-            item is ShortFilm -> "Corto"
-            else -> ""
-        }
+    val context = LocalContext.current
+    val showAccessibilityHints = remember(context) {
+        SharedPreferencesManager(context).getBoolean("enable_accessibility_hints", true)
     }
 
-    val accessibilityDesc = remember(item, isFavorite) {
-        val favStatus = if (isFavorite) "En tus favoritos." else ""
-        val yearPart = if (item.anio.isNotBlank()) "Año ${item.anio}." else ""
-        val genrePart = if (item.genero.isNotBlank()) "Género ${item.genero}." else ""
-        "${item.title}. $yearPart $genrePart $favStatus".trim()
+    val titleText = remember(item.title) {
+        if (item.title.trim().endsWith(".")) item.title.trim() else "${item.title.trim()}."
+    }
+
+    val yearText = remember(item.anio) {
+        if (item.anio.isNotBlank()) "Año ${item.anio.trim()}." else ""
+    }
+
+    val dubbingText = remember(item.idioma) {
+        "${getDubbingText(item.idioma)}."
+    }
+
+    val accessibilityDescription = remember(item.title, item.anio, item.idioma, isFavorite, showAccessibilityHints) {
+        val cleanTitle = if (item.title.trim().endsWith(".")) item.title.trim() else "${item.title.trim()}."
+        val cleanYear = if (item.anio.isNotBlank()) "Año ${item.anio.trim()}." else ""
+        val cleanDubbing = "${getDubbingText(item.idioma)}."
+        val favStatus = if (isFavorite) "Guardada en favoritos." else ""
+        val mainText = listOf(cleanTitle, cleanYear, cleanDubbing, favStatus)
+            .filter { it.isNotBlank() }
+            .joinToString(" ")
+
+        buildInteractionDescription(
+            mainContent = mainText,
+            hintText = "Mantén presionado para opciones",
+            showHint = showAccessibilityHints
+        )
     }
 
     Card(
@@ -636,130 +730,49 @@ private fun CatalogItemCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .audiocinematecaAccessibility(
-                label = accessibilityDesc,
-                role = Role.Button,
-                onClickAction = onClick
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onOptionsClick
             )
+            .clearAndSetSemantics {
+                contentDescription = accessibilityDescription
+            }
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(14.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 8.dp)
-            ) {
+            Text(
+                text = titleText,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            if (yearText.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
+                    text = yearText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (item.anio.isNotBlank()) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Text(
-                                text = item.anio,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-
-                    if (categoryBadgeText.isNotBlank()) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer
-                        ) {
-                            Text(
-                                text = categoryBadgeText,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-
-                    if (item.pais.isNotBlank()) {
-                        Text(
-                            text = item.pais,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                if (item.genero.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = item.genero,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
 
-            // Action buttons: Share & Favorite
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(
-                    onClick = onShareClick,
-                    modifier = Modifier
-                        .size(38.dp)
-                        .audiocinematecaAccessibility(
-                            label = "Compartir ${item.title}",
-                            role = Role.Button,
-                            onClickAction = onShareClick
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+            Spacer(modifier = Modifier.height(2.dp))
 
-                IconButton(
-                    onClick = onFavoriteToggle,
-                    modifier = Modifier
-                        .size(38.dp)
-                        .audiocinematecaAccessibility(
-                            label = if (isFavorite) "Quitar ${item.title} de favoritos" else "Guardar ${item.title} en favoritos",
-                            role = Role.Button,
-                            onClickAction = onFavoriteToggle
-                        )
-                ) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = null,
-                        tint = if (isFavorite) Color(0xFFE57373) else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
+            Text(
+                text = dubbingText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -881,13 +894,12 @@ private fun SearchableCatalogFilterDialog(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable { onItemSelected(option) }
-                                    .padding(vertical = 12.dp, horizontal = 8.dp)
-                                    .audiocinematecaAccessibility(
-                                        label = option,
-                                        role = Role.RadioButton,
-                                        onClickAction = { onItemSelected(option) }
-                                    ),
+                                    .selectable(
+                                        selected = isSelected,
+                                        onClick = { onItemSelected(option) },
+                                        role = Role.RadioButton
+                                    )
+                                    .padding(vertical = 12.dp, horizontal = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(

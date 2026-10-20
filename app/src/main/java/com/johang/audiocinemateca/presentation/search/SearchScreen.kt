@@ -410,7 +410,17 @@ fun SearchResultCard(
         }
     }
 
-    val highlightedTitle = remember(item.title, query) {
+    val subtitleDetails = remember(item, typeLabel) {
+        listOfNotNull(
+            typeLabel,
+            item.anio.takeIf { it.isNotBlank() },
+            item.director.takeIf { it.isNotBlank() }?.let { "Dir: $it" }
+        ).joinToString(" • ")
+    }
+
+    val highlightColor = MaterialTheme.colorScheme.primary
+
+    val highlightedTitle = remember(item.title, query, highlightColor) {
         buildAnnotatedString {
             val text = item.title
             if (query.isBlank()) {
@@ -426,7 +436,7 @@ fun SearchResultCard(
                         if (index > startIndex) {
                             append(text.substring(startIndex, index))
                         }
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.Black)) {
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Black, color = highlightColor)) {
                             append(text.substring(index, index + query.length))
                         }
                         startIndex = index + query.length
@@ -440,15 +450,15 @@ fun SearchResultCard(
     }
 
     Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .audiocinematecaAccessibility(
-                label = "${item.title}. $typeLabel",
-                role = Role.Button
-            ),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                role = Role.Button,
+                onClickAction = onClick
+            )
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
@@ -459,12 +469,18 @@ fun SearchResultCard(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            SuggestionChip(
-                onClick = onClick,
-                label = { Text(text = typeLabel, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                modifier = Modifier.height(26.dp)
-            )
+
+            if (subtitleDetails.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = subtitleDetails,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
