@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -12,6 +14,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,39 +81,57 @@ fun SettingsSwitchItem(
     onCheckedChange: (Boolean) -> Unit,
     enabled: Boolean = true
 ) {
+    val stateText = if (checked) "Activado" else "Desactivado"
+    val fullDescription = remember(title, summary, stateText) {
+        if (summary.isNotBlank() && summary != title) {
+            "$title. $summary. $stateText."
+        } else {
+            "$title. $stateText."
+        }
+    }
+
     Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
-            .audiocinematecaAccessibility(
-                label = "$title. $summary. ${if (checked) "Activado" else "Desactivado"}",
-                role = Role.Switch,
-                onClickAction = if (enabled) { { onCheckedChange(!checked) } } else null
-            ),
-        color = androidx.compose.ui.graphics.Color.Transparent
+            .clearAndSetSemantics {
+                contentDescription = fullDescription
+                role = Role.Switch
+                stateDescription = stateText
+                onClick(label = if (checked) "Desactivar" else "Activar") {
+                    if (enabled) onCheckedChange(!checked)
+                    true
+                }
+            }
     ) {
         Row(
             modifier = Modifier
-                .padding(vertical = 16.dp)
+                .padding(vertical = 12.dp, horizontal = 4.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title, 
-                    fontSize = 17.sp, 
+                    fontSize = 16.sp, 
                     fontWeight = FontWeight.Medium,
                     color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                 )
-                Text(
-                    text = summary, 
-                    fontSize = 14.sp, 
-                    color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                )
+                if (summary.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = summary, 
+                        fontSize = 13.sp, 
+                        color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                    )
+                }
             }
+            Spacer(modifier = Modifier.width(12.dp))
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = null,
                 enabled = enabled
             )
         }
@@ -125,56 +150,78 @@ fun SettingsListItem(
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
+    val fullDescription = remember(title, summary) {
+        if (summary.isNotBlank() && summary != title) {
+            "$title. Opción seleccionada: $summary."
+        } else {
+            "$title."
+        }
+    }
+
     Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled) { showDialog = true }
-            .audiocinematecaAccessibility(
-                label = "$title. Actual: $summary",
-                role = Role.Button,
-                onClickAction = if (enabled) { { showDialog = true } } else null
-            ),
-        color = androidx.compose.ui.graphics.Color.Transparent
+            .clearAndSetSemantics {
+                contentDescription = fullDescription
+                role = Role.Button
+                onClick(label = "Cambiar opción") {
+                    if (enabled) showDialog = true
+                    true
+                }
+            }
     ) {
-        Column(modifier = Modifier.padding(vertical = 16.dp)) {
+        Column(modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp)) {
             Text(
                 text = title, 
-                fontSize = 17.sp, 
+                fontSize = 16.sp, 
                 fontWeight = FontWeight.Medium,
                 color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
             )
-            Text(
-                text = summary, 
-                fontSize = 14.sp, 
-                color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-            )
+            if (summary.isNotBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = summary, 
+                    fontSize = 13.sp, 
+                    color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                )
+            }
         }
     }
 
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
-            title = { Text(title) },
+            title = { Text(title, fontWeight = FontWeight.Bold) },
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     entries.forEachIndexed { index, entry ->
+                        val isSelected = currentValue == entryValues[index]
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    onValueChange(entryValues[index])
-                                    showDialog = false
-                                }
-                                .padding(16.dp),
+                                .selectable(
+                                    selected = isSelected,
+                                    onClick = {
+                                        onValueChange(entryValues[index])
+                                        showDialog = false
+                                    },
+                                    role = Role.RadioButton
+                                )
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             RadioButton(
-                                selected = currentValue == entryValues[index],
+                                selected = isSelected,
                                 onClick = null
                             )
+                            Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = entry,
-                                modifier = Modifier.padding(start = 16.dp)
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                         }
                     }
@@ -194,29 +241,44 @@ fun SettingsClickItem(
     onClick: () -> Unit,
     enabled: Boolean = true
 ) {
+    val fullDescription = remember(title, summary) {
+        if (summary.isNotBlank() && summary != title) {
+            "$title. $summary."
+        } else {
+            "$title."
+        }
+    }
+
     Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled, onClick = onClick)
-            .audiocinematecaAccessibility(
-                label = "$title. $summary",
-                role = Role.Button,
-                onClickAction = if (enabled) onClick else null
-            ),
-        color = androidx.compose.ui.graphics.Color.Transparent
+            .clearAndSetSemantics {
+                contentDescription = fullDescription
+                role = Role.Button
+                onClick(label = title) {
+                    if (enabled) onClick()
+                    true
+                }
+            }
     ) {
-        Column(modifier = Modifier.padding(vertical = 16.dp)) {
+        Column(modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp)) {
             Text(
                 text = title, 
-                fontSize = 17.sp, 
+                fontSize = 16.sp, 
                 fontWeight = FontWeight.Medium,
                 color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
             )
-            Text(
-                text = summary, 
-                fontSize = 14.sp, 
-                color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-            )
+            if (summary.isNotBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = summary, 
+                    fontSize = 13.sp, 
+                    color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                )
+            }
         }
     }
 }
@@ -234,20 +296,35 @@ fun SettingsEditTextItem(
     var tempValue by remember(showDialog) { mutableStateOf(value) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
+    val fullDescription = remember(title, summary) {
+        if (summary.isNotBlank() && summary != title) {
+            "$title. $summary."
+        } else {
+            "$title."
+        }
+    }
+
     Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled) { showDialog = true }
-            .audiocinematecaAccessibility(
-                label = "$title. $summary",
-                role = Role.Button,
-                onClickAction = if (enabled) { { showDialog = true } } else null
-            ),
-        color = androidx.compose.ui.graphics.Color.Transparent
+            .clearAndSetSemantics {
+                contentDescription = fullDescription
+                role = Role.Button
+                onClick(label = "Editar $title") {
+                    if (enabled) showDialog = true
+                    true
+                }
+            }
     ) {
-        Column(modifier = Modifier.padding(vertical = 16.dp)) {
-            Text(text = title, fontSize = 17.sp, fontWeight = FontWeight.Medium)
-            Text(text = summary, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp)) {
+            Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            if (summary.isNotBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(text = summary, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 
@@ -285,7 +362,7 @@ fun SettingsEditTextItem(
                             focusedBorderColor = androidx.compose.ui.graphics.Color(0xFF6366F1),
                             unfocusedBorderColor = androidx.compose.ui.graphics.Color(0xFF334155)
                         ),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -310,7 +387,7 @@ fun SettingsEditTextItem(
                                 containerColor = androidx.compose.ui.graphics.Color(0xFF6366F1),
                                 contentColor = androidx.compose.ui.graphics.Color.White
                             ),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                             modifier = Modifier
                                 .weight(1f)
@@ -333,7 +410,7 @@ fun SettingsEditTextItem(
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     contentColor = androidx.compose.ui.graphics.Color(0xFFF87171)
                                 ),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                                shape = RoundedCornerShape(10.dp),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                                 modifier = Modifier.audiocinematecaAccessibility(
                                     label = "Borrar clave ingresada",
@@ -357,7 +434,7 @@ fun SettingsEditTextItem(
                         containerColor = androidx.compose.ui.graphics.Color(0xFF22C55E),
                         contentColor = androidx.compose.ui.graphics.Color.White
                     ),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ) { Text("Guardar", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
@@ -381,8 +458,8 @@ fun SettingsSliderItem(
     steps: Int = 19,
     enabled: Boolean = true
 ) {
-    Column(modifier = Modifier.padding(vertical = 16.dp)) {
-        Text(text = title, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+    Column(modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp)) {
+        Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.Medium)
         Slider(
             value = value,
             onValueChange = onValueChange,

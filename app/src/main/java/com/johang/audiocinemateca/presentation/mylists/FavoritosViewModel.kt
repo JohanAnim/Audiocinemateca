@@ -66,6 +66,14 @@ class FavoritosViewModel @Inject constructor(
         }
     }
 
+    fun removeAllFavorites() {
+        viewModelScope.launch {
+            favorites.value.forEach { favorite ->
+                removeFavoriteUseCase(favorite.contentId)
+            }
+        }
+    }
+
     fun playFavorite(favorite: FavoriteEntity) {
         viewModelScope.launch {
             try {

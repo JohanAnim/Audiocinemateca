@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
@@ -86,6 +87,8 @@ fun MyListsScreen(
     val currentFilter by downloadsViewModel.currentFilter.collectAsState()
 
     var showClearHistoryDialog by remember { mutableStateOf(false) }
+    var showClearFavoritesDialog by remember { mutableStateOf(false) }
+    var showTabMenu by remember { mutableStateOf(false) }
     var historyItemToDelete by remember { mutableStateOf<PlaybackProgressEntity?>(null) }
     var historyItemForOptionsMenu by remember { mutableStateOf<HistoryListItem.Item?>(null) }
     var favoriteToDelete by remember { mutableStateOf<FavoriteEntity?>(null) }
@@ -105,46 +108,89 @@ fun MyListsScreen(
                     )
                 },
                 actions = {
-                    when (selectedTabIndex) {
-                        0 -> {
-                            if (historyItems.any { it is HistoryListItem.Item }) {
-                                IconButton(
-                                    onClick = { showClearHistoryDialog = true },
-                                    modifier = Modifier.audiocinematecaAccessibility(
-                                        label = "Olvidar todo el historial",
-                                        role = Role.Button
-                                    )
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.DeleteSweep,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error
+                    Box {
+                        IconButton(
+                            onClick = { showTabMenu = true },
+                            modifier = Modifier.audiocinematecaAccessibility(
+                                label = "Más opciones",
+                                role = Role.Button,
+                                onClickAction = { showTabMenu = true }
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = null
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showTabMenu,
+                            onDismissRequest = { showTabMenu = false }
+                        ) {
+                            when (selectedTabIndex) {
+                                0 -> {
+                                    DropdownMenuItem(
+                                        text = { Text("Vaciar todo el historial") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.DeleteSweep,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error
+                                            )
+                                        },
+                                        onClick = {
+                                            showTabMenu = false
+                                            showClearHistoryDialog = true
+                                        },
+                                        enabled = historyItems.any { it is HistoryListItem.Item }
                                     )
                                 }
-                            }
-                        }
-                        2 -> {
-                            IconButton(
-                                onClick = { showFilterDialog = true },
-                                modifier = Modifier.audiocinematecaAccessibility(
-                                    label = "Filtrar descargas. Filtro actual: ${currentFilter.displayName}",
-                                    role = Role.Button
-                                )
-                            ) {
-                                Icon(imageVector = Icons.Default.FilterList, contentDescription = null)
-                            }
-                            if (totalSizeMb > 0) {
-                                IconButton(
-                                    onClick = { showDeleteAllDownloadsDialog = true },
-                                    modifier = Modifier.audiocinematecaAccessibility(
-                                        label = "Eliminar todas las descargas",
-                                        role = Role.Button
+                                1 -> {
+                                    DropdownMenuItem(
+                                        text = { Text("Vaciar todos los favoritos") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.DeleteOutline,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error
+                                            )
+                                        },
+                                        onClick = {
+                                            showTabMenu = false
+                                            showClearFavoritesDialog = true
+                                        },
+                                        enabled = favorites.isNotEmpty()
                                     )
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.DeleteOutline,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error
+                                }
+                                2 -> {
+                                    DropdownMenuItem(
+                                        text = { Text("Filtrar descargas") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.FilterList,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        },
+                                        onClick = {
+                                            showTabMenu = false
+                                            showFilterDialog = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Eliminar todas las descargas") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.DeleteOutline,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error
+                                            )
+                                        },
+                                        onClick = {
+                                            showTabMenu = false
+                                            showDeleteAllDownloadsDialog = true
+                                        },
+                                        enabled = totalSizeMb > 0
                                     )
                                 }
                             }
@@ -307,6 +353,29 @@ fun MyListsScreen(
         )
     }
 
+    if (showClearFavoritesDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearFavoritesDialog = false },
+            title = { Text(text = "Vaciar todos los favoritos") },
+            text = { Text(text = "¿Estás seguro de que deseas eliminar todas las obras guardadas en tus favoritos?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        favoritosViewModel.removeAllFavorites()
+                        showClearFavoritesDialog = false
+                    }
+                ) {
+                    Text(text = "Eliminar todos", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearFavoritesDialog = false }) {
+                    Text(text = "Cancelar")
+                }
+            }
+        )
+    }
+
     // Menú de opciones de favorito (abierto por mantener presionado o acciones de accesibilidad)
     favoriteForOptionsMenu?.let { fav ->
         ModalBottomSheet(
@@ -344,10 +413,6 @@ fun MyListsScreen(
                             favoriteForOptionsMenu = null
                             onNavigateToContentDetail(fav.contentId, typeForNav)
                         }
-                        .audiocinematecaAccessibility(
-                            label = "Ver detalles de la obra",
-                            role = Role.Button
-                        )
                 )
 
                 ListItem(
@@ -358,10 +423,6 @@ fun MyListsScreen(
                             favoriteForOptionsMenu = null
                             favoritosViewModel.playFavorite(fav)
                         }
-                        .audiocinematecaAccessibility(
-                            label = "Reproducir ahora",
-                            role = Role.Button
-                        )
                 )
 
                 ListItem(
@@ -372,10 +433,6 @@ fun MyListsScreen(
                             favoriteForOptionsMenu = null
                             favoriteToDelete = fav
                         }
-                        .audiocinematecaAccessibility(
-                            label = "Eliminar de favoritos",
-                            role = Role.Button
-                        )
                 )
             }
         }
@@ -424,10 +481,6 @@ fun MyListsScreen(
                                 onNavigateToPlayer(item, progress.partIndex, progress.episodeIndex, progress.currentPositionMs)
                             }
                         }
-                        .audiocinematecaAccessibility(
-                            label = "Continuar escuchando",
-                            role = Role.Button
-                        )
                 )
 
                 ListItem(
@@ -438,10 +491,6 @@ fun MyListsScreen(
                             historyItemForOptionsMenu = null
                             onNavigateToContentDetail(progress.contentId, typeForNav)
                         }
-                        .audiocinematecaAccessibility(
-                            label = "Ver detalles de la obra",
-                            role = Role.Button
-                        )
                 )
 
                 ListItem(
@@ -452,10 +501,6 @@ fun MyListsScreen(
                             historyItemForOptionsMenu = null
                             historyItemToDelete = progress
                         }
-                        .audiocinematecaAccessibility(
-                            label = "Olvidar del historial",
-                            role = Role.Button
-                        )
                 )
             }
         }
@@ -517,34 +562,35 @@ fun MyListsScreen(
         )
         AlertDialog(
             onDismissRequest = { showFilterDialog = false },
-            title = { Text(text = "Filtrar descargas") },
+            title = { Text(text = "Filtrar descargas", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     filterOptions.forEach { filter ->
+                        val isSelected = currentFilter == filter
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    downloadsViewModel.setFilter(filter)
-                                    showFilterDialog = false
-                                }
-                                .padding(vertical = 8.dp)
-                                .audiocinematecaAccessibility(
-                                    label = "${filter.displayName}${if (currentFilter == filter) ", seleccionado" else ""}",
-                                    role = Role.RadioButton,
-                                    onClickAction = {
+                                .selectable(
+                                    selected = isSelected,
+                                    onClick = {
                                         downloadsViewModel.setFilter(filter)
                                         showFilterDialog = false
-                                    }
+                                    },
+                                    role = Role.RadioButton
                                 )
+                                .padding(vertical = 12.dp, horizontal = 8.dp)
                         ) {
                             RadioButton(
-                                selected = currentFilter == filter,
+                                selected = isSelected,
                                 onClick = null
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = filter.displayName, fontSize = 16.sp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = filter.displayName,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
                         }
                     }
                 }
