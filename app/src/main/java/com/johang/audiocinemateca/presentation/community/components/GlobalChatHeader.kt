@@ -13,6 +13,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,18 +64,21 @@ fun GlobalChatHeader(
             }
 
             val countText = if (onlineCount == 1) "1 persona conectada" else "$onlineCount personas conectadas"
-            val accessibilityLabel = "Chat global. $countText. Toca dos veces para ver la lista de usuarios conectados."
+            val accessibilityLabel = "Chat global. $countText."
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .audiocinematecaAccessibility(
-                        label = accessibilityLabel,
-                        role = Role.Button,
-                        onClickAction = onHeaderClick
-                    )
+                    .clickable(onClick = onHeaderClick)
+                    .clearAndSetSemantics {
+                        contentDescription = accessibilityLabel
+                        onClick(label = "Ver lista de personas conectadas") {
+                            onHeaderClick()
+                            true
+                        }
+                    }
             ) {
                 Text(
                     text = "Chat global",

@@ -13,13 +13,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.johang.audiocinemateca.data.model.OnlineUser
-import com.johang.audiocinemateca.util.audiocinematecaAccessibility
 
 @Composable
 fun ConnectedUsersDialog(
@@ -105,7 +108,7 @@ fun ConnectedUsersDialog(
                             .fillMaxWidth()
                             .heightIn(max = 320.dp)
                     ) {
-                        itemsIndexed(fullUsersList, key = { index, user -> "connected_${index}_${user.userId}" }) { index, user ->
+                        itemsIndexed(fullUsersList, key = { index, user -> "connected_${index}_${user.userId}" }) { _, user ->
                             val displayName = when {
                                 user.displayName.isNotBlank() -> user.displayName
                                 user.email.isNotBlank() -> user.email.substringBefore("@")
@@ -119,17 +122,24 @@ fun ConnectedUsersDialog(
                                 else -> "Escuchando en Android"
                             }
 
+                            val userDescription = remember(displayName, deviceSubtitle) {
+                                "Usuario: $displayName. $deviceSubtitle."
+                            }
+
                             Surface(
                                 color = Color(0xFF0F172A),
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { selectedUserForAction = user.copy(displayName = displayName) }
-                                    .audiocinematecaAccessibility(
-                                        label = "Usuario: $displayName. $deviceSubtitle. Toca para ver opciones de interacción.",
-                                        role = Role.Button,
-                                        onClickAction = { selectedUserForAction = user.copy(displayName = displayName) }
-                                    )
+                                    .clearAndSetSemantics {
+                                        contentDescription = userDescription
+                                        role = Role.Button
+                                        onClick(label = "Opciones de $displayName") {
+                                            selectedUserForAction = user.copy(displayName = displayName)
+                                            true
+                                        }
+                                    }
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
