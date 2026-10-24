@@ -1,24 +1,31 @@
 package com.johang.audiocinemateca.presentation.contentdetail
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity
 import com.johang.audiocinemateca.data.model.Episode
 import com.johang.audiocinemateca.data.model.Movie
@@ -29,6 +36,7 @@ import com.johang.audiocinemateca.domain.model.DownloadProgressInfo
 import com.johang.audiocinemateca.presentation.catalog.DetailToolbar
 import com.johang.audiocinemateca.util.TimeFormatUtils
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
+import com.johang.audiocinemateca.util.buildInteractionDescription
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +67,8 @@ fun ContentDetailScreen(
 ) {
     var showRatingDialog by remember { mutableStateOf(false) }
     var selectedMetadataDetail by remember { mutableStateOf<MetadataItem?>(null) }
+    var showFullTechnicalSheet by remember { mutableStateOf(false) }
+    var showSeasonDropdown by remember { mutableStateOf(false) }
 
     if (showRatingDialog) {
         RatingDialog(
@@ -134,7 +144,12 @@ fun ContentDetailScreen(
             val metadataList = remember(item) {
                 val list = mutableListOf<MetadataItem>()
                 if (item.anio.isNotBlank()) list.add(MetadataItem("Año", item.anio))
-                if (item.genero.isNotBlank()) list.add(MetadataItem("Género", item.genero))
+
+                val formattedGenres = if (item.genero.isNotBlank()) {
+                    item.genero.split(",", "/", "|").map { it.trim() }.filter { it.isNotBlank() }.joinToString(" • ")
+                } else ""
+                if (formattedGenres.isNotBlank()) list.add(MetadataItem("Género", formattedGenres))
+
                 if (item.pais.isNotBlank()) list.add(MetadataItem("País", item.pais))
 
                 val durationMin = item.duracion.toIntOrNull() ?: 0
@@ -192,7 +207,94 @@ fun ContentDetailScreen(
                             color = MaterialTheme.colorScheme.onSurface
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Badges principales estilo Netflix con FlowRow responsivo
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            if (item.anio.isNotBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.padding(horizontal = 3.dp)
+                                ) {
+                                    Text(
+                                        text = item.anio,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            val dubbingLabel = remember(item.idioma) {
+                                when (item.idioma.trim()) {
+                                    "1" -> "Doblaje Español de España"
+                                    "2" -> "Doblaje Latino"
+                                    else -> if (item.idioma.isNotBlank()) "Doblaje ${item.idioma}" else "Doblaje Latino"
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                modifier = Modifier.padding(horizontal = 3.dp)
+                            ) {
+                                Text(
+                                    text = dubbingLabel,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            if (item.narracion.isNotBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                                    modifier = Modifier.padding(horizontal = 3.dp)
+                                ) {
+                                    Text(
+                                        text = "Narración: ${item.narracion}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            val durationMin = item.duracion.toIntOrNull() ?: 0
+                            val durationLabel = when {
+                                item is Serie -> if (item.capitulos.isNotEmpty()) "${item.capitulos.keys.size} temp." else "Serie"
+                                durationMin > 0 -> TimeFormatUtils.formatDuration(durationMin)
+                                else -> ""
+                            }
+                            if (durationLabel.isNotBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 3.dp)
+                                ) {
+                                    Text(
+                                        text = durationLabel,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         // Rating row
                         val ratingText = if (ratingStats.totalRatings > 0) {
@@ -330,11 +432,14 @@ fun ContentDetailScreen(
                                 onClick = { onPlayClick(playActionPart, playActionEpisode) },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .audiocinematecaAccessibility(
-                                        label = playButtonLabel,
-                                        role = Role.Button,
-                                        onClickAction = { onPlayClick(playActionPart, playActionEpisode) }
-                                    ),
+                                    .clearAndSetSemantics {
+                                        contentDescription = playButtonLabel
+                                        role = Role.Button
+                                        onClick(label = playButtonLabel) {
+                                            onPlayClick(playActionPart, playActionEpisode)
+                                            true
+                                        }
+                                    },
                                 contentPadding = PaddingValues(vertical = 12.dp)
                             ) {
                                 Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null)
@@ -348,18 +453,29 @@ fun ContentDetailScreen(
                             }
 
                             if (item !is Serie) {
+                                val downloadButtonText = when (downloadState) {
+                                    is DownloadState.Downloading -> "Cancelar"
+                                    is DownloadState.Downloaded -> "Eliminar"
+                                    is DownloadState.Failed -> "Reintentar"
+                                    else -> "Descargar"
+                                }
+                                val downloadAccessibilityLabel = when (downloadState) {
+                                    is DownloadState.Downloading -> "Cancelar descarga de ${item.title}"
+                                    is DownloadState.Downloaded -> "Eliminar descarga de ${item.title}"
+                                    is DownloadState.Failed -> "Reintentar descarga de ${item.title}"
+                                    else -> "Descargar ${item.title}"
+                                }
+
                                 OutlinedButton(
                                     onClick = onDownloadClick,
-                                    modifier = Modifier.audiocinematecaAccessibility(
-                                        label = when (downloadState) {
-                                            is DownloadState.Downloading -> "Cancelar descarga"
-                                            is DownloadState.Downloaded -> "Eliminar de descargas"
-                                            is DownloadState.Failed -> "Reintentar descarga"
-                                            else -> "Descargar contenido"
-                                        },
-                                        role = Role.Button,
-                                        onClickAction = onDownloadClick
-                                    ),
+                                    modifier = Modifier.clearAndSetSemantics {
+                                        contentDescription = downloadAccessibilityLabel
+                                        role = Role.Button
+                                        onClick(label = downloadAccessibilityLabel) {
+                                            onDownloadClick()
+                                            true
+                                        }
+                                    },
                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)
                                 ) {
                                     Icon(
@@ -371,14 +487,7 @@ fun ContentDetailScreen(
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = when (downloadState) {
-                                            is DownloadState.Downloading -> "Cancelar"
-                                            is DownloadState.Downloaded -> "Eliminar"
-                                            is DownloadState.Failed -> "Reintentar"
-                                            else -> "Descargar"
-                                        }
-                                    )
+                                    Text(text = downloadButtonText)
                                 }
                             }
                         }
@@ -417,7 +526,7 @@ fun ContentDetailScreen(
                     }
                 }
 
-                // Sinopsis Section
+                // Sinopsis Section estilo Netflix (Clic directo para lectura TTS)
                 item {
                     Card(
                         shape = RoundedCornerShape(16.dp),
@@ -425,20 +534,61 @@ fun ContentDetailScreen(
                             containerColor = MaterialTheme.colorScheme.surface
                         ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onTtsToggle)
+                            .clearAndSetSemantics {
+                                val ttsHint = if (isTtsSpeaking) "Toca para detener la lectura por voz" else "Toca para escuchar la sinopsis con síntesis de voz"
+                                contentDescription = "Sinopsis: ${item.sinopsis.ifBlank { "Sin sinopsis disponible." }}. $ttsHint."
+                                role = Role.Button
+                                onClick(label = if (isTtsSpeaking) "Detener lectura TTS" else "Escuchar sinopsis") {
+                                    onTtsToggle()
+                                    true
+                                }
+                            }
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = "Sinopsis",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Sinopsis",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isTtsSpeaking) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isTtsSpeaking) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                            contentDescription = null,
+                                            tint = if (isTtsSpeaking) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = if (isTtsSpeaking) "Leyendo..." else "Toca para oír",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isTtsSpeaking) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
 
                             Text(
                                 text = item.sinopsis.ifBlank { "Sin sinopsis disponible." },
@@ -446,89 +596,69 @@ fun ContentDetailScreen(
                                 color = MaterialTheme.colorScheme.onSurface,
                                 lineHeight = 24.sp
                             )
-
-                            if (item.sinopsis.isNotBlank()) {
-                                OutlinedButton(
-                                    onClick = onTtsToggle,
-                                    modifier = Modifier.audiocinematecaAccessibility(
-                                        label = if (isTtsSpeaking) "Detener lectura de sinopsis con síntesis de voz" else "Leer sinopsis con síntesis de voz TTS",
-                                        role = Role.Button,
-                                        onClickAction = onTtsToggle
-                                    )
-                                ) {
-                                    Icon(
-                                        imageVector = if (isTtsSpeaking) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(if (isTtsSpeaking) "Detener lectura TTS" else "Leer sinopsis con TTS")
-                                }
-                            }
                         }
                     }
                 }
 
-                // Technical / Metadata Details (Cuadrícula de 4 columnas por fila)
-                item {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                // Resumen de Elenco y Creadores estilo Netflix
+                if (item.reparto.isNotBlank() || item.director.isNotBlank() || item.guion.isNotBlank()) {
+                    item {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                                .padding(horizontal = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Text(
-                                text = "Ficha Técnica y Artística",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-
-                            chunkedMetadata.forEach { rowItems ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    rowItems.forEach { meta ->
-                                        MetadataGridCell(
-                                            label = meta.label,
-                                            value = meta.value,
-                                            onClick = { selectedMetadataDetail = meta },
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                    }
-                                    repeat(4 - rowItems.size) {
-                                        Spacer(modifier = Modifier.weight(1f))
-                                    }
+                            if (item.reparto.isNotBlank()) {
+                                Row(modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        text = "Protagonistas: ",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.outline
+                                    )
+                                    Text(
+                                        text = item.reparto,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                             }
 
-                            if (item.filmaffinity.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(4.dp))
-                                OutlinedButton(
-                                    onClick = { onOpenFilmAffinity(item.filmaffinity) },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clearAndSetSemantics {
-                                            contentDescription = "Ver ficha en FilmAffinity"
-                                            onClick(label = "Abrir ficha de FilmAffinity en el navegador") {
-                                                onOpenFilmAffinity(item.filmaffinity)
-                                                true
-                                            }
-                                        }
-                                ) {
-                                    Icon(imageVector = Icons.Default.OpenInBrowser, contentDescription = null)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Ver ficha en FilmAffinity")
+                            val creatorLabel = remember(item) {
+                                if (item.director.isNotBlank()) "Creado por: " else if (item.guion.isNotBlank()) "Guion: " else ""
+                            }
+                            val creatorValue = remember(item) {
+                                if (item.director.isNotBlank()) item.director else item.guion
+                            }
+
+                            if (creatorLabel.isNotBlank()) {
+                                Row(modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        text = creatorLabel,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.outline
+                                    )
+                                    Text(
+                                        text = creatorValue,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
+                            }
+
+                            TextButton(
+                                onClick = { showFullTechnicalSheet = true },
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Más detalles e información", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -603,29 +733,103 @@ fun ContentDetailScreen(
                                 color = MaterialTheme.colorScheme.primary
                             )
 
-                            // Season selector chips/tabs
+                            // Selector de temporadas desplegable (Lista Desplegable)
                             if (seasons.size > 1) {
-                                ScrollableTabRow(
-                                    selectedTabIndex = selectedSeasonIndex.coerceIn(0, (seasons.size - 1).coerceAtLeast(0)),
-                                    edgePadding = 0.dp,
-                                    containerColor = MaterialTheme.colorScheme.surface
-                                ) {
-                                    seasons.forEachIndexed { index, seasonKey ->
-                                        val isSelected = selectedSeasonIndex == index
-                                        Tab(
-                                            selected = isSelected,
-                                            onClick = { onSeasonSelect(index) },
-                                            text = { Text("Temporada ${index + 1}") },
-                                            modifier = Modifier.clearAndSetSemantics {
-                                                role = Role.Tab
-                                                selected = isSelected
-                                                contentDescription = "Temporada ${index + 1}, ${index + 1} de ${seasons.size}"
-                                                onClick {
-                                                    onSeasonSelect(index)
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { showSeasonDropdown = true }
+                                            .clearAndSetSemantics {
+                                                role = Role.DropdownList
+                                                stateDescription = "${selectedSeasonIndex + 1} de ${seasons.size}"
+                                                contentDescription = "Temporada ${selectedSeasonIndex + 1}"
+                                                onClick(label = "Cambiar de temporada") {
+                                                    showSeasonDropdown = true
                                                     true
                                                 }
                                             }
-                                        )
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column {
+                                                Text(
+                                                    text = "Temporada ${selectedSeasonIndex + 1}",
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                                Text(
+                                                    text = "${episodes.size} episodios disponibles",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    text = "Cambiar",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Icon(
+                                                    imageVector = Icons.Default.ArrowDropDown,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    DropdownMenu(
+                                        expanded = showSeasonDropdown,
+                                        onDismissRequest = { showSeasonDropdown = false },
+                                        modifier = Modifier.fillMaxWidth(0.9f)
+                                    ) {
+                                        seasons.forEachIndexed { index, seasonKey ->
+                                            val seasonEpisodes = item.capitulos[seasonKey] ?: emptyList()
+                                            val isSelected = selectedSeasonIndex == index
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text(
+                                                            text = "Temporada ${index + 1}",
+                                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                        Text(
+                                                            text = "${seasonEpisodes.size} eps",
+                                                            fontSize = 12.sp,
+                                                            color = MaterialTheme.colorScheme.outline
+                                                        )
+                                                    }
+                                                },
+                                                leadingIcon = {
+                                                    RadioButton(
+                                                        selected = isSelected,
+                                                        onClick = null
+                                                    )
+                                                },
+                                                onClick = {
+                                                    onSeasonSelect(index)
+                                                    showSeasonDropdown = false
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -716,6 +920,101 @@ fun ContentDetailScreen(
                             onPlay = { onPlayClick(selectedSeasonIndex, index) },
                             onDownloadAction = { onEpisodeDownloadClick(selectedSeasonIndex, index) }
                         )
+                    }
+                }
+            }
+
+            if (showFullTechnicalSheet) {
+                ModalBottomSheet(
+                    onDismissRequest = { showFullTechnicalSheet = false }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 24.dp)
+                            .navigationBarsPadding()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Información del título",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
+
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                        )
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        metadataList.forEach { meta ->
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clearAndSetSemantics {
+                                        contentDescription = "${meta.label}: ${meta.value}."
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = meta.label,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.weight(0.4f)
+                                    )
+                                    Text(
+                                        text = meta.value,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(0.6f),
+                                        textAlign = TextAlign.End
+                                    )
+                                }
+                            }
+                        }
+
+                        if (item.filmaffinity.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    showFullTechnicalSheet = false
+                                    onOpenFilmAffinity(item.filmaffinity)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clearAndSetSemantics {
+                                        contentDescription = "Abrir ficha de ${item.title} en FilmAffinity"
+                                        role = Role.Button
+                                        onClick(label = "Ver ficha en FilmAffinity") {
+                                            showFullTechnicalSheet = false
+                                            onOpenFilmAffinity(item.filmaffinity)
+                                            true
+                                        }
+                                    }
+                            ) {
+                                Icon(imageVector = Icons.Default.OpenInBrowser, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Ver en FilmAffinity", fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }

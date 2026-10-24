@@ -140,7 +140,10 @@ fun CatalogScreen(
             PrimaryTabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
+                contentColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.semantics {
+                    collectionInfo = CollectionInfo(rowCount = 1, columnCount = tabs.size)
+                }
             ) {
                 tabs.forEachIndexed { index, title ->
                     val isSelected = selectedTabIndex == index
@@ -158,7 +161,14 @@ fun CatalogScreen(
                         modifier = Modifier.clearAndSetSemantics {
                             role = Role.Tab
                             selected = isSelected
-                            contentDescription = "$title, ${index + 1} de ${tabs.size}"
+                            stateDescription = "${index + 1} de ${tabs.size}"
+                            collectionItemInfo = CollectionItemInfo(
+                                rowIndex = 0,
+                                rowSpan = 1,
+                                columnIndex = index,
+                                columnSpan = 1
+                            )
+                            contentDescription = title
                             onClick {
                                 selectedTabIndex = index
                                 true

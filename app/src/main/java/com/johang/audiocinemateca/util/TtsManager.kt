@@ -156,6 +156,14 @@ class TtsManager @Inject constructor(
             return
         }
         
+        if (interrupt) {
+            try {
+                tts?.stop()
+            } catch (e: Exception) {
+                Log.e("TtsManager", "Error stopping TTS before speak: ${e.message}")
+            }
+        }
+
         val cleanText = text.replace("[[", "").replace("]]", "")
         val queueMode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         

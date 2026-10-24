@@ -40,7 +40,7 @@ class SearchViewModel @Inject constructor(
 
     @OptIn(FlowPreview::class)
     val searchState: StateFlow<SearchState> = _searchQuery
-        .debounce(300L)
+        .debounce(100L)
         .distinctUntilChanged()
         .flatMapLatest { query ->
             if (query.isBlank()) {

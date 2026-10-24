@@ -212,7 +212,10 @@ fun MyListsScreen(
             PrimaryTabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary
+                contentColor = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.semantics {
+                    collectionInfo = CollectionInfo(rowCount = 1, columnCount = tabTitles.size)
+                }
             ) {
                 tabTitles.forEachIndexed { index, title ->
                     val isSelected = selectedTabIndex == index
@@ -224,7 +227,14 @@ fun MyListsScreen(
                         modifier = Modifier.clearAndSetSemantics {
                             role = Role.Tab
                             selected = isSelected
-                            contentDescription = "$title, ${index + 1} de ${tabTitles.size}"
+                            stateDescription = "${index + 1} de ${tabTitles.size}"
+                            collectionItemInfo = CollectionItemInfo(
+                                rowIndex = 0,
+                                rowSpan = 1,
+                                columnIndex = index,
+                                columnSpan = 1
+                            )
+                            contentDescription = title
                             onClick {
                                 selectedTabIndex = index
                                 true
@@ -654,7 +664,8 @@ fun HistoryTabContent(
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
                                 .clearAndSetSemantics {
                                     heading()
-                                    contentDescription = "${listItem.date}, Encabezado"
+                                    stateDescription = "Encabezado"
+                                    contentDescription = listItem.date
                                 }
                         )
                     }

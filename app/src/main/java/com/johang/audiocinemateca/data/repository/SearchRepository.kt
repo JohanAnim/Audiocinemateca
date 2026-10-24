@@ -27,6 +27,7 @@ class SearchRepository @Inject constructor(
     )
 
     private fun normalizeText(text: String): String {
+        if (text.isBlank()) return ""
         val temp = Normalizer.normalize(text, Normalizer.Form.NFD)
         val regex = "\\p{InCombiningDiacriticalMarks}+".toRegex()
         return regex.replace(temp, "").lowercase(Locale.ROOT).trim()
@@ -39,36 +40,27 @@ class SearchRepository @Inject constructor(
         }
 
         val queryNorm = normalizeText(rawQuery)
+        if (queryNorm.isEmpty()) return@withContext emptyList()
+
         val allWords = queryNorm.split("\\s+|[\\p{Punct}]".toRegex()).filter { it.isNotBlank() }
         val meaningfulWords = allWords.filter { it.length > 1 && !stopWords.contains(it) }
         val searchWords = if (meaningfulWords.isNotEmpty()) meaningfulWords else allWords
 
+        val catalog = catalogRepository.getCatalog() ?: return@withContext emptyList()
         val allItems = mutableListOf<CatalogItem>()
-        catalogRepository.getCatalog()?.let {
-            it.movies?.let { movies -> allItems.addAll(movies) }
-            it.series?.let { series -> allItems.addAll(series) }
-            it.documentaries?.let { docs -> allItems.addAll(docs) }
-            it.shortFilms?.let { shorts -> allItems.addAll(shorts) }
-        }
+        catalog.movies?.let { allItems.addAll(it) }
+        catalog.series?.let { allItems.addAll(it) }
+        catalog.documentaries?.let { allItems.addAll(it) }
+        catalog.shortFilms?.let { allItems.addAll(it) }
 
         val scoredItems = allItems.mapNotNull { item ->
             val titleNorm = normalizeText(item.title)
             val titleWords = titleNorm.split("\\s+|[\\p{Punct}]".toRegex()).filter { it.isNotBlank() }
 
-            val directorNorm = normalizeText(item.director)
-            val repartoNorm = normalizeText(item.reparto)
-            val musicaNorm = normalizeText(item.musica)
-            val guionNorm = normalizeText(item.guion)
-            val sinopsisNorm = normalizeText(item.sinopsis)
-            val generoNorm = normalizeText(item.genero)
-            val narracionNorm = normalizeText(item.narracion)
-            val paisNorm = normalizeText(item.pais)
-            val anioNorm = item.anio.trim()
-
             var score = 0
             var matchReason: String? = null
 
-            // 1. EVALUACIÓN DE TÍTULO (Lógica estricta de límites de palabra vs subcadena)
+            // 1. TÍTULO
             if (titleNorm == queryNorm) {
                 score += 3000
                 matchReason = "Título exacto"
@@ -83,11 +75,7 @@ class SearchRepository @Inject constructor(
                 matchReason = "Comienza con '$rawQuery'"
             } else if (titleNorm.contains(queryNorm)) {
                 val isInsideLongerWord = titleWords.any { it.contains(queryNorm) && !it.startsWith(queryNorm) }
-                if (isInsideLongerWord) {
-                    score += 50
-                } else {
-                    score += 600
-                }
+                score += if (isInsideLongerWord) 50 else 600
                 matchReason = "Título contiene '$rawQuery'"
             } else {
                 val titleWordsMatched = searchWords.count { word -> titleWords.any { tw -> tw.startsWith(word) } }
@@ -100,66 +88,45 @@ class SearchRepository @Inject constructor(
             }
 
             // 2. DIRECTOR
-            if (directorNorm.isNotBlank()) {
-                val directorWords = directorNorm.split("\\s+|[\\p{Punct}]".toRegex()).filter { it.isNotBlank() }
-                if (directorNorm == queryNorm || directorWords.any { it == queryNorm }) {
+            if (item.director.isNotBlank()) {
+                val directorNorm = normalizeText(item.director)
+                if (directorNorm.contains(queryNorm)) {
                     score += 500
-                    if (matchReason == null) matchReason = "Director: ${item.director}"
-                } else if (directorWords.any { it.startsWith(queryNorm) }) {
-                    score += 300
                     if (matchReason == null) matchReason = "Director: ${item.director}"
                 }
             }
 
-            // 3. REPARTO / ACTORES
-            if (repartoNorm.isNotBlank()) {
-                val repartoWords = repartoNorm.split("\\s+|[\\p{Punct}]".toRegex()).filter { it.isNotBlank() }
-                if (repartoWords.any { it == queryNorm || it.startsWith(queryNorm) }) {
+            // 3. REPARTO
+            if (item.reparto.isNotBlank() && score < 1000) {
+                val repartoNorm = normalizeText(item.reparto)
+                if (repartoNorm.contains(queryNorm)) {
                     score += 250
                     if (matchReason == null) matchReason = "Reparto: ${item.reparto.take(40)}..."
                 }
             }
 
-            // 4. MÚSICA / COMPOSITOR
-            if (musicaNorm.isNotBlank()) {
-                val musicaWords = musicaNorm.split("\\s+|[\\p{Punct}]".toRegex()).filter { it.isNotBlank() }
-                if (musicaWords.any { it == queryNorm || it.startsWith(queryNorm) }) {
-                    score += 200
-                    if (matchReason == null) matchReason = "Música: ${item.musica}"
-                }
+            // 4. MÚSICA / GUION / AÑO
+            if (item.musica.isNotBlank() && score < 1000) {
+                val musicaNorm = normalizeText(item.musica)
+                if (musicaNorm.contains(queryNorm)) score += 200
             }
 
-            // 5. GUION / NARRACIÓN
-            if (guionNorm.isNotBlank() && searchWords.any { guionNorm.contains(it) }) {
-                score += 150
-            }
-            if (narracionNorm.isNotBlank() && searchWords.any { narracionNorm.contains(it) }) {
-                score += 120
-            }
-
-            // 6. AÑO DE ESTRENO
-            if (anioNorm.isNotBlank() && (anioNorm == rawQuery || (rawQuery.length >= 4 && anioNorm.contains(rawQuery)))) {
+            if (item.anio.isNotBlank() && (item.anio.trim() == rawQuery || (rawQuery.length >= 4 && item.anio.contains(rawQuery)))) {
                 score += 300
                 if (matchReason == null) matchReason = "Año ${item.anio}"
             }
 
-            // 7. GÉNERO / PAÍS
-            if (generoNorm.contains(queryNorm)) {
-                score += 100
-            }
-            if (paisNorm.contains(queryNorm)) {
-                score += 100
+            // 5. GÉNERO
+            if (item.genero.isNotBlank() && score < 1000) {
+                val generoNorm = normalizeText(item.genero)
+                if (generoNorm.contains(queryNorm)) score += 100
             }
 
-            // 8. SINOPSIS (Estricto para descarte de basura)
-            if (sinopsisNorm.isNotBlank()) {
-                if (queryNorm.length >= 4 && sinopsisNorm.contains(queryNorm)) {
+            // 6. SINOPSIS (Evaluación perezosa estricta)
+            if (item.sinopsis.isNotBlank() && queryNorm.length >= 3 && score < 500) {
+                val sinopsisNorm = normalizeText(item.sinopsis)
+                if (sinopsisNorm.contains(queryNorm)) {
                     score += 60
-                } else {
-                    val synWordsMatched = searchWords.count { sinopsisNorm.contains(it) }
-                    if (synWordsMatched >= 2) {
-                        score += 20 * synWordsMatched
-                    }
                 }
             }
 

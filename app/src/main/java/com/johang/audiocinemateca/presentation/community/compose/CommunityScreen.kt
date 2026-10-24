@@ -4,14 +4,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.CollectionInfo
+import androidx.compose.ui.semantics.CollectionItemInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.collectionInfo
+import androidx.compose.ui.semantics.collectionItemInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import com.johang.audiocinemateca.data.model.Comment
 import com.johang.audiocinemateca.domain.model.CatalogItem
 import com.johang.audiocinemateca.presentation.community.AnnouncementsViewModel
 import com.johang.audiocinemateca.presentation.community.CommunityViewModel
@@ -35,7 +41,10 @@ fun CommunityScreen(
         PrimaryTabRow(
             selectedTabIndex = selectedTabIndex,
             containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.primary
+            contentColor = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.semantics {
+                collectionInfo = CollectionInfo(rowCount = 1, columnCount = tabTitles.size)
+            }
         ) {
             tabTitles.forEachIndexed { index, title ->
                 val isSelected = selectedTabIndex == index
@@ -52,7 +61,15 @@ fun CommunityScreen(
                     },
                     modifier = Modifier.clearAndSetSemantics {
                         role = Role.Tab
-                        contentDescription = "$title, pestaña ${index + 1} de ${tabTitles.size}"
+                        selected = isSelected
+                        stateDescription = "${index + 1} de ${tabTitles.size}"
+                        collectionItemInfo = CollectionItemInfo(
+                            rowIndex = 0,
+                            rowSpan = 1,
+                            columnIndex = index,
+                            columnSpan = 1
+                        )
+                        contentDescription = title
                         onClick {
                             selectedTabIndex = index
                             true

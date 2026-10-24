@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MarkAsUnread
@@ -31,7 +32,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -183,7 +186,12 @@ fun GlobalChatTab(
                                     Surface(
                                         shape = RoundedCornerShape(14.dp),
                                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-                                        tonalElevation = 2.dp
+                                        tonalElevation = 2.dp,
+                                        modifier = Modifier.clearAndSetSemantics {
+                                            heading()
+                                            stateDescription = "Encabezado"
+                                            contentDescription = item.date
+                                        }
                                     ) {
                                         Text(
                                             text = item.date,
@@ -235,6 +243,7 @@ fun GlobalChatTab(
                                     currentUserId = currentUserId,
                                     isAdmin = viewModel.isAdmin,
                                     onReply = { viewModel.setReplyingTo(item.message) },
+                                    onMention = { messageText = "@${item.message.senderName} " },
                                     onEdit = { viewModel.setEditingMessage(item.message) },
                                     onDelete = { viewModel.deleteMessage(item.message) },
                                     onReactionToggle = { emoji -> viewModel.toggleReaction(item.message, emoji) },
@@ -408,10 +417,13 @@ fun GlobalChatTab(
         val isMe = currentUserId != null && msg.senderId == currentUserId
         val canDelete = (isMe || viewModel.isAdmin) && !msg.isDeleted
 
-        val popularEmojis = listOf("❤️", "😂", "🔥", "👍", "😮", "😢", "🙏", "🎉")
+        val popularEmojis = listOf("👋", "❤️", "👍", "👎", "🔥", "😂", "😮", "😢", "🙏", "🎉", "👏", "🤔", "🎬", "🍿", "🎶", "⭐")
         val sortedEmojis = remember(msg.reactions) {
             val counts = msg.reactions.mapValues { it.value.size }
-            popularEmojis.sortedByDescending { emoji -> counts[emoji] ?: 0 }
+            popularEmojis.sortedWith(
+                compareByDescending<String> { emoji -> counts[emoji] ?: 0 }
+                    .thenBy { emoji -> popularEmojis.indexOf(emoji) }
+            )
         }
 
         val firstReactionFocusRequester = remember { FocusRequester() }
@@ -505,7 +517,7 @@ fun GlobalChatTab(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
 
                 ListItem(
-                    headlineContent = { Text("Responder mensaje", fontWeight = FontWeight.Medium) },
+                    headlineContent = { Text("Responder", fontWeight = FontWeight.Medium) },
                     leadingContent = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                     modifier = Modifier.clickable {
                         viewModel.setReplyingTo(msg)
@@ -513,9 +525,18 @@ fun GlobalChatTab(
                     }
                 )
 
+                ListItem(
+                    headlineContent = { Text("Mencionar a @${msg.senderName}", fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.AlternateEmail, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier.clickable {
+                        messageText = "@${msg.senderName} "
+                        selectedMessageForOptions = null
+                    }
+                )
+
                 if (isMe && !msg.isDeleted) {
                     ListItem(
-                        headlineContent = { Text("Editar mensaje", fontWeight = FontWeight.Medium) },
+                        headlineContent = { Text("Editar", fontWeight = FontWeight.Medium) },
                         leadingContent = { Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                         modifier = Modifier.clickable {
                             viewModel.setEditingMessage(msg)
@@ -526,7 +547,7 @@ fun GlobalChatTab(
 
                 if (canDelete) {
                     ListItem(
-                        headlineContent = { Text("Eliminar mensaje", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium) },
+                        headlineContent = { Text("Eliminar", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium) },
                         leadingContent = { Icon(Icons.Default.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                         modifier = Modifier.clickable {
                             viewModel.deleteMessage(msg)
@@ -587,6 +608,7 @@ fun ChatMessageCard(
     currentUserId: String?,
     isAdmin: Boolean = false,
     onReply: () -> Unit = {},
+    onMention: () -> Unit = {},
     onEdit: () -> Unit = {},
     onDelete: () -> Unit = {},
     onReactionToggle: (String) -> Unit = {},
@@ -622,6 +644,10 @@ fun ChatMessageCard(
         })
         list.add(CustomAccessibilityAction("Responder") {
             onReply()
+            true
+        })
+        list.add(CustomAccessibilityAction("Mencionar a @${message.senderName}") {
+            onMention()
             true
         })
         if (isMe && !message.isDeleted) {
