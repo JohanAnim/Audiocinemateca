@@ -94,7 +94,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var miniPlayerSubtitle: TextView
     private lateinit var miniPlayerPlayPauseButton: Button
     private lateinit var miniPlayerCloseButton: Button
-    private lateinit var gestureDetector: GestureDetector
     
     private var currentPlayingItemId: String? = null
     private var currentPlayingItemType: String? = null
@@ -409,18 +408,6 @@ class MainActivity : AppCompatActivity() {
 
         LocalBroadcastManager.getInstance(this).registerReceiver(miniPlayerUpdateReceiver, IntentFilter().apply { addAction(ACTION_SHOW_MINI_PLAYER); addAction(ACTION_HIDE_MINI_PLAYER); addAction(ACTION_UPDATE_PLAY_PAUSE_BUTTON); addAction(ACTION_UPDATE_MINI_PLAYER_METADATA) })
 
-        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
-                if (e1 != null && e2.y - e1.y > 300 && Math.abs(velocityY) > 200) {
-                    Log.d("MainActivity", "Gesto deslizar abajo detectado. Deteniendo TTS.")
-                    ttsManager.stop()
-                    vibrateManually()
-                    return true
-                }
-                return false
-            }
-        })
-
         handleIntent(intent)
         checkAndRequestPermissions()
     }
@@ -473,13 +460,6 @@ class MainActivity : AppCompatActivity() {
         if (permissionsToRequest.isNotEmpty()) {
             requestMultiplePermissionsLauncher.launch(permissionsToRequest.toTypedArray())
         }
-    }
-
-
-
-    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
-        if (ev != null) gestureDetector.onTouchEvent(ev)
-        return super.dispatchTouchEvent(ev)
     }
 
     private fun startAnnouncementsWatcher() {

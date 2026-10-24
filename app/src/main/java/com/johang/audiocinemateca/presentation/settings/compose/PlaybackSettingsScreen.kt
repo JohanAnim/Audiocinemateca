@@ -83,6 +83,28 @@ fun PlaybackSettingsScreen(
             }
         )
 
+        var gesturesEnabled by remember { mutableStateOf(viewModel.getBoolean("enable_player_gestures", true)) }
+        SettingsSwitchItem(
+            title = "Gestos táctiles en el reproductor",
+            summary = "Permite deslizar en la pantalla del reproductor para adelantar, retroceder, pausar o consultar el tiempo.",
+            checked = gesturesEnabled,
+            onCheckedChange = { 
+                gesturesEnabled = it
+                viewModel.updateBoolean("enable_player_gestures", it)
+            }
+        )
+
+        var handleFocusEnabled by remember { mutableStateOf(viewModel.getBoolean("handle_audio_focus", true)) }
+        SettingsSwitchItem(
+            title = "Manejar foco de audio",
+            summary = "Pausa la reproducción automáticamente al recibir llamadas o notificaciones y se reanuda al finalizar. Desactívalo si usas Discord o TikTok en segundo plano.",
+            checked = handleFocusEnabled,
+            onCheckedChange = { 
+                handleFocusEnabled = it
+                viewModel.updateBoolean("handle_audio_focus", it)
+            }
+        )
+
         SettingsClickItem(
             title = "Eliminar historial de reproducción",
             summary = "Borra todo el contenido que has visto.",

@@ -118,6 +118,9 @@ class PlayerService : MediaSessionService() {
     private var wasPlayingBeforeFocusLoss = false
 
     private val playbackAudioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        val handleFocus = sharedPreferencesManager.getBoolean("handle_audio_focus", true)
+        if (!handleFocus) return@OnAudioFocusChangeListener
+
         Log.d("PlayerService", "Playback AudioFocus change: $focusChange")
         when (focusChange) {
             AudioManager.AUDIOFOCUS_LOSS -> {
@@ -156,6 +159,9 @@ class PlayerService : MediaSessionService() {
     }
 
     private fun requestPlaybackAudioFocus() {
+        val handleFocus = sharedPreferencesManager.getBoolean("handle_audio_focus", true)
+        if (!handleFocus) return
+
         if (audioManager == null) {
             audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         }

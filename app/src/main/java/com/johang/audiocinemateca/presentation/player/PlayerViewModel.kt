@@ -95,6 +95,12 @@ class PlayerViewModel @Inject constructor(
     private var currentPartIndex = -1
     private var currentEpisodeIndex = -1
 
+    fun showToast(msg: String) {
+        viewModelScope.launch {
+            _toastMessage.emit(msg)
+        }
+    }
+
     fun toggleSynopsis() {
         val nextExpanded = !_isSynopsisExpanded.value
         _isSynopsisExpanded.value = nextExpanded
