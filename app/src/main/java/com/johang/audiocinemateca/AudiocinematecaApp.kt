@@ -5,24 +5,23 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
-import androidx.preference.PreferenceManager
+import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.presentation.settings.ThemeManager
-import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class AudiocinematecaApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        
+
         // Inicializar el cazador de errores global
         com.johang.audiocinemateca.util.CrashLogger(this)
-        
+
         createNotificationChannel()
         subscribeToGlobalTopic()
 
         // Apply the saved theme on startup
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
+        val sharedPreferences = SharedPreferencesManager(this)
         val theme = sharedPreferences.getString("theme", "system")
         ThemeManager.applyTheme(theme ?: "system")
     }

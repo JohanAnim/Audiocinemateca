@@ -285,34 +285,45 @@ class ContentDetailViewModel @Inject constructor(
         _isLoading.value = true
         viewModelScope.launch {
             try {
+                val cleanId = itemId.trim()
                 val catalog = catalogRepository.getCatalog()
-                val pluralItemType = when (itemType) {
-                    "pelicula" -> "peliculas"
-                    "serie" -> "series"
-                    "cortometraje" -> "cortometrajes"
-                    "documental" -> "documentales"
-                    else -> itemType
+                val pluralItemType = when (itemType.lowercase().trim()) {
+                    "movie", "movies", "pelicula", "peliculas" -> "peliculas"
+                    "serie", "series" -> "series"
+                    "documentary", "documentaries", "documental", "documentales" -> "documentales"
+                    "shortfilm", "shortfilms", "short", "cortometraje", "cortometrajes" -> "cortometrajes"
+                    else -> itemType.trim()
                 }
                 var item: CatalogItem? = when (pluralItemType) {
-                    "peliculas" -> catalog?.movies?.find { it.id == itemId }
-                    "series" -> catalog?.series?.find { it.id == itemId }
-                    "cortometrajes" -> catalog?.shortFilms?.find { it.id == itemId }
-                    "documentales" -> catalog?.documentaries?.find { it.id == itemId }
+                    "peliculas" -> catalog?.movies?.find { it.id.equals(cleanId, ignoreCase = true) }
+                    "series" -> catalog?.series?.find { it.id.equals(cleanId, ignoreCase = true) }
+                    "cortometrajes" -> catalog?.shortFilms?.find { it.id.equals(cleanId, ignoreCase = true) }
+                    "documentales" -> catalog?.documentaries?.find { it.id.equals(cleanId, ignoreCase = true) }
                     else -> null
                 } ?: catalog?.let { cat ->
-                    cat.movies?.find { it.id == itemId }
-                        ?: cat.series?.find { it.id == itemId }
-                        ?: cat.documentaries?.find { it.id == itemId }
-                        ?: cat.shortFilms?.find { it.id == itemId }
+                    cat.movies?.find { it.id.equals(cleanId, ignoreCase = true) }
+                        ?: cat.series?.find { it.id.equals(cleanId, ignoreCase = true) }
+                        ?: cat.documentaries?.find { it.id.equals(cleanId, ignoreCase = true) }
+                        ?: cat.shortFilms?.find { it.id.equals(cleanId, ignoreCase = true) }
                 }
 
                 if (item == null) {
-                    val downloadedEntities = downloadRepository.getDownloadsForContent(itemId).firstOrNull()
+                    val downloadedEntities = downloadRepository.getDownloadsForContent(cleanId).firstOrNull()
                     if (!downloadedEntities.isNullOrEmpty()) {
                         val first = downloadedEntities.first()
-                        item = when (first.contentType) {
-                            "movie" -> Movie(id = first.contentId, title = first.title, enlaces = listOf(first.filePath ?: ""))
-                            "serie" -> {
+                        val seriesCleanTitle = first.title.substringBefore(" - ").substringBefore(":E").ifBlank { first.title }
+
+                        // Si el catálogo está disponible pero el ID en descargas difería ligeramente, buscar por título
+                        val itemFromCatalogByTitle = catalog?.let { cat ->
+                            cat.movies?.find { it.title.equals(first.title, ignoreCase = true) }
+                                ?: cat.series?.find { it.title.equals(seriesCleanTitle, ignoreCase = true) }
+                                ?: cat.documentaries?.find { it.title.equals(first.title, ignoreCase = true) }
+                                ?: cat.shortFilms?.find { it.title.equals(first.title, ignoreCase = true) }
+                        }
+
+                        item = itemFromCatalogByTitle ?: when (first.contentType.lowercase().trim()) {
+                            "movie", "pelicula", "peliculas" -> Movie(id = first.contentId, title = first.title, enlaces = listOf(first.filePath ?: ""))
+                            "serie", "series" -> {
                                 val chaptersMap = mutableMapOf<String, MutableList<com.johang.audiocinemateca.data.model.Episode>>()
                                 downloadedEntities.forEach { dep ->
                                     val seasonKey = "Temporada ${dep.partIndex + 1}"
@@ -327,13 +338,13 @@ class ContentDetailViewModel @Inject constructor(
                                 }
                                 Serie(
                                     id = first.contentId,
-                                    title = first.title.substringBefore(" - ").substringBefore(":E").ifBlank { first.title },
+                                    title = seriesCleanTitle,
                                     capitulos = chaptersMap
                                 )
                             }
-                            "documentary" -> Documentary(id = first.contentId, title = first.title, enlace = first.filePath ?: "")
-                            "shortfilm" -> ShortFilm(id = first.contentId, title = first.title, enlace = first.filePath ?: "")
-                            else -> null
+                            "documentary", "documental", "documentales" -> Documentary(id = first.contentId, title = first.title, enlace = first.filePath ?: "")
+                            "shortfilm", "cortometraje", "cortometrajes" -> ShortFilm(id = first.contentId, title = first.title, enlace = first.filePath ?: "")
+                            else -> Movie(id = first.contentId, title = first.title, enlaces = listOf(first.filePath ?: ""))
                         }
                     }
                 }

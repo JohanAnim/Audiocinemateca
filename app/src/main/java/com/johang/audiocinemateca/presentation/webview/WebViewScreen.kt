@@ -1,11 +1,7 @@
 package com.johang.audiocinemateca.presentation.webview
 
 import android.annotation.SuppressLint
-import android.os.Bundle
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,53 +12,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import com.johang.audiocinemateca.data.AuthCatalogRepository
-import com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
-import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-
-@AndroidEntryPoint
-class WebViewFragment : Fragment() {
-
-    @Inject
-    lateinit var authCatalogRepository: AuthCatalogRepository
-
-    private val args: WebViewFragmentArgs by navArgs()
-
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        return ComposeView(requireContext()).apply {
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                AudiocinematecaTheme {
-                    WebViewScreen(
-                        url = args.url,
-                        authCatalogRepository = authCatalogRepository,
-                        onBack = { findNavController().navigateUp() }
-                    )
-                }
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun WebViewScreen(
+fun WebViewScreen(
     url: String,
     authCatalogRepository: AuthCatalogRepository,
     onBack: () -> Unit
@@ -115,7 +75,7 @@ private fun WebViewScreen(
                         webViewClient = object : WebViewClient() {
                             override fun onPageFinished(view: WebView?, pageUrl: String?) {
                                 super.onPageFinished(view, pageUrl)
-                                Log.d("WebViewFragment", "Page finished loading: $pageUrl")
+                                Log.d("WebViewScreen", "Page finished loading: $pageUrl")
 
                                 if (pageUrl != null && pageUrl.contains("/usuario") && username != null && password != null) {
                                     val script = """

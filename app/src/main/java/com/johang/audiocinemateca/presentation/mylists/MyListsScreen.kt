@@ -1037,13 +1037,21 @@ fun DownloadsTabContent(
                         items = uiState.downloads,
                         key = { it.contentId }
                     ) { item ->
-                        if (item.contentType == "serie") {
+                        val targetType = when (item.contentType.lowercase().trim()) {
+                            "movie", "pelicula", "peliculas" -> "peliculas"
+                            "serie", "series" -> "series"
+                            "documentary", "documental", "documentales" -> "documentales"
+                            "shortfilm", "cortometraje", "cortometrajes" -> "cortometrajes"
+                            else -> item.contentType
+                        }
+
+                        if (item.contentType.equals("serie", ignoreCase = true)) {
                             SeriesDownloadGroupCard(
                                 group = item,
                                 onToggle = { onToggleSeries(item.contentId) },
                                 onPlayEpisode = onPlayDownload,
                                 onDeleteEpisode = onDeleteDownload,
-                                onViewDetail = { onNavigateToContentDetail(item.contentId, item.contentType) }
+                                onViewDetail = { onNavigateToContentDetail(item.contentId, targetType) }
                             )
                         } else {
                             SingleDownloadCard(
@@ -1052,7 +1060,7 @@ fun DownloadsTabContent(
                                     item.episodes.firstOrNull()?.let { onPlayDownload(it) }
                                 },
                                 onViewDetail = {
-                                    onNavigateToContentDetail(item.contentId, item.contentType)
+                                    onNavigateToContentDetail(item.contentId, targetType)
                                 },
                                 onDelete = {
                                     item.episodes.firstOrNull()?.let { onDeleteDownload(it) }
@@ -1282,6 +1290,7 @@ fun SingleDownloadCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SeriesDownloadGroupCard(
     group: GroupedDownload,
@@ -1293,6 +1302,9 @@ fun SeriesDownloadGroupCard(
     val sizeText = String.format(Locale.getDefault(), "%.1f MB", group.totalSizeMb)
     val countText = "${group.episodes.size} episodios descargados"
 
+    var showSeriesOptionsSheet by remember { mutableStateOf(false) }
+    var episodeForOptions by remember { mutableStateOf<DownloadEntity?>(null) }
+
     val context = LocalContext.current
     val showAccessibilityHints = remember(context) {
         SharedPreferencesManager(context).getBoolean("enable_accessibility_hints", true)
@@ -1300,7 +1312,7 @@ fun SeriesDownloadGroupCard(
 
     val fullContentDescription = remember(group.title, countText, sizeText, group.isExpanded, showAccessibilityHints) {
         val stateText = if (group.isExpanded) "Expandido" else "Contraído"
-        val hintText = if (group.isExpanded) "Toca para contraer" else "Toca para expandir"
+        val hintText = if (group.isExpanded) "Toca para contraer. Mantén presionado para opciones" else "Toca para expandir. Mantén presionado para opciones"
         buildInteractionDescription(
             mainContent = "${group.title}. $countText. $sizeText. $stateText",
             hintText = hintText,
@@ -1317,7 +1329,10 @@ fun SeriesDownloadGroupCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onToggle)
+                    .combinedClickable(
+                        onClick = onToggle,
+                        onLongClick = { showSeriesOptionsSheet = true }
+                    )
                     .clearAndSetSemantics {
                         contentDescription = fullContentDescription
                     }
@@ -1342,11 +1357,33 @@ fun SeriesDownloadGroupCard(
                     )
                 }
 
-                Icon(
-                    imageVector = if (group.isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                IconButton(
+                    onClick = { showSeriesOptionsSheet = true },
+                    modifier = Modifier.semantics {
+                        contentDescription = "Opciones para la serie ${group.title}"
+                        role = Role.Button
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.outline
+                    )
+                }
+
+                IconButton(
+                    onClick = onToggle,
+                    modifier = Modifier.semantics {
+                        contentDescription = if (group.isExpanded) "Contraer ${group.title}" else "Expandir ${group.title}"
+                        role = Role.Button
+                    }
+                ) {
+                    Icon(
+                        imageVector = if (group.isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
 
             AnimatedVisibility(visible = group.isExpanded) {
@@ -1361,6 +1398,7 @@ fun SeriesDownloadGroupCard(
                         val epDescription = remember(episode.title, epSize, showAccessibilityHints) {
                             buildInteractionDescription(
                                 mainContent = "${episode.title}. $epSize",
+                                hintText = "Mantén presionado para opciones del episodio",
                                 showHint = showAccessibilityHints
                             )
                         }
@@ -1370,7 +1408,10 @@ fun SeriesDownloadGroupCard(
                             color = Color.Transparent,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable(onClick = { onPlayEpisode(episode) })
+                                .combinedClickable(
+                                    onClick = { onPlayEpisode(episode) },
+                                    onLongClick = { episodeForOptions = episode }
+                                )
                                 .clearAndSetSemantics {
                                     contentDescription = epDescription
                                 }
@@ -1412,14 +1453,14 @@ fun SeriesDownloadGroupCard(
                                 }
 
                                 IconButton(
-                                    onClick = { onDeleteEpisode(episode) },
+                                    onClick = { episodeForOptions = episode },
                                     modifier = Modifier.semantics {
-                                        contentDescription = "Eliminar ${episode.title}"
+                                        contentDescription = "Opciones para ${episode.title}"
                                         role = Role.Button
                                     }
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.DeleteOutline,
+                                        imageVector = Icons.Default.MoreVert,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.outline,
                                         modifier = Modifier.size(20.dp)
@@ -1429,6 +1470,108 @@ fun SeriesDownloadGroupCard(
                         }
                     }
                 }
+            }
+        }
+    }
+
+    if (showSeriesOptionsSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSeriesOptionsSheet = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = group.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(bottom = 4.dp))
+
+                ListItem(
+                    headlineContent = { Text("Ver detalles de la obra", fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier.clickable {
+                        showSeriesOptionsSheet = false
+                        onViewDetail()
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text(if (group.isExpanded) "Contraer serie" else "Expandir capítulos", fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(if (group.isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier.clickable {
+                        showSeriesOptionsSheet = false
+                        onToggle()
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Eliminar todos los capítulos descargados", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    modifier = Modifier.clickable {
+                        showSeriesOptionsSheet = false
+                        group.episodes.forEach { ep -> onDeleteEpisode(ep) }
+                    }
+                )
+            }
+        }
+    }
+
+    episodeForOptions?.let { ep ->
+        ModalBottomSheet(
+            onDismissRequest = { episodeForOptions = null }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 24.dp)
+                    .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = ep.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+
+                HorizontalDivider(modifier = Modifier.padding(bottom = 4.dp))
+
+                ListItem(
+                    headlineContent = { Text("Reproducir episodio", fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier.clickable {
+                        episodeForOptions = null
+                        onPlayEpisode(ep)
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Ver detalles de la serie", fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier.clickable {
+                        episodeForOptions = null
+                        onViewDetail()
+                    }
+                )
+
+                ListItem(
+                    headlineContent = { Text("Eliminar de descargas", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Medium) },
+                    leadingContent = { Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    modifier = Modifier.clickable {
+                        episodeForOptions = null
+                        onDeleteEpisode(ep)
+                    }
+                )
             }
         }
     }

@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.stateDescription
@@ -291,14 +292,25 @@ fun GlobalChatTab(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    val cancelActionLabel = if (editingMessage != null) "Cancelar edición" else "Cancelar respuesta"
                     IconButton(
                         onClick = {
                             viewModel.setReplyingTo(null)
                             viewModel.setEditingMessage(null)
                             messageText = ""
+                        },
+                        modifier = Modifier.clearAndSetSemantics {
+                            contentDescription = cancelActionLabel
+                            role = Role.Button
+                            onClick(label = cancelActionLabel) {
+                                viewModel.setReplyingTo(null)
+                                viewModel.setEditingMessage(null)
+                                messageText = ""
+                                true
+                            }
                         }
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = "Cancelar")
+                        Icon(Icons.Default.Close, contentDescription = null)
                     }
                 }
             }
@@ -310,14 +322,16 @@ fun GlobalChatTab(
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
+                    .height(80.dp)
             ) {
                 val emojiList = listOf("❤️", "😂", "😮", "😢", "😡", "👍", "🙏", "🔥", "🎉", "👋", "👏", "🤔", "🎬", "🍿", "🎶", "⭐")
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     emojiList.forEach { emoji ->
                         Surface(
@@ -328,6 +342,14 @@ fun GlobalChatTab(
                                     messageText += emoji
                                 }
                                 .padding(4.dp)
+                                .clearAndSetSemantics {
+                                    contentDescription = "Emoji $emoji"
+                                    role = Role.Button
+                                    onClick(label = "Insertar emoji $emoji") {
+                                        messageText += emoji
+                                        true
+                                    }
+                                }
                         ) {
                             Text(emoji, fontSize = 22.sp, modifier = Modifier.padding(6.dp))
                         }
@@ -340,7 +362,10 @@ fun GlobalChatTab(
         Surface(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 4.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .imePadding()
         ) {
             Row(
                 modifier = Modifier
@@ -348,12 +373,24 @@ fun GlobalChatTab(
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val emojiToggleLabel = if (showEmojiPicker) "Ocultar emojis" else "Emojis"
                 IconButton(
-                    onClick = { showEmojiPicker = !showEmojiPicker }
+                    onClick = { showEmojiPicker = !showEmojiPicker },
+                    enabled = isOpen,
+                    modifier = Modifier.clearAndSetSemantics {
+                        contentDescription = emojiToggleLabel
+                        role = Role.Button
+                        onClick(label = emojiToggleLabel) {
+                            if (isOpen) {
+                                showEmojiPicker = !showEmojiPicker
+                            }
+                            true
+                        }
+                    }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Mood,
-                        contentDescription = "Emojis",
+                        contentDescription = null,
                         tint = if (showEmojiPicker) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -382,15 +419,27 @@ fun GlobalChatTab(
 
                 IconButton(
                     onClick = onVoiceClick,
-                    enabled = isOpen
+                    enabled = isOpen,
+                    modifier = Modifier.clearAndSetSemantics {
+                        contentDescription = "Dictar mensaje por voz"
+                        role = Role.Button
+                        onClick(label = "Dictar mensaje por voz") {
+                            if (isOpen) {
+                                onVoiceClick()
+                            }
+                            true
+                        }
+                    }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Mic,
-                        contentDescription = "Dictar mensaje por voz",
+                        contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
 
+                val isSendEnabled = isOpen && messageText.isNotBlank()
+                val sendActionLabel = if (editingMessage != null) "Guardar" else "Enviar"
                 IconButton(
                     onClick = {
                         if (messageText.isNotBlank()) {
@@ -400,12 +449,29 @@ fun GlobalChatTab(
                             }
                         }
                     },
-                    enabled = isOpen && messageText.isNotBlank()
+                    enabled = isSendEnabled,
+                    modifier = Modifier.clearAndSetSemantics {
+                        contentDescription = sendActionLabel
+                        role = Role.Button
+                        if (!isSendEnabled) {
+                            disabled()
+                        } else {
+                            onClick(label = sendActionLabel) {
+                                if (isOpen && messageText.isNotBlank()) {
+                                    if (viewModel.sendMessage(messageText.trim())) {
+                                        messageText = ""
+                                        showEmojiPicker = false
+                                    }
+                                }
+                                true
+                            }
+                        }
+                    }
                 ) {
                     Icon(
                         imageVector = if (editingMessage != null) Icons.Default.Edit else Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Enviar",
-                        tint = MaterialTheme.colorScheme.primary
+                        contentDescription = null,
+                        tint = if (isSendEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                     )
                 }
             }

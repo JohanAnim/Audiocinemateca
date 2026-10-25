@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -273,7 +274,7 @@ fun PlayerScreen(
             Modifier.pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
-                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val down = awaitFirstDown(pass = PointerEventPass.Initial, requireUnconsumed = false)
                         val startX = down.position.x
                         val startY = down.position.y
                         var totalX = 0f
@@ -281,7 +282,7 @@ fun PlayerScreen(
                         var gestureHandled = false
 
                         do {
-                            val event = awaitPointerEvent()
+                            val event = awaitPointerEvent(pass = PointerEventPass.Initial)
                             val change = event.changes.firstOrNull() ?: break
                             if (change.pressed) {
                                 totalX = change.position.x - startX
@@ -336,146 +337,148 @@ fun PlayerScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-            // Contenido Central: Obra y Sinopsis
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Tarjeta de la Obra Activa
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                    modifier = Modifier.fillMaxWidth()
+                // Contenido Central Desplazable (Obra, Sinopsis, Comentarios)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(18.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    // Tarjeta de la Obra Activa
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(64.dp)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.GraphicEq,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(32.dp)
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(64.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.GraphicEq,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            }
+
+                            if (subtitle.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = subtitle,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF38BDF8),
+                                    textAlign = TextAlign.Center
                                 )
                             }
-                        }
 
-                        if (subtitle.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF38BDF8),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-
-                        // Votos y Botones de Interacción
-                        if (viewModel.isUserLoggedIn) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Like Toggle
-                                val isLiked = voteStats.userVote == 1
-                                val likeLabel = remember(voteStats.likeCount, isLiked) {
-                                    "Me gusta, ${voteStats.likeCount} votos${if (isLiked) ", seleccionado" else ""}"
-                                }
-
-                                OutlinedButton(
-                                    onClick = { viewModel.onLikeClicked() },
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = if (isLiked) Color(0xFF22C55E).copy(alpha = 0.25f) else Color.Transparent,
-                                        contentColor = if (isLiked) Color(0xFF22C55E) else Color.White
-                                    ),
-                                    border = BorderStroke(1.dp, if (isLiked) Color(0xFF22C55E) else Color.White.copy(alpha = 0.4f)),
-                                    modifier = Modifier.clearAndSetSemantics {
-                                        contentDescription = likeLabel
-                                        role = Role.Checkbox
-                                        selected = isLiked
-                                        onClick(label = if (isLiked) "Quitar Me gusta" else "Dar Me gusta") {
-                                            viewModel.onLikeClicked()
-                                            true
-                                        }
-                                    }
+                            // Votos y Botones de Interacción
+                            if (viewModel.isUserLoggedIn) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = if (isLiked) Icons.Default.ThumbUp else Icons.Default.ThumbUpOffAlt,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("${voteStats.likeCount}", fontWeight = if (isLiked) FontWeight.Bold else FontWeight.Normal)
-                                }
-
-                                // Dislike Toggle
-                                val isDisliked = voteStats.userVote == -1
-                                val dislikeLabel = remember(voteStats.dislikeCount, isDisliked) {
-                                    "No me gusta, ${voteStats.dislikeCount} votos${if (isDisliked) ", seleccionado" else ""}"
-                                }
-
-                                OutlinedButton(
-                                    onClick = { viewModel.onDislikeClicked() },
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = if (isDisliked) Color(0xFFEF4444).copy(alpha = 0.25f) else Color.Transparent,
-                                        contentColor = if (isDisliked) Color(0xFFEF4444) else Color.White
-                                    ),
-                                    border = BorderStroke(1.dp, if (isDisliked) Color(0xFFEF4444) else Color.White.copy(alpha = 0.4f)),
-                                    modifier = Modifier.clearAndSetSemantics {
-                                        contentDescription = dislikeLabel
-                                        role = Role.Checkbox
-                                        selected = isDisliked
-                                        onClick(label = if (isDisliked) "Quitar No me gusta" else "Dar No me gusta") {
-                                            viewModel.onDislikeClicked()
-                                            true
-                                        }
+                                    // Like Toggle
+                                    val isLiked = voteStats.userVote == 1
+                                    val likeLabel = remember(voteStats.likeCount, isLiked) {
+                                        "Me gusta, ${voteStats.likeCount} votos${if (isLiked) ", seleccionado" else ""}"
                                     }
-                                ) {
-                                    Icon(
-                                        imageVector = if (isDisliked) Icons.Default.ThumbDown else Icons.Default.ThumbDownOffAlt,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("${voteStats.dislikeCount}", fontWeight = if (isDisliked) FontWeight.Bold else FontWeight.Normal)
-                                }
 
-                                // Compartir
-                                OutlinedButton(
-                                    onClick = onShareClick,
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                                    modifier = Modifier.clearAndSetSemantics {
-                                        contentDescription = "Compartir esta obra"
-                                        role = Role.Button
-                                        onClick(label = "Compartir obra") {
-                                            onShareClick()
-                                            true
+                                    OutlinedButton(
+                                        onClick = { viewModel.onLikeClicked() },
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            containerColor = if (isLiked) Color(0xFF22C55E).copy(alpha = 0.25f) else Color.Transparent,
+                                            contentColor = if (isLiked) Color(0xFF22C55E) else Color.White
+                                        ),
+                                        border = BorderStroke(1.dp, if (isLiked) Color(0xFF22C55E) else Color.White.copy(alpha = 0.4f)),
+                                        modifier = Modifier.clearAndSetSemantics {
+                                            contentDescription = likeLabel
+                                            role = Role.Checkbox
+                                            selected = isLiked
+                                            onClick(label = if (isLiked) "Quitar Me gusta" else "Dar Me gusta") {
+                                                viewModel.onLikeClicked()
+                                                true
+                                            }
                                         }
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isLiked) Icons.Default.ThumbUp else Icons.Default.ThumbUpOffAlt,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("${voteStats.likeCount}", fontWeight = if (isLiked) FontWeight.Bold else FontWeight.Normal)
                                     }
-                                ) {
-                                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+
+                                    // Dislike Toggle
+                                    val isDisliked = voteStats.userVote == -1
+                                    val dislikeLabel = remember(voteStats.dislikeCount, isDisliked) {
+                                        "No me gusta, ${voteStats.dislikeCount} votos${if (isDisliked) ", seleccionado" else ""}"
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = { viewModel.onDislikeClicked() },
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            containerColor = if (isDisliked) Color(0xFFEF4444).copy(alpha = 0.25f) else Color.Transparent,
+                                            contentColor = if (isDisliked) Color(0xFFEF4444) else Color.White
+                                        ),
+                                        border = BorderStroke(1.dp, if (isDisliked) Color(0xFFEF4444) else Color.White.copy(alpha = 0.4f)),
+                                        modifier = Modifier.clearAndSetSemantics {
+                                            contentDescription = dislikeLabel
+                                            role = Role.Checkbox
+                                            selected = isDisliked
+                                            onClick(label = if (isDisliked) "Quitar No me gusta" else "Dar No me gusta") {
+                                                viewModel.onDislikeClicked()
+                                                true
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isDisliked) Icons.Default.ThumbDown else Icons.Default.ThumbDownOffAlt,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("${voteStats.dislikeCount}", fontWeight = if (isDisliked) FontWeight.Bold else FontWeight.Normal)
+                                    }
+
+                                    // Compartir
+                                    OutlinedButton(
+                                        onClick = onShareClick,
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                        modifier = Modifier.clearAndSetSemantics {
+                                            contentDescription = "Compartir esta obra"
+                                            role = Role.Button
+                                            onClick(label = "Compartir obra") {
+                                                onShareClick()
+                                                true
+                                            }
+                                        }
+                                    ) {
+                                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
                 // Sinopsis Inteligente (Muestra la sinopsis disponible o la genera con IA)
                 val activeContentItem by viewModel.contentItem.collectAsState()

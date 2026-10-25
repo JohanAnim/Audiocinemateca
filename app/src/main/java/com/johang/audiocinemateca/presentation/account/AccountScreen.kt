@@ -17,7 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -511,11 +511,10 @@ fun AccountScreen(
             onDismissRequest = { showNovedadesDialog = null },
             title = { Text("Novedades de esta versión") },
             text = {
-                val locale = Locale.getDefault()
                 val formattedDate = remember(info.updatedAt) {
                     try {
-                        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", locale)
-                        val outputFormat = SimpleDateFormat("dd/MM/yyyy", locale)
+                        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ROOT)
+                        val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.ROOT)
                         inputFormat.parse(info.updatedAt)?.let { outputFormat.format(it) } ?: "N/A"
                     } catch (e: Exception) { "N/A" }
                 }
@@ -565,13 +564,15 @@ fun AccountButton(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .audiocinematecaAccessibility(
-                label = text,
-                role = Role.Button,
-                onClickLabel = accessibilityLabel,
-                onClickAction = onClick
-            ),
+            .padding(vertical = 6.dp)
+            .clearAndSetSemantics {
+                contentDescription = text
+                role = Role.Button
+                onClick(label = accessibilityLabel) {
+                    onClick()
+                    true
+                }
+            },
         shape = MaterialTheme.shapes.medium,
         contentPadding = PaddingValues(16.dp)
     ) {

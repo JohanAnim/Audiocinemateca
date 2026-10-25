@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.hilt.android)
-    alias(libs.plugins.navigation.safe.args)
     alias(libs.plugins.ksp)
     alias(libs.plugins.compose.compiler)
     // Parcelize ahora se aplica así, AGP 9.0 se encarga de enlazarlo con su Kotlin interno
@@ -21,7 +20,7 @@ android {
         applicationId = "com.johang.audiocinemateca"
         minSdk = 25
         targetSdk = 37
-        versionCode =6
+        versionCode = 6
         versionName = "3.3.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -41,16 +40,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // En AGP 9.0, para configurar el jvmTarget de Kotlin sin el plugin externo, 
-    // se recomienda usar esta nueva vía o dejar que herede de compileOptions.
-    // Si persiste el error, AGP 9.0 autogestiona esto al detectar Java 17.
-
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
     }
 
     buildFeatures {
-        viewBinding = true
         compose = true
     }
 
@@ -78,10 +72,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
-    implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.activity.ktx)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.preference)
     implementation(libs.androidx.mediarouter)
     implementation(libs.androidx.work.runtime.ktx)
 
@@ -102,11 +93,6 @@ dependencies {
     // ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
-
-    // Hilt Navigation Fragment
-    implementation(libs.androidx.hilt.navigation.fragment)
-    implementation(libs.androidx.navigation.fragment.ktx)
-    implementation(libs.androidx.navigation.ui.ktx)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.core)
@@ -139,14 +125,14 @@ dependencies {
     implementation(libs.firebase.messaging)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
-    
-    // Google Auth & Credentials (Sintaxis corregida con puntos)
+
+    // Google Auth & Credentials
     implementation(libs.play.services.auth)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
 
-    // Jetpack Compose
+    // Jetpack Compose & Navigation Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

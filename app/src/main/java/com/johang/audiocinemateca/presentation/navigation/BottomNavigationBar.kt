@@ -20,12 +20,12 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.navigation.NavController
-import androidx.navigation.NavOptions
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.johang.audiocinemateca.R
-import com.johang.audiocinemateca.util.audiocinematecaAccessibility
 
 data class NavigationItem(
-    val resourceId: Int,
+    val route: String,
     val icon: Int,
     val label: String,
     val accessibilityLabel: String
@@ -37,7 +37,9 @@ fun AudiocinematecaBottomNavigation(
     sharedPreferencesManager: com.johang.audiocinemateca.data.local.SharedPreferencesManager? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val prefs = remember(context) { sharedPreferencesManager ?: com.johang.audiocinemateca.data.local.SharedPreferencesManager(context) }
+    val prefs = remember(context) {
+        sharedPreferencesManager ?: com.johang.audiocinemateca.data.local.SharedPreferencesManager(context)
+    }
     var hideHomeFeed by remember { mutableStateOf(prefs.getBoolean("hide_home_feed", false)) }
 
     DisposableEffect(prefs) {
@@ -53,35 +55,29 @@ fun AudiocinematecaBottomNavigation(
         }
     }
 
-    var currentDestination by remember { mutableStateOf(navController.currentDestination) }
-
-    DisposableEffect(navController) {
-        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
-            currentDestination = destination
-        }
-        navController.addOnDestinationChangedListener(listener)
-        onDispose {
-            navController.removeOnDestinationChangedListener(listener)
-        }
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    val baseRoute = remember(currentRoute) {
+        currentRoute?.substringBefore("?")?.substringBefore("/")
     }
 
     val items = remember(hideHomeFeed) {
         if (hideHomeFeed) {
             listOf(
                 NavigationItem(
-                    resourceId = R.id.catalogFragment,
+                    route = NavRoutes.CATALOG,
                     icon = R.drawable.ic_catalog,
                     label = "Explorar",
                     accessibilityLabel = "Explorar"
                 ),
                 NavigationItem(
-                    resourceId = R.id.myListsFragment,
+                    route = NavRoutes.MY_LISTS,
                     icon = R.drawable.ic_lists,
                     label = "Mis Listas",
                     accessibilityLabel = "Mis Listas"
                 ),
                 NavigationItem(
-                    resourceId = R.id.accountFragment,
+                    route = NavRoutes.ACCOUNT,
                     icon = R.drawable.ic_account,
                     label = "Cuenta",
                     accessibilityLabel = "Cuenta"
@@ -90,25 +86,25 @@ fun AudiocinematecaBottomNavigation(
         } else {
             listOf(
                 NavigationItem(
-                    resourceId = R.id.homeFragment,
+                    route = NavRoutes.HOME,
                     icon = R.drawable.ic_home,
                     label = "Inicio",
                     accessibilityLabel = "Inicio"
                 ),
                 NavigationItem(
-                    resourceId = R.id.catalogFragment,
+                    route = NavRoutes.CATALOG,
                     icon = R.drawable.ic_catalog,
                     label = "Explorar",
                     accessibilityLabel = "Explorar"
                 ),
                 NavigationItem(
-                    resourceId = R.id.myListsFragment,
+                    route = NavRoutes.MY_LISTS,
                     icon = R.drawable.ic_lists,
                     label = "Mis Listas",
                     accessibilityLabel = "Mis Listas"
                 ),
                 NavigationItem(
-                    resourceId = R.id.accountFragment,
+                    route = NavRoutes.ACCOUNT,
                     icon = R.drawable.ic_account,
                     label = "Cuenta",
                     accessibilityLabel = "Cuenta"
@@ -118,15 +114,17 @@ fun AudiocinematecaBottomNavigation(
     }
 
     // Lista de destinos donde NO se debe mostrar la barra
-    val hiddenDestinations = listOf(
-        R.id.playerFragment,
-        R.id.contentDetailFragment,
-        R.id.communityFragment,
-        R.id.aiChatFragment,
-        R.id.notificationsFragment
-    )
+    val hiddenBaseRoutes = remember {
+        setOf(
+            "player",
+            "content_detail",
+            "community",
+            "ai_chat",
+            "notifications"
+        )
+    }
 
-    val isVisible = currentDestination?.id !in hiddenDestinations
+    val isVisible = baseRoute == null || baseRoute !in hiddenBaseRoutes
 
     if (isVisible) {
         NavigationBar(
@@ -135,22 +133,25 @@ fun AudiocinematecaBottomNavigation(
             }
         ) {
             items.forEachIndexed { index, item ->
-                val isSelected = currentDestination?.id == item.resourceId
-                
+                val isSelected = baseRoute == item.route
+
                 val onNavigationClick = {
                     if (!isSelected) {
                         try {
-                            val startDestId = navController.graph.startDestinationId
-                            val isStartDest = (item.resourceId == startDestId)
-                            val navOptions = NavOptions.Builder()
-                                .setLaunchSingleTop(true)
-                                .setRestoreState(!isStartDest)
-                                .setPopUpTo(startDestId, isStartDest, !isStartDest)
-                                .build()
-                            
-                            navController.navigate(item.resourceId, null, navOptions)
+                            val startDestId = navController.graph.findStartDestination().id
+                            val isStartDest = item.route == navController.graph.findStartDestination().route
+                            navController.navigate(item.route) {
+                                launchSingleTop = true
+                                restoreState = !isStartDest
+                                popUpTo(startDestId) {
+                                    inclusive = isStartDest
+                                    saveState = !isStartDest
+                                }
+                            }
                         } catch (e: Exception) {
-                            navController.navigate(item.resourceId)
+                            navController.navigate(item.route) {
+                                launchSingleTop = true
+                            }
                         }
                     }
                 }
