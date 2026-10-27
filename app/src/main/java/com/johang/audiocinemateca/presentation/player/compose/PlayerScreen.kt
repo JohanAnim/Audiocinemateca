@@ -20,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -33,11 +34,15 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,6 +55,7 @@ import com.johang.audiocinemateca.presentation.player.ChapterSynopsisState
 import com.johang.audiocinemateca.presentation.player.PlayerViewModel
 import com.johang.audiocinemateca.util.TimeFormatUtils
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
+import com.johang.audiocinemateca.util.initialAccessibilityFocus
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -109,8 +115,15 @@ fun PlayerScreen(
     }
 
     Scaffold(
+        modifier = Modifier.semantics {
+            isTraversalGroup = true
+        },
         topBar = {
             TopAppBar(
+                modifier = Modifier.semantics {
+                    isTraversalGroup = true
+                    traversalIndex = 1f
+                },
                 title = {
                     Column(
                         modifier = Modifier
@@ -331,6 +344,8 @@ fun PlayerScreen(
                 .background(Color(0xFF0F172A))
                 .then(gestureModifier)
                 .semantics {
+                    isTraversalGroup = true
+                    traversalIndex = -1f
                     customActions = gestureCustomActions
                 }
         ) {
@@ -346,7 +361,11 @@ fun PlayerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .verticalScroll(rememberScrollState()),
+                        .verticalScroll(rememberScrollState())
+                        .semantics {
+                            isTraversalGroup = true
+                            traversalIndex = 2f
+                        },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -560,7 +579,6 @@ fun PlayerScreen(
                             .clickable { onOpenCommentsClick(false) }
                             .clearAndSetSemantics {
                                 contentDescription = "Comentarios de la comunidad, ${commentPreview.first} comentarios"
-                                role = Role.Button
                                 onClick(label = "Abrir comentarios") {
                                     onOpenCommentsClick(false)
                                     true
@@ -602,39 +620,75 @@ fun PlayerScreen(
             // BARRA DE CONTROLES DE REPRODUCCIÓN
             // ==========================================
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        isTraversalGroup = true
+                        traversalIndex = -1f
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Slider de Tiempo / Barra de Progreso con modelo de tiempo accesible
-                Column(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            isTraversalGroup = true
+                            traversalIndex = 1f
+                        }
+                ) {
                     val timeStateText = remember(activePositionMs, totalDurationMs) {
                         "${TimeFormatUtils.formatDuration(activePositionMs)} de ${TimeFormatUtils.formatDuration(totalDurationMs)}"
                     }
 
                     val haptic = LocalHapticFeedback.current
 
-                    Slider(
-                        value = progressFraction,
-                        onValueChange = { fraction ->
-                            isScrubbing = true
-                            scrubPositionMs = (fraction * totalDurationMs).toLong()
-                        },
-                        onValueChangeFinished = {
-                            isScrubbing = false
-                            onSeekTo(scrubPositionMs)
-                        },
-                        colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFF38BDF8),
-                            activeTrackColor = Color(0xFF38BDF8),
-                            inactiveTrackColor = Color(0xFF334155)
-                        ),
+                    // Bloquea toques/arrastres táctiles directos sobre el Slider para evitar que los gestos
+                    // del reproductor muevan accidentalmente el tiempo de la obra, manteniendo intacto el
+                    // control accesible (`setProgress`) cuando se enfoca con Jieshuo o TalkBack.
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .semantics(mergeDescendants = true) {
-                                contentDescription = "Progreso de reproducción"
-                                stateDescription = timeStateText
+                            .pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                                        event.changes.forEach { it.consume() }
+                                    }
+                                }
                             }
-                    )
+                    ) {
+                        Slider(
+                            value = progressFraction,
+                            onValueChange = { fraction ->
+                                isScrubbing = true
+                                scrubPositionMs = (fraction * totalDurationMs).toLong()
+                            },
+                            onValueChangeFinished = {
+                                isScrubbing = false
+                                onSeekTo(scrubPositionMs)
+                            },
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color(0xFF38BDF8),
+                                activeTrackColor = Color(0xFF38BDF8),
+                                inactiveTrackColor = Color(0xFF334155)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics(mergeDescendants = true) {
+                                    contentDescription = "Progreso de reproducción"
+                                    stateDescription = timeStateText
+                                    setProgress { targetValue ->
+                                        val clamped = targetValue.coerceIn(0f, 1f)
+                                        val targetMs = (clamped * totalDurationMs).toLong()
+                                        isScrubbing = false
+                                        scrubPositionMs = targetMs
+                                        onSeekTo(targetMs)
+                                        true
+                                    }
+                                }
+                        )
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -659,7 +713,12 @@ fun PlayerScreen(
 
                 // Fila Principal de Botones de Control
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            isTraversalGroup = true
+                            traversalIndex = -1f
+                        },
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -703,7 +762,6 @@ fun PlayerScreen(
                             )
                             .clearAndSetSemantics {
                                 contentDescription = "Retroceder $rewindIntervalSec segundos"
-                                role = Role.Button
                                 onClick(label = "Retroceder $rewindIntervalSec segundos") {
                                     onRewindClick()
                                     true
@@ -722,34 +780,36 @@ fun PlayerScreen(
                     }
 
                     // Botón Principal Play / Pause ("Pausar" / "Reproducir" con efecto de vibración)
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFF0EA5E9),
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
+                            .size(68.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF0EA5E9))
                             .clickable {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onPlayPauseClick()
                             }
                             .clearAndSetSemantics {
+                                testTag = "player_play_pause_button"
                                 contentDescription = if (isPlaying) "Pausar" else "Reproducir"
                                 role = Role.Button
+                                traversalIndex = -1f
                                 onClick(label = if (isPlaying) "Pausar" else "Reproducir") {
                                     onPlayPauseClick()
                                     true
                                 }
                             }
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.size(68.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(38.dp)
+                            .initialAccessibilityFocus(
+                                tag = "player_play_pause_button"
                             )
-                        }
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(38.dp)
+                        )
                     }
 
                     // Adelantar N segundos
@@ -769,7 +829,6 @@ fun PlayerScreen(
                             )
                             .clearAndSetSemantics {
                                 contentDescription = "Adelantar $forwardIntervalSec segundos"
-                                role = Role.Button
                                 onClick(label = "Adelantar $forwardIntervalSec segundos") {
                                     onForwardClick()
                                     true

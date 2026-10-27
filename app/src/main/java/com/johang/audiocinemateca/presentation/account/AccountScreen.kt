@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -32,6 +33,7 @@ import com.johang.audiocinemateca.data.AuthCatalogRepository
 import com.johang.audiocinemateca.domain.model.UpdateInfo
 import com.johang.audiocinemateca.domain.usecase.UpdateCheckResult
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
+import com.johang.audiocinemateca.util.initialAccessibilityFocus
 import io.noties.markwon.Markwon
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -60,6 +62,10 @@ fun AccountScreen(
     var showCatalogProgressDialog by remember { mutableStateOf(false) }
     var catalogProgress by remember { mutableIntStateOf(0) }
 
+    // Recuerda el último botón accionado en Cuenta (ej. "account_settings" al ir a Configuración)
+    // para restaurar el foco exactamente en ese botón al regresar con Volver.
+    var focusedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+
     val isAdmin = firebaseAuth.currentUser?.email?.lowercase() == "gutierrezjohanantonio@gmail.com"
 
     LaunchedEffect(Unit) {
@@ -87,16 +93,24 @@ fun AccountScreen(
         }
     }
 
+    val isHeaderTargetFocused = focusedItemId == "account_profile" || focusedItemId == "account_settings"
+    val isBodyTargetFocused = focusedItemId == "account_web"
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
+            .semantics { isTraversalGroup = true }
     ) {
         // Header Modernizado
-        Surface(
-            color = MaterialTheme.colorScheme.primary,
-            tonalElevation = 4.dp,
-            modifier = Modifier.fillMaxWidth()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.primary)
+                .semantics {
+                    isTraversalGroup = true
+                    traversalIndex = if (isBodyTargetFocused) 1f else -1f
+                }
         ) {
             Row(
                 modifier = Modifier
@@ -117,13 +131,27 @@ fun AccountScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     // BOTÓN DE PERFIL (Solo el nombre como estaba antes)
+                    val isProfileFocused = focusedItemId == "account_profile"
+                    val onProfileClick = {
+                        focusedItemId = "account_profile"
+                        onNavigateToProfile()
+                    }
                     Box(
                         modifier = Modifier
-                            .clickable(onClick = onNavigateToProfile)
+                            .clickable(onClick = onProfileClick)
                             .audiocinematecaAccessibility(
                                 label = "$username, conectado actualmente. Toca aquí para ver tu perfil",
                                 role = Role.Button,
-                                onClickAction = onNavigateToProfile
+                                onClickAction = onProfileClick,
+                                testTag = "account_profile",
+                                traversalIndex = if (isProfileFocused) -1f else 0f
+                            )
+                            .then(
+                                if (isProfileFocused) {
+                                    Modifier.initialAccessibilityFocus(tag = "account_profile")
+                                } else {
+                                    Modifier
+                                }
                             )
                     ) {
                         Text(
@@ -156,13 +184,19 @@ fun AccountScreen(
                     context.startActivity(Intent.createChooser(intent, "Compartir Audiocinemateca vía"))
                 }
 
-                IconButton(
-                    onClick = shareAction,
-                    modifier = Modifier.audiocinematecaAccessibility(
-                        label = "Compartir aplicación",
-                        role = Role.Button,
-                        onClickAction = shareAction
-                    )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clickable(onClick = shareAction)
+                        .clearAndSetSemantics {
+                            contentDescription = "Compartir aplicación"
+                            role = Role.Button
+                            onClick {
+                                shareAction()
+                                true
+                            }
+                        }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Share,
@@ -172,13 +206,33 @@ fun AccountScreen(
                 }
 
                 // Botón Configuración
-                IconButton(
-                    onClick = onNavigateToSettings,
-                    modifier = Modifier.audiocinematecaAccessibility(
-                        label = "Configuración",
-                        role = Role.Button,
-                        onClickAction = onNavigateToSettings
-                    )
+                val isSettingsFocused = focusedItemId == "account_settings"
+                val onSettingsClick = {
+                    focusedItemId = "account_settings"
+                    onNavigateToSettings()
+                }
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clickable(onClick = onSettingsClick)
+                        .clearAndSetSemantics {
+                            testTag = "account_settings"
+                            traversalIndex = if (isSettingsFocused) -1f else 0f
+                            contentDescription = "Configuración"
+                            role = Role.Button
+                            onClick {
+                                onSettingsClick()
+                                true
+                            }
+                        }
+                        .then(
+                            if (isSettingsFocused) {
+                                Modifier.initialAccessibilityFocus(tag = "account_settings")
+                            } else {
+                                Modifier
+                            }
+                        )
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
@@ -194,7 +248,11 @@ fun AccountScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(24.dp)
+                .semantics {
+                    isTraversalGroup = true
+                    traversalIndex = if (isBodyTargetFocused) -1f else 0f
+                },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             val currentUpdateInfo = when (val state = updateState) {
@@ -223,8 +281,13 @@ fun AccountScreen(
 
             AccountButton(
                 text = "Mi cuenta (Audiocinemateca.com)",
-                onClick = { onNavigateToWebView("https://audiocinemateca.com/usuario") },
-                accessibilityLabel = "Ir a mi cuenta en el sitio web"
+                onClick = {
+                    focusedItemId = "account_web"
+                    onNavigateToWebView("https://audiocinemateca.com/usuario")
+                },
+                accessibilityLabel = "Ir a mi cuenta en el sitio web",
+                itemTag = "account_web",
+                isInitialFocus = focusedItemId == "account_web"
             )
 
             AccountButton(
@@ -558,7 +621,9 @@ fun AccountScreen(
 fun AccountButton(
     text: String,
     onClick: () -> Unit,
-    accessibilityLabel: String
+    accessibilityLabel: String,
+    itemTag: String = "account_btn_$text",
+    isInitialFocus: Boolean = false
 ) {
     Button(
         onClick = onClick,
@@ -566,13 +631,24 @@ fun AccountButton(
             .fillMaxWidth()
             .padding(vertical = 6.dp)
             .clearAndSetSemantics {
+                if (isInitialFocus) {
+                    testTag = itemTag
+                    traversalIndex = -1f
+                }
                 contentDescription = text
                 role = Role.Button
                 onClick(label = accessibilityLabel) {
                     onClick()
                     true
                 }
-            },
+            }
+            .then(
+                if (isInitialFocus) {
+                    Modifier.initialAccessibilityFocus(tag = itemTag)
+                } else {
+                    Modifier
+                }
+            ),
         shape = MaterialTheme.shapes.medium,
         contentPadding = PaddingValues(16.dp)
     ) {

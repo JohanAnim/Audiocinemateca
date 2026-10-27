@@ -13,16 +13,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.johang.audiocinemateca.util.accessibleHeading
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
+import com.johang.audiocinemateca.util.initialAccessibilityFocus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,8 +39,10 @@ fun CategorySettingsScreen(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Scaffold(
+        modifier = Modifier.semantics { isTraversalGroup = true },
         topBar = {
             TopAppBar(
+                modifier = Modifier.semantics { traversalIndex = 1f },
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -54,7 +63,11 @@ fun CategorySettingsScreen(
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.surface)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(16.dp)
+                .semantics {
+                    isTraversalGroup = true
+                    traversalIndex = -1f
+                },
             content = content
         )
     }
@@ -66,7 +79,8 @@ fun SettingsCategoryHeader(title: String) {
         text = title,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 8.dp),
+            .padding(top = 16.dp, bottom = 8.dp)
+            .accessibleHeading(title),
         color = MaterialTheme.colorScheme.primary,
         fontSize = 14.sp,
         fontWeight = FontWeight.Bold
@@ -79,7 +93,9 @@ fun SettingsSwitchItem(
     summary: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isInitialFocus: Boolean = false,
+    focusTag: String = "category_first_option"
 ) {
     val stateText = if (checked) "Activado" else "Desactivado"
     val fullDescription = remember(title, summary, stateText) {
@@ -90,13 +106,16 @@ fun SettingsSwitchItem(
         }
     }
 
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = androidx.compose.ui.graphics.Color.Transparent,
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
             .clearAndSetSemantics {
+                if (isInitialFocus) {
+                    testTag = focusTag
+                    traversalIndex = -1f
+                }
                 contentDescription = fullDescription
                 role = Role.Switch
                 stateDescription = stateText
@@ -105,6 +124,13 @@ fun SettingsSwitchItem(
                     true
                 }
             }
+            .then(
+                if (isInitialFocus) {
+                    Modifier.initialAccessibilityFocus(tag = focusTag)
+                } else {
+                    Modifier
+                }
+            )
     ) {
         Row(
             modifier = Modifier
@@ -146,7 +172,9 @@ fun SettingsListItem(
     entryValues: List<String>,
     currentValue: String,
     onValueChange: (String) -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isInitialFocus: Boolean = false,
+    focusTag: String = "category_first_option"
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
@@ -158,13 +186,16 @@ fun SettingsListItem(
         }
     }
 
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = androidx.compose.ui.graphics.Color.Transparent,
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
             .clickable(enabled = enabled) { showDialog = true }
             .clearAndSetSemantics {
+                if (isInitialFocus) {
+                    testTag = focusTag
+                    traversalIndex = -1f
+                }
                 contentDescription = fullDescription
                 role = Role.Button
                 onClick(label = "Cambiar opción") {
@@ -172,6 +203,13 @@ fun SettingsListItem(
                     true
                 }
             }
+            .then(
+                if (isInitialFocus) {
+                    Modifier.initialAccessibilityFocus(tag = focusTag)
+                } else {
+                    Modifier
+                }
+            )
     ) {
         Column(modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp)) {
             Text(
@@ -239,7 +277,9 @@ fun SettingsClickItem(
     title: String,
     summary: String,
     onClick: () -> Unit,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isInitialFocus: Boolean = false,
+    focusTag: String = "category_first_option"
 ) {
     val fullDescription = remember(title, summary) {
         if (summary.isNotBlank() && summary != title) {
@@ -249,13 +289,16 @@ fun SettingsClickItem(
         }
     }
 
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = androidx.compose.ui.graphics.Color.Transparent,
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
             .clickable(enabled = enabled, onClick = onClick)
             .clearAndSetSemantics {
+                if (isInitialFocus) {
+                    testTag = focusTag
+                    traversalIndex = -1f
+                }
                 contentDescription = fullDescription
                 role = Role.Button
                 onClick(label = title) {
@@ -263,6 +306,13 @@ fun SettingsClickItem(
                     true
                 }
             }
+            .then(
+                if (isInitialFocus) {
+                    Modifier.initialAccessibilityFocus(tag = focusTag)
+                } else {
+                    Modifier
+                }
+            )
     ) {
         Column(modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp)) {
             Text(
@@ -290,7 +340,9 @@ fun SettingsEditTextItem(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String = "",
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    isInitialFocus: Boolean = false,
+    focusTag: String = "category_first_option"
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var tempValue by remember(showDialog) { mutableStateOf(value) }
@@ -304,13 +356,16 @@ fun SettingsEditTextItem(
         }
     }
 
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = androidx.compose.ui.graphics.Color.Transparent,
+    Box(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
             .clickable(enabled = enabled) { showDialog = true }
             .clearAndSetSemantics {
+                if (isInitialFocus) {
+                    testTag = focusTag
+                    traversalIndex = -1f
+                }
                 contentDescription = fullDescription
                 role = Role.Button
                 onClick(label = "Editar $title") {
@@ -318,6 +373,13 @@ fun SettingsEditTextItem(
                     true
                 }
             }
+            .then(
+                if (isInitialFocus) {
+                    Modifier.initialAccessibilityFocus(tag = focusTag)
+                } else {
+                    Modifier
+                }
+            )
     ) {
         Column(modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp)) {
             Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.Medium)

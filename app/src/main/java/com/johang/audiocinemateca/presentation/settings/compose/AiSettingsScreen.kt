@@ -54,6 +54,7 @@ fun AiSettingsScreen(
             summary = if (apiKey.isEmpty()) "Introduce tu clave para activar funciones de IA." else "Clave configurada.",
             value = apiKey,
             placeholder = "Pega aquí tu clave (ej. AIzaSy...)",
+            isInitialFocus = true,
             onValueChange = { 
                 apiKey = it
                 viewModel.updateString("gemini_api_key", it)

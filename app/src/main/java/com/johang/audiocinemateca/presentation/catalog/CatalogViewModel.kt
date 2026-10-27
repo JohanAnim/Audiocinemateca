@@ -22,6 +22,20 @@ class CatalogViewModel @Inject constructor(
     private val _genres = MutableStateFlow<List<String>>(emptyList())
     val genres: StateFlow<List<String>> = _genres.asStateFlow()
 
+    private val _selectedTabIndex = MutableStateFlow(0)
+    val selectedTabIndex: StateFlow<Int> = _selectedTabIndex.asStateFlow()
+
+    fun setSelectedTabIndex(index: Int) {
+        _selectedTabIndex.value = index.coerceIn(0, 3)
+    }
+
+    private val _lastVisitedItemKey = MutableStateFlow<String?>(null)
+    val lastVisitedItemKey: StateFlow<String?> = _lastVisitedItemKey.asStateFlow()
+
+    fun setLastVisitedItemKey(key: String?) {
+        _lastVisitedItemKey.value = key
+    }
+
     private val _currentFilterOptions = MutableStateFlow<FilterOptions?>(null)
     val currentFilterOptions: StateFlow<FilterOptions?> = _currentFilterOptions.asStateFlow()
 

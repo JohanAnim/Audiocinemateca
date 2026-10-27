@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,6 +49,7 @@ import com.johang.audiocinemateca.domain.model.CatalogItem
 import com.johang.audiocinemateca.domain.model.FilterOptions
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
 import com.johang.audiocinemateca.util.buildInteractionDescription
+import com.johang.audiocinemateca.util.initialAccessibilityFocus
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -72,7 +74,20 @@ fun CatalogScreen(
     onShareItem: (CatalogItem) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var selectedTabIndex by remember { mutableIntStateOf(initialTabIndex.coerceIn(0, 3)) }
+    val savedTabIndex by catalogViewModel.selectedTabIndex.collectAsState()
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(savedTabIndex) }
+
+    // Recuerda el último título visitado ("categoria:id") para restaurar el foco exactamente en ese ítem al volver.
+    val savedVisitedItemKey by catalogViewModel.lastVisitedItemKey.collectAsState()
+    var lastVisitedItemKey by rememberSaveable { mutableStateOf(savedVisitedItemKey) }
+
+    LaunchedEffect(selectedTabIndex) {
+        catalogViewModel.setSelectedTabIndex(selectedTabIndex)
+    }
+
+    LaunchedEffect(lastVisitedItemKey) {
+        catalogViewModel.setLastVisitedItemKey(lastVisitedItemKey)
+    }
 
     val currentCategory = remember(selectedTabIndex) {
         when (selectedTabIndex) {
@@ -122,19 +137,35 @@ fun CatalogScreen(
 
     val tabs = listOf("Películas", "Series", "Cortometrajes", "Documentales")
 
+    val hasFocusedItemInCurrentTab = remember(lastVisitedItemKey, currentCategory) {
+        lastVisitedItemKey?.startsWith("$currentCategory:") == true
+    }
+
     Scaffold(
+        modifier = Modifier.semantics { isTraversalGroup = true },
         topBar = {
-            CatalogToolbar(
-                onMenuClick = onMenuClick,
-                onSearchClick = onSearchClick,
-                onSurpriseMeClick = { onSurpriseMeClick(currentCategory) }
-            )
+            Box(
+                modifier = Modifier.semantics {
+                    isTraversalGroup = true
+                    traversalIndex = if (hasFocusedItemInCurrentTab) 1f else 0f
+                }
+            ) {
+                CatalogToolbar(
+                    onMenuClick = onMenuClick,
+                    onSearchClick = onSearchClick,
+                    onSurpriseMeClick = { onSurpriseMeClick(currentCategory) }
+                )
+            }
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .semantics {
+                    isTraversalGroup = true
+                    traversalIndex = if (hasFocusedItemInCurrentTab) -1f else 0f
+                }
         ) {
             // Category Tabs
             PrimaryTabRow(
@@ -300,6 +331,10 @@ fun CatalogScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(1f)
+                    .semantics {
+                        isTraversalGroup = true
+                        traversalIndex = if (hasFocusedItemInCurrentTab) -1f else 0f
+                    }
             ) {
                 when (selectedTabIndex) {
                     0 -> CatalogList(
@@ -308,8 +343,14 @@ fun CatalogScreen(
                         isLoading = isMoviesLoading,
                         listState = moviesListState,
                         categoryKey = "peliculas",
+                        focusedItemKey = lastVisitedItemKey,
                         onLoadMore = { peliculasViewModel.loadMovies() },
-                        onItemClick = { id -> onItemClick(id, "peliculas") },
+                        onItemClick = { id ->
+                            val key = "peliculas:$id"
+                            lastVisitedItemKey = key
+                            catalogViewModel.setLastVisitedItemKey(key)
+                            onItemClick(id, "peliculas")
+                        },
                         onFavoriteToggle = { item, isFav ->
                             (item as? Movie)?.let { peliculasViewModel.toggleFavorite(it, isFav) }
                         },
@@ -324,8 +365,14 @@ fun CatalogScreen(
                         isLoading = isSeriesLoading,
                         listState = seriesListState,
                         categoryKey = "series",
+                        focusedItemKey = lastVisitedItemKey,
                         onLoadMore = { seriesViewModel.loadSeries() },
-                        onItemClick = { id -> onItemClick(id, "series") },
+                        onItemClick = { id ->
+                            val key = "series:$id"
+                            lastVisitedItemKey = key
+                            catalogViewModel.setLastVisitedItemKey(key)
+                            onItemClick(id, "series")
+                        },
                         onFavoriteToggle = { item, isFav ->
                             (item as? Serie)?.let { seriesViewModel.toggleFavorite(it, isFav) }
                         },
@@ -340,8 +387,14 @@ fun CatalogScreen(
                         isLoading = isCortosLoading,
                         listState = cortosListState,
                         categoryKey = "cortometrajes",
+                        focusedItemKey = lastVisitedItemKey,
                         onLoadMore = { cortometrajesViewModel.loadCortometrajes() },
-                        onItemClick = { id -> onItemClick(id, "cortometrajes") },
+                        onItemClick = { id ->
+                            val key = "cortometrajes:$id"
+                            lastVisitedItemKey = key
+                            catalogViewModel.setLastVisitedItemKey(key)
+                            onItemClick(id, "cortometrajes")
+                        },
                         onFavoriteToggle = { item, isFav ->
                             (item as? ShortFilm)?.let { cortometrajesViewModel.toggleFavorite(it, isFav) }
                         },
@@ -356,8 +409,14 @@ fun CatalogScreen(
                         isLoading = isDocsLoading,
                         listState = docsListState,
                         categoryKey = "documentales",
+                        focusedItemKey = lastVisitedItemKey,
                         onLoadMore = { documentalesViewModel.loadDocumentales() },
-                        onItemClick = { id -> onItemClick(id, "documentales") },
+                        onItemClick = { id ->
+                            val key = "documentales:$id"
+                            lastVisitedItemKey = key
+                            catalogViewModel.setLastVisitedItemKey(key)
+                            onItemClick(id, "documentales")
+                        },
                         onFavoriteToggle = { item, isFav ->
                             (item as? Documentary)?.let { documentalesViewModel.toggleFavorite(it, isFav) }
                         },
@@ -499,6 +558,7 @@ private fun <T : CatalogItem> CatalogList(
     isLoading: Boolean,
     listState: androidx.compose.foundation.lazy.LazyListState,
     categoryKey: String,
+    focusedItemKey: String?,
     onLoadMore: () -> Unit,
     onItemClick: (String) -> Unit,
     onFavoriteToggle: (CatalogItem, Boolean) -> Unit,
@@ -506,6 +566,21 @@ private fun <T : CatalogItem> CatalogList(
     onResetFilters: () -> Unit
 ) {
     var selectedItemForMenu by remember { mutableStateOf<CatalogItem?>(null) }
+
+    // Si hay un ítem visitado que pertenece a esta pestaña pero está fuera del área visible,
+    // aseguramos que esté visible para que pueda recibir el foco de accesibilidad de inmediato.
+    LaunchedEffect(focusedItemKey, items.size) {
+        if (focusedItemKey != null && focusedItemKey.startsWith("$categoryKey:") && items.isNotEmpty()) {
+            val targetId = focusedItemKey.removePrefix("$categoryKey:")
+            val targetIndex = items.indexOfFirst { it.id == targetId }
+            if (targetIndex >= 0) {
+                val isVisible = listState.layoutInfo.visibleItemsInfo.any { it.index == targetIndex }
+                if (!isVisible) {
+                    listState.scrollToItem(targetIndex)
+                }
+            }
+        }
+    }
 
     // Infinite scroll detection
     val shouldLoadMore = remember {
@@ -582,17 +657,26 @@ private fun <T : CatalogItem> CatalogList(
             state = listState,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .semantics {
+                    isTraversalGroup = true
+                    traversalIndex = if (focusedItemKey?.startsWith("$categoryKey:") == true) -1f else 0f
+                }
         ) {
             items(
                 items = items,
                 key = { it.id }
             ) { item ->
                 val isFavorite = favoriteIds.contains(item.id)
+                val itemKey = "$categoryKey:${item.id}"
+                val isInitialFocus = focusedItemKey == itemKey
                 CatalogItemCard(
                     item = item,
                     isFavorite = isFavorite,
                     categoryKey = categoryKey,
+                    itemTag = "catalog_item_$itemKey",
+                    isInitialFocus = isInitialFocus,
                     onClick = { onItemClick(item.id) },
                     onOptionsClick = { selectedItemForMenu = item },
                     onFavoriteToggle = { onFavoriteToggle(item, !isFavorite) },
@@ -694,6 +778,8 @@ private fun CatalogItemCard(
     item: CatalogItem,
     isFavorite: Boolean,
     categoryKey: String,
+    itemTag: String = "catalog_item_${categoryKey}_${item.id}",
+    isInitialFocus: Boolean = false,
     onClick: () -> Unit,
     onOptionsClick: () -> Unit,
     onFavoriteToggle: () -> Unit,
@@ -709,7 +795,7 @@ private fun CatalogItemCard(
     }
 
     val yearText = remember(item.anio) {
-        if (item.anio.isNotBlank()) "Año ${item.anio.trim()}." else ""
+        if (item.anio.isNotBlank()) "${item.anio.trim()}." else ""
     }
 
     val dubbingText = remember(item.idioma) {
@@ -718,7 +804,7 @@ private fun CatalogItemCard(
 
     val accessibilityDescription = remember(item.title, item.anio, item.idioma, isFavorite, showAccessibilityHints) {
         val cleanTitle = if (item.title.trim().endsWith(".")) item.title.trim() else "${item.title.trim()}."
-        val cleanYear = if (item.anio.isNotBlank()) "Año ${item.anio.trim()}." else ""
+        val cleanYear = if (item.anio.isNotBlank()) "${item.anio.trim()}." else ""
         val cleanDubbing = "${getDubbingText(item.idioma)}."
         val favStatus = if (isFavorite) "Guardada en favoritos." else ""
         val mainText = listOf(cleanTitle, cleanYear, cleanDubbing, favStatus)
@@ -745,8 +831,27 @@ private fun CatalogItemCard(
                 onLongClick = onOptionsClick
             )
             .clearAndSetSemantics {
+                if (isInitialFocus) {
+                    testTag = itemTag
+                    traversalIndex = -1f
+                }
                 contentDescription = accessibilityDescription
+                onClick {
+                    onClick()
+                    true
+                }
+                onLongClick(label = "Opciones") {
+                    onOptionsClick()
+                    true
+                }
             }
+            .then(
+                if (isInitialFocus) {
+                    Modifier.initialAccessibilityFocus(tag = itemTag)
+                } else {
+                    Modifier
+                }
+            )
     ) {
         Column(
             modifier = Modifier

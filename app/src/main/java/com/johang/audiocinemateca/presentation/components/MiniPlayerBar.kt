@@ -17,11 +17,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.johang.audiocinemateca.util.initialAccessibilityFocus
 
 @Composable
 fun MiniPlayerBar(
@@ -39,6 +45,10 @@ fun MiniPlayerBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 6.dp)
+            .semantics {
+                isTraversalGroup = true
+                traversalIndex = -1f
+            }
     ) {
         Row(
             modifier = Modifier
@@ -54,12 +64,18 @@ fun MiniPlayerBar(
                     .weight(1f)
                     .clickable(onClick = onBarClick)
                     .clearAndSetSemantics {
+                        testTag = "mini_player_header"
+                        heading()
+                        traversalIndex = -1f
                         contentDescription = "Reproductor minimizado. $title. $subtitle"
                         onClick(label = "Expandir a pantalla completa") {
                             onBarClick()
                             true
                         }
                     }
+                    .initialAccessibilityFocus(
+                        tag = "mini_player_header"
+                    )
             ) {
                 Surface(
                     shape = CircleShape,

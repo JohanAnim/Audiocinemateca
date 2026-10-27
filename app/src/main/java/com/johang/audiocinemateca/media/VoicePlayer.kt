@@ -2,6 +2,7 @@ package com.johang.audiocinemateca.media
 
 import android.content.Context
 import android.media.MediaPlayer
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,17 +14,23 @@ class VoicePlayer @Inject constructor(
 
     private var mediaPlayer: MediaPlayer? = null
 
-    fun playVoice(resId: Int, onCompletion: (() -> Unit)? = null) {
-        // Detener y liberar cualquier reproducción anterior
+    fun playVoiceAsset(assetPath: String, onCompletion: (() -> Unit)? = null) {
         stopVoice()
-
-        mediaPlayer = MediaPlayer.create(context, resId).apply {
-            setOnCompletionListener {
-                onCompletion?.invoke()
-                release()
-                mediaPlayer = null
+        try {
+            val afd = context.assets.openFd(assetPath)
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                afd.close()
+                prepare()
+                setOnCompletionListener {
+                    onCompletion?.invoke()
+                    release()
+                    mediaPlayer = null
+                }
+                start()
             }
-            start()
+        } catch (e: Exception) {
+            Log.e("VoicePlayer", "Error reproduciendo voz desde asset: $assetPath", e)
         }
     }
 

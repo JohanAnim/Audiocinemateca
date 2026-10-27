@@ -6,19 +6,29 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.johang.audiocinemateca.R
+import com.johang.audiocinemateca.util.accessibleHeading
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
+import com.johang.audiocinemateca.util.initialAccessibilityFocus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,13 +38,19 @@ fun SettingsScreen(
     onNavigateToTerms: () -> Unit,
     onBack: () -> Unit
 ) {
+    // Recuerda la categoría enfocada: al entrar por primera vez enfoca "general" (la 1ra opción),
+    // y al regresar desde cualquier subcategoría restaura el foco exactamente en esa categoría.
+    var focusedItemId by rememberSaveable { mutableStateOf("general") }
+
     Scaffold(
+        modifier = Modifier.semantics { isTraversalGroup = true },
         topBar = {
             TopAppBar(
+                modifier = Modifier.semantics { traversalIndex = 1f },
                 title = { Text("Ajustes", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -50,17 +66,29 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.surface)
+                .semantics {
+                    isTraversalGroup = true
+                    traversalIndex = -1f
+                }
         ) {
             item {
                 SettingsHeader("Configuración")
             }
 
-            items(getSettingsCategories()) { item ->
+            items(
+                items = getSettingsCategories(),
+                key = { it.id }
+            ) { item ->
                 SettingsItem(
                     title = item.title,
                     summary = item.summary,
                     icon = item.icon,
-                    onClick = { onNavigateToCategory(item.id) }
+                    itemTag = "settings_cat_${item.id}",
+                    isInitialFocus = item.id == focusedItemId,
+                    onClick = {
+                        focusedItemId = item.id
+                        onNavigateToCategory(item.id)
+                    }
                 )
             }
 
@@ -73,7 +101,12 @@ fun SettingsScreen(
                     title = "Política de Privacidad",
                     summary = "Lee cómo protegemos tus datos personales.",
                     icon = Icons.Default.PrivacyTip,
-                    onClick = onNavigateToPrivacy
+                    itemTag = "settings_cat_privacy",
+                    isInitialFocus = focusedItemId == "privacy",
+                    onClick = {
+                        focusedItemId = "privacy"
+                        onNavigateToPrivacy()
+                    }
                 )
             }
 
@@ -82,7 +115,12 @@ fun SettingsScreen(
                     title = "Términos y Condiciones",
                     summary = "Normas de uso de la aplicación.",
                     icon = Icons.Default.Description,
-                    onClick = onNavigateToTerms
+                    itemTag = "settings_cat_terms",
+                    isInitialFocus = focusedItemId == "terms",
+                    onClick = {
+                        focusedItemId = "terms"
+                        onNavigateToTerms()
+                    }
                 )
             }
         }
@@ -95,7 +133,8 @@ fun SettingsHeader(title: String) {
         text = title,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 8.dp),
+            .padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 8.dp)
+            .accessibleHeading(title),
         color = MaterialTheme.colorScheme.primary,
         fontSize = 14.sp,
         fontWeight = FontWeight.Bold
@@ -107,16 +146,27 @@ fun SettingsItem(
     title: String,
     summary: String,
     icon: Any, // Puede ser ImageVector o Int (Resource)
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    itemTag: String = "settings_item_$title",
+    isInitialFocus: Boolean = false
 ) {
-    Surface(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .audiocinematecaAccessibility(
                 label = "$title. $summary",
                 role = Role.Button,
-                onClickAction = onClick
+                onClickAction = onClick,
+                testTag = itemTag,
+                traversalIndex = if (isInitialFocus) -1f else 0f
+            )
+            .then(
+                if (isInitialFocus) {
+                    Modifier.initialAccessibilityFocus(tag = itemTag)
+                } else {
+                    Modifier
+                }
             )
     ) {
         Row(

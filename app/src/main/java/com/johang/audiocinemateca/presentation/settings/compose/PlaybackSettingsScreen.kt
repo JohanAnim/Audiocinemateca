@@ -36,6 +36,7 @@ fun PlaybackSettingsScreen(
             title = "Reproducción automática",
             summary = "Reproducir la siguiente parte o episodio automáticamente.",
             checked = autoplay,
+            isInitialFocus = true,
             onCheckedChange = { viewModel.updateBoolean("autoplay", it) }
         )
 

@@ -16,22 +16,22 @@ fun DownloadsSettingsScreen(
     var offlineMode by remember { mutableStateOf(viewModel.getBoolean("offline_mode", false)) }
     
     // Storage location logic
-    val storageEntries = remember { mutableStateListOf<String>() }
-    val storageValues = remember { mutableStateListOf<String>() }
-    var currentStorage by remember { mutableStateOf(viewModel.getString("download_location", "")) }
-
-    LaunchedEffect(Unit) {
+    val (storageEntries, storageValues) = remember(context) {
+        val entries = mutableListOf<String>()
+        val values = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val volumeNames = MediaStore.getExternalVolumeNames(context)
             volumeNames.forEach { volumeName ->
                 val isPrimary = volumeName == MediaStore.VOLUME_EXTERNAL_PRIMARY
-                storageEntries.add(if (isPrimary) "Memoria interna" else "Almacenamiento externo")
-                storageValues.add(volumeName)
+                entries.add(if (isPrimary) "Memoria interna" else "Almacenamiento externo")
+                values.add(volumeName)
             }
         }
-        if (currentStorage.isEmpty() && storageValues.isNotEmpty()) {
-            currentStorage = storageValues.first()
-        }
+        Pair(entries, values)
+    }
+    var currentStorage by remember {
+        val saved = viewModel.getString("download_location", "")
+        mutableStateOf(if (saved.isEmpty() && storageValues.isNotEmpty()) storageValues.first() else saved)
     }
 
     CategorySettingsScreen(
@@ -45,6 +45,7 @@ fun DownloadsSettingsScreen(
                 entries = storageEntries,
                 entryValues = storageValues,
                 currentValue = currentStorage,
+                isInitialFocus = true,
                 onValueChange = { 
                     currentStorage = it
                     viewModel.updateString("download_location", it)
@@ -56,6 +57,7 @@ fun DownloadsSettingsScreen(
             title = "Modo offline total",
             summary = "Activa este modo para usar la app sin conexión a internet.",
             checked = offlineMode,
+            isInitialFocus = storageValues.isEmpty(),
             onCheckedChange = { 
                 offlineMode = it
                 viewModel.updateBoolean("offline_mode", it)

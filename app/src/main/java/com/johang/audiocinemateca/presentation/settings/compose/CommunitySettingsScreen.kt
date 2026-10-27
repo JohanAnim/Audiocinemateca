@@ -26,6 +26,7 @@ fun CommunitySettingsScreen(
             title = "Mostrar presencia en línea",
             summary = if (showPresence) "Apareces en la lista de usuarios conectados en el chat" else "Oculto, no aparecerás en la lista de usuarios conectados",
             checked = showPresence,
+            isInitialFocus = true,
             onCheckedChange = { checked ->
                 showPresence = checked
                 viewModel.updateBoolean("community_show_presence", checked)

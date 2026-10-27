@@ -85,6 +85,7 @@ fun TtsSettingsScreen(
             entries = engineEntries,
             entryValues = engineValues,
             currentValue = currentEngine,
+            isInitialFocus = true,
             onValueChange = { 
                 currentEngine = it
                 prefs.edit().putString("tts_engine", it).apply()

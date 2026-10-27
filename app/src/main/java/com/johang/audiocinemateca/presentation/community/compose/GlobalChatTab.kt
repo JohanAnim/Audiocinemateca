@@ -16,17 +16,33 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AlternateEmail
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MarkAsUnread
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Mood
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.clip
+import android.app.Activity
+import android.content.Intent
+import android.speech.RecognizerIntent
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -50,7 +66,9 @@ import com.johang.audiocinemateca.presentation.community.ChatListItem
 import com.johang.audiocinemateca.presentation.community.GlobalChatViewModel
 import com.johang.audiocinemateca.presentation.community.components.*
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
+import com.johang.audiocinemateca.util.initialAccessibilityFocus
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -59,9 +77,11 @@ import java.util.Locale
 @Composable
 fun GlobalChatTab(
     viewModel: GlobalChatViewModel,
-    onVoiceClick: () -> Unit,
-    onNavigateToPlayer: (CatalogItem, Int, Int) -> Unit
+    onVoiceClick: () -> Unit = {},
+    onNavigateToPlayer: (CatalogItem, Int, Int) -> Unit = { _, _, _ -> },
+    onNavigateToCommunitySettings: () -> Unit = {}
 ) {
+    val scope = rememberCoroutineScope()
     val chatItems by viewModel.chatItems.collectAsState()
     val isOpen by viewModel.isOpen.collectAsState()
     val replyingTo by viewModel.replyingTo.collectAsState()
@@ -74,9 +94,42 @@ fun GlobalChatTab(
     var showEmojiPicker by remember { mutableStateOf(false) }
     var selectedMessageForOptions by remember { mutableStateOf<ChatMessage?>(null) }
 
-    // Dialogs
+    // Dialogs & Menus
+    var showHeaderMenu by remember { mutableStateOf(false) }
     var showRulesDialog by remember { mutableStateOf(false) }
     var showConnectedUsersDialog by remember { mutableStateOf(false) }
+    var showBannedUsersDialog by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val speechLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!spokenText.isNullOrBlank()) {
+                messageText = if (messageText.isBlank()) {
+                    spokenText
+                } else {
+                    "${messageText.trim()} $spokenText"
+                }
+            }
+        }
+    }
+
+    val startVoiceDictation = {
+        try {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES")
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Dicta tu mensaje para la comunidad...")
+            }
+            speechLauncher.launch(intent)
+        } catch (_: Exception) {
+            Toast.makeText(context, "El dictado por voz no está disponible en este dispositivo.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+
 
     val listState = rememberLazyListState()
     val currentUser = FirebaseAuth.getInstance().currentUser
@@ -106,14 +159,63 @@ fun GlobalChatTab(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Encabezado del Chat
-        GlobalChatHeader(
-            onlineCount = onlineCount,
-            isAdmin = viewModel.isAdmin,
-            onHeaderClick = { showConnectedUsersDialog = true },
-            onOptionsClick = { showRulesDialog = true }
-        )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .semantics {
+                isTraversalGroup = true
+            }
+    ) {
+        // Encabezado del Chat con Menú Contextual
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics {
+                    isTraversalGroup = true
+                    traversalIndex = 1f
+                }
+        ) {
+            GlobalChatHeader(
+                onlineCount = onlineCount,
+                isAdmin = viewModel.isAdmin,
+                onHeaderClick = { showConnectedUsersDialog = true },
+                onOptionsClick = { showHeaderMenu = true }
+            )
+
+            DropdownMenu(
+                expanded = showHeaderMenu,
+                onDismissRequest = { showHeaderMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Reglas de la comunidad") },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
+                    onClick = {
+                        showHeaderMenu = false
+                        showRulesDialog = true
+                    }
+                )
+
+                if (viewModel.isAdmin) {
+                    DropdownMenuItem(
+                        text = { Text("Usuarios sancionados") },
+                        leadingIcon = { Icon(Icons.Default.Block, contentDescription = null) },
+                        onClick = {
+                            showHeaderMenu = false
+                            showBannedUsersDialog = true
+                        }
+                    )
+                }
+
+                DropdownMenuItem(
+                    text = { Text("Ajustes de la comunidad") },
+                    leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    onClick = {
+                        showHeaderMenu = false
+                        onNavigateToCommunitySettings()
+                    }
+                )
+            }
+        }
 
         // Banner de Chat Cerrado
         if (!isOpen) {
@@ -137,6 +239,10 @@ fun GlobalChatTab(
             modifier = Modifier
                 .fillMaxSize()
                 .weight(1f)
+                .semantics {
+                    isTraversalGroup = true
+                    traversalIndex = 2f
+                }
         ) {
             if (chatItems.isEmpty()) {
                 Column(
@@ -248,7 +354,24 @@ fun GlobalChatTab(
                                     onEdit = { viewModel.setEditingMessage(item.message) },
                                     onDelete = { viewModel.deleteMessage(item.message) },
                                     onReactionToggle = { emoji -> viewModel.toggleReaction(item.message, emoji) },
-                                    onItemClick = { selectedMessageForOptions = item.message },
+                                    onScrollToMessage = { targetId ->
+                                        val targetIndex = chatItems.indexOfFirst {
+                                            it is ChatListItem.Message && it.message.id == targetId
+                                        }
+                                        if (targetIndex >= 0) {
+                                            scope.launch {
+                                                listState.animateScrollToItem(targetIndex)
+                                            }
+                                        }
+                                    },
+                                    onItemClick = {
+                                        val textToSpeak = if (item.message.isDeleted) {
+                                            "Mensaje eliminado"
+                                        } else {
+                                            "${item.message.senderName} dice: ${item.message.text}"
+                                        }
+                                        viewModel.speakText(textToSpeak)
+                                    },
                                     onLongClick = { selectedMessageForOptions = item.message }
                                 )
                             }
@@ -366,11 +489,18 @@ fun GlobalChatTab(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .imePadding()
+                .semantics {
+                    isTraversalGroup = true
+                    traversalIndex = -1f
+                }
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .semantics {
+                        isTraversalGroup = true
+                    },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val emojiToggleLabel = if (showEmojiPicker) "Ocultar emojis" else "Emojis"
@@ -402,30 +532,28 @@ fun GlobalChatTab(
                     enabled = isOpen,
                     singleLine = false,
                     maxLines = 4,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(20.dp),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(
-                        onSend = {
-                            if (messageText.isNotBlank()) {
-                                if (viewModel.sendMessage(messageText.trim())) {
-                                    messageText = ""
-                                    showEmojiPicker = false
-                                }
-                            }
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics {
+                            traversalIndex = -1f
                         }
-                    )
+                        .initialAccessibilityFocus(
+                            tag = "global_chat_message_input",
+                            requestInputFocus = false
+                        ),
+                    shape = RoundedCornerShape(20.dp),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default)
                 )
 
                 IconButton(
-                    onClick = onVoiceClick,
+                    onClick = { startVoiceDictation() },
                     enabled = isOpen,
                     modifier = Modifier.clearAndSetSemantics {
                         contentDescription = "Dictar mensaje por voz"
                         role = Role.Button
                         onClick(label = "Dictar mensaje por voz") {
                             if (isOpen) {
-                                onVoiceClick()
+                                startVoiceDictation()
                             }
                             true
                         }
@@ -492,31 +620,31 @@ fun GlobalChatTab(
             )
         }
 
-        val firstReactionFocusRequester = remember { FocusRequester() }
-
-        LaunchedEffect(msg.id) {
-            delay(300L)
-            try {
-                firstReactionFocusRequester.requestFocus()
-            } catch (_: Exception) {}
-        }
-
         ModalBottomSheet(
-            onDismissRequest = { selectedMessageForOptions = null }
+            onDismissRequest = { selectedMessageForOptions = null },
+            dragHandle = null
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 24.dp)
-                    .navigationBarsPadding(),
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .padding(bottom = 16.dp)
+                    .navigationBarsPadding()
+                    .semantics {
+                        isTraversalGroup = true
+                        traversalIndex = -1f
+                    },
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
                     text = "Opciones para el mensaje de ${msg.senderName}",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                        .semantics {
+                            traversalIndex = 1f
+                        }
                 )
 
                 // Carrusel horizontal de reacciones ordenado inteligentemente por uso
@@ -524,34 +652,46 @@ fun GlobalChatTab(
                     text = "Reaccionar rápidamente:",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 12.dp)
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .semantics {
+                            traversalIndex = 1f
+                        }
                 )
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .semantics {
+                            isTraversalGroup = true
+                            traversalIndex = -1f
+                        },
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     sortedEmojis.forEachIndexed { index, emoji ->
                         val count = msg.reactions[emoji]?.size ?: 0
                         val isFirst = index == 0
+                        val reactionTag = "chat_first_reaction_${msg.id}"
                         val emojiDescription = remember(emoji, count) {
                             if (count > 0) "$emoji, $count reacciones" else emoji
                         }
 
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
+                        Box(
                             modifier = Modifier
-                                .then(if (isFirst) Modifier.focusRequester(firstReactionFocusRequester) else Modifier)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .clickable {
                                     viewModel.toggleReaction(msg, emoji)
                                     selectedMessageForOptions = null
                                 }
                                 .clearAndSetSemantics {
+                                    if (isFirst) {
+                                        testTag = reactionTag
+                                        traversalIndex = -1f
+                                    }
                                     contentDescription = emojiDescription
                                     role = Role.Button
                                     onClick(label = "Reaccionar con $emoji") {
@@ -560,6 +700,16 @@ fun GlobalChatTab(
                                         true
                                     }
                                 }
+                                .then(
+                                    if (isFirst) {
+                                        Modifier.initialAccessibilityFocus(
+                                            tag = reactionTag,
+                                            reassertAfterTransition = true
+                                        )
+                                    } else {
+                                        Modifier
+                                    }
+                                )
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -653,6 +803,15 @@ fun GlobalChatTab(
         )
     }
 
+    if (showBannedUsersDialog) {
+        val bannedList by viewModel.bannedUsers.collectAsState()
+        BannedUsersDialog(
+            bannedUsers = bannedList,
+            onUnbanUser = { userId -> viewModel.unbanUser(userId) },
+            onDismiss = { showBannedUsersDialog = false }
+        )
+    }
+
     // Mensajes de Sanción / Estado
     banStatusMessage?.let { message ->
         AlertDialog(
@@ -678,6 +837,7 @@ fun ChatMessageCard(
     onEdit: () -> Unit = {},
     onDelete: () -> Unit = {},
     onReactionToggle: (String) -> Unit = {},
+    onScrollToMessage: (String) -> Unit = {},
     onItemClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -691,6 +851,12 @@ fun ChatMessageCard(
 
     val reactionCounts = remember(message.reactions) {
         message.reactions.mapValues { it.value.size }.filterValues { it > 0 }
+    }
+
+    val replyText = remember(message.replyToSenderName, message.replyToText) {
+        if (!message.replyToText.isNullOrBlank()) {
+            "Respondiendo a ${message.replyToSenderName ?: "usuario"}: ${message.replyToText}"
+        } else ""
     }
 
     val fullDescription = remember(message.senderName, message.text, timeStr, reactionCounts) {
@@ -740,111 +906,150 @@ fun ChatMessageCard(
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = if (isMe) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                    onClick = onItemClick,
-                    onLongClick = onLongClick
-                )
-                .clearAndSetSemantics {
-                    contentDescription = fullDescription
-                    customActions = customActionsList
-                }
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                if (!isMe) {
-                    Text(
-                        text = message.senderName,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                }
-
-                if (!message.replyToText.isNullOrBlank()) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 6.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(8.dp)) {
-                            Text(
-                                text = "Respuesta a ${message.replyToSenderName}",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = message.replyToText,
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 1. Ítem principal del mensaje (A la izquierda)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .combinedClickable(
+                            onClick = onItemClick,
+                            onLongClick = onLongClick
+                        )
+                        .clearAndSetSemantics {
+                            contentDescription = fullDescription
+                            customActions = customActionsList
                         }
+                ) {
+                    if (!isMe) {
+                        Text(
+                            text = message.senderName,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
                     }
-                }
+                    Text(
+                        text = if (message.isDeleted) "Este mensaje ha sido eliminado" else message.text,
+                        fontSize = 14.sp,
+                        color = if (message.isDeleted) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
+                    )
 
-                Text(
-                    text = if (message.isDeleted) "Este mensaje ha sido eliminado" else message.text,
-                    fontSize = 14.sp,
-                    color = if (message.isDeleted) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface
-                )
-
-                // Fila de reacciones (WhatsApp / Telegram style)
-                if (reactionCounts.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 2.dp)
-                    ) {
-                        reactionCounts.forEach { (emoji, count) ->
-                            val userHasReacted = currentUserId != null && message.reactions[emoji]?.contains(currentUserId) == true
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (userHasReacted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                                modifier = Modifier
-                                    .clickable { onReactionToggle(emoji) }
-                                    .clearAndSetSemantics {
-                                        contentDescription = "Reacción $emoji, $count"
-                                        role = Role.Button
-                                        onClick(label = "Reaccionar $emoji") {
-                                            onReactionToggle(emoji)
-                                            true
+                    // Fila de reacciones (WhatsApp / Telegram style)
+                    if (reactionCounts.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            reactionCounts.forEach { (emoji, count) ->
+                                val userHasReacted = currentUserId != null && message.reactions[emoji]?.contains(currentUserId) == true
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (userHasReacted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                    modifier = Modifier
+                                        .clickable { onReactionToggle(emoji) }
+                                        .clearAndSetSemantics {
+                                            contentDescription = "Reacción $emoji, $count"
+                                            role = Role.Button
+                                            onClick(label = "Reaccionar $emoji") {
+                                                onReactionToggle(emoji)
+                                                true
+                                            }
                                         }
-                                    }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(text = emoji, fontSize = 13.sp)
-                                    if (count > 1) {
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "$count",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (userHasReacted) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
-                                        )
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = emoji, fontSize = 13.sp)
+                                        if (count > 1) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "$count",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (userHasReacted) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = timeStr,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.align(Alignment.End)
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                // 2. Sub-ítem independiente para la cita de respuesta (A la derecha en la misma fila)
+                if (!message.replyToText.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF0EA5E9).copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, Color(0xFF0EA5E9).copy(alpha = 0.3f)),
+                        modifier = Modifier
+                            .weight(0.8f)
+                            .clickable {
+                                message.replyToMessageId?.let { targetId ->
+                                    onScrollToMessage(targetId)
+                                }
+                            }
+                            .clearAndSetSemantics {
+                                contentDescription = "En respuesta al mensaje de ${message.replyToSenderName ?: "usuario"}: ${message.replyToText}"
+                                onClick(label = "Ir al mensaje original de ${message.replyToSenderName ?: "usuario"}") {
+                                    message.replyToMessageId?.let { onScrollToMessage(it) }
+                                    true
+                                }
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min)
+                        ) {
+                            Surface(
+                                color = Color(0xFF0EA5E9),
+                                modifier = Modifier
+                                    .width(4.dp)
+                                    .fillMaxHeight()
+                            ) {}
 
-                Text(
-                    text = timeStr,
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.align(Alignment.End)
-                )
+                            Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+                                Text(
+                                    text = message.replyToSenderName ?: "Usuario",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF38BDF8)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = message.replyToText,
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF94A3B8),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

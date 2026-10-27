@@ -29,6 +29,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -65,6 +75,9 @@ import com.johang.audiocinemateca.presentation.player.PlayerService
 import com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme
 import com.johang.audiocinemateca.util.SoundEffectsManager
 import com.johang.audiocinemateca.util.TtsManager
+import com.johang.audiocinemateca.util.findCurrentlyAccessibilityFocusedNodeId
+import com.johang.audiocinemateca.util.initialAccessibilityFocus
+import com.johang.audiocinemateca.util.requestComposeAccessibilityFocusById
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -654,6 +667,7 @@ private fun MainAppScreen(
     onRegisterOpenDrawer: ((() -> Unit)?) -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val view = androidx.compose.ui.platform.LocalView.current
     val scope = rememberCoroutineScope()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -661,11 +675,58 @@ private fun MainAppScreen(
         currentRoute?.substringBefore("?")?.substringBefore("/")
     }
 
-    DisposableEffect(drawerState) {
-        onRegisterOpenDrawer {
-            scope.launch {
-                drawerState.open()
+    // Guarda el virtualViewId del elemento que tenía el foco de accesibilidad justo antes de abrir la hoja lateral
+    var nodeIdBeforeDrawerOpened by remember { mutableStateOf<Int?>(null) }
+    var routeWhenDrawerOpened by remember { mutableStateOf<String?>(null) }
+    var wasDrawerOpen by remember { mutableStateOf(false) }
+
+    val openDrawerSavingFocus: () -> Unit = {
+        val focusedId = view.findCurrentlyAccessibilityFocusedNodeId(excludeTagPrefix = "drawer_item_")
+        if (focusedId != null) {
+            nodeIdBeforeDrawerOpened = focusedId
+        }
+        routeWhenDrawerOpened = currentRoute
+        scope.launch {
+            drawerState.open()
+        }
+    }
+
+    // Si el usuario abre la hoja deslizando el dedo en lugar de tocar el botón,
+    // capturamos el nodo enfocado en cuanto inicia el gesto de apertura.
+    LaunchedEffect(drawerState.targetValue) {
+        if (drawerState.targetValue == DrawerValue.Open && !wasDrawerOpen) {
+            val focusedId = view.findCurrentlyAccessibilityFocusedNodeId(excludeTagPrefix = "drawer_item_")
+            if (focusedId != null) {
+                nodeIdBeforeDrawerOpened = focusedId
             }
+            if (routeWhenDrawerOpened == null) {
+                routeWhenDrawerOpened = currentRoute
+            }
+        }
+    }
+
+    // Al cerrarse la hoja de navegación en la misma pantalla, restauramos el último foco que hubo.
+    LaunchedEffect(drawerState.isOpen, drawerState.isClosed) {
+        if (drawerState.isOpen) {
+            wasDrawerOpen = true
+        } else if (drawerState.isClosed && wasDrawerOpen) {
+            wasDrawerOpen = false
+            val savedId = nodeIdBeforeDrawerOpened
+            val sameRoute = routeWhenDrawerOpened == currentRoute
+            nodeIdBeforeDrawerOpened = null
+            routeWhenDrawerOpened = null
+            if (sameRoute && savedId != null) {
+                withFrameNanos { }
+                view.requestComposeAccessibilityFocusById(savedId)
+                kotlinx.coroutines.delay(90L)
+                view.requestComposeAccessibilityFocusById(savedId)
+            }
+        }
+    }
+
+    DisposableEffect(drawerState, currentRoute) {
+        onRegisterOpenDrawer {
+            openDrawerSavingFocus()
         }
         onDispose {
             onRegisterOpenDrawer(null)
@@ -674,6 +735,11 @@ private fun MainAppScreen(
 
     val navigateFromDrawer: (String) -> Unit = { targetRoute ->
         scope.launch {
+            if (currentRoute != targetRoute) {
+                // Si cambia de pantalla, la nueva pantalla gestionará su propio foco inicial
+                nodeIdBeforeDrawerOpened = null
+                routeWhenDrawerOpened = null
+            }
             drawerState.close()
             if (currentRoute != targetRoute) {
                 navController.navigate(targetRoute) {
@@ -683,13 +749,40 @@ private fun MainAppScreen(
         }
     }
 
+    // Determina qué ítem del cajón de navegación debe recibir el foco al abrirse
+    // (priorizando el ítem seleccionado actualmente).
+    val targetDrawerTag = remember(baseRoute, isHomeVisible, isCommunityVisible) {
+        when {
+            isHomeVisible && baseRoute == NavRoutes.HOME -> "drawer_item_home"
+            isCommunityVisible && baseRoute == "community" -> "drawer_item_community"
+            baseRoute == NavRoutes.AI_CHAT -> "drawer_item_ai_chat"
+            baseRoute == NavRoutes.NOTIFICATIONS -> "drawer_item_notifications"
+            isHomeVisible -> "drawer_item_home"
+            isCommunityVisible -> "drawer_item_community"
+            else -> "drawer_item_ai_chat"
+        }
+    }
+
+    // Mantiene el gesto de deslizar para abrir la hoja en pantallas principales,
+    // y lo desactiva en pantallas como el reproductor para no interferir con sus gestos.
+    val isDrawerGestureEnabled = drawerState.isOpen ||
+        (baseRoute != "player" && baseRoute != "content_detail" && baseRoute != "settings" && baseRoute != "category_settings")
+
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = isDrawerGestureEnabled,
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(
+                modifier = Modifier.semantics { isTraversalGroup = true }
+            ) {
                 Surface(
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            isTraversalGroup = true
+                            traversalIndex = 1f
+                        }
                 ) {
                     Column(
                         modifier = Modifier
@@ -738,37 +831,146 @@ private fun MainAppScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                if (isHomeVisible) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            isTraversalGroup = true
+                            traversalIndex = -1f
+                        }
+                ) {
+                    if (isHomeVisible) {
+                        val isHomeSelected = baseRoute == NavRoutes.HOME
+                        val isTarget = targetDrawerTag == "drawer_item_home"
+                        NavigationDrawerItem(
+                            label = { Text("Inicio") },
+                            icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                            selected = isHomeSelected,
+                            onClick = { navigateFromDrawer(NavRoutes.HOME) },
+                            modifier = Modifier
+                                .padding(NavigationDrawerItemDefaults.ItemPadding)
+                                .clearAndSetSemantics {
+                                    testTag = "drawer_item_home"
+                                    traversalIndex = if (isTarget) -1f else 0f
+                                    contentDescription = "Inicio"
+                                    role = Role.Tab
+                                    selected = isHomeSelected
+                                    onClick(label = "Inicio") {
+                                        navigateFromDrawer(NavRoutes.HOME)
+                                        true
+                                    }
+                                }
+                                .then(
+                                    if (drawerState.isOpen && isTarget) {
+                                        Modifier.initialAccessibilityFocus(
+                                            tag = "drawer_item_home",
+                                            reassertAfterTransition = true
+                                        )
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                        )
+                    }
+
+                    if (isCommunityVisible) {
+                        val isCommunitySelected = baseRoute == "community"
+                        val isTarget = targetDrawerTag == "drawer_item_community"
+                        NavigationDrawerItem(
+                            label = { Text("Comunidad") },
+                            icon = { Icon(Icons.Default.People, contentDescription = null) },
+                            selected = isCommunitySelected,
+                            onClick = { navigateFromDrawer(NavRoutes.community("chat")) },
+                            modifier = Modifier
+                                .padding(NavigationDrawerItemDefaults.ItemPadding)
+                                .clearAndSetSemantics {
+                                    testTag = "drawer_item_community"
+                                    traversalIndex = if (isTarget) -1f else 0f
+                                    contentDescription = "Comunidad"
+                                    role = Role.Tab
+                                    selected = isCommunitySelected
+                                    onClick(label = "Comunidad") {
+                                        navigateFromDrawer(NavRoutes.community("chat"))
+                                        true
+                                    }
+                                }
+                                .then(
+                                    if (drawerState.isOpen && isTarget) {
+                                        Modifier.initialAccessibilityFocus(
+                                            tag = "drawer_item_community",
+                                            reassertAfterTransition = true
+                                        )
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                        )
+                    }
+
+                    val isAiSelected = baseRoute == NavRoutes.AI_CHAT
+                    val isAiTarget = targetDrawerTag == "drawer_item_ai_chat"
                     NavigationDrawerItem(
-                        label = { Text("Inicio") },
-                        icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                        selected = baseRoute == NavRoutes.HOME,
-                        onClick = { navigateFromDrawer(NavRoutes.HOME) }
+                        label = { Text("Asistente IA") },
+                        icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+                        selected = isAiSelected,
+                        onClick = { navigateFromDrawer(NavRoutes.AI_CHAT) },
+                        modifier = Modifier
+                            .padding(NavigationDrawerItemDefaults.ItemPadding)
+                            .clearAndSetSemantics {
+                                testTag = "drawer_item_ai_chat"
+                                traversalIndex = if (isAiTarget) -1f else 0f
+                                contentDescription = "Asistente IA"
+                                role = Role.Tab
+                                selected = isAiSelected
+                                onClick(label = "Asistente IA") {
+                                    navigateFromDrawer(NavRoutes.AI_CHAT)
+                                    true
+                                }
+                            }
+                            .then(
+                                if (drawerState.isOpen && isAiTarget) {
+                                    Modifier.initialAccessibilityFocus(
+                                        tag = "drawer_item_ai_chat",
+                                        reassertAfterTransition = true
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
+                    )
+
+                    val isNotificationsSelected = baseRoute == NavRoutes.NOTIFICATIONS
+                    val isNotificationsTarget = targetDrawerTag == "drawer_item_notifications"
+                    NavigationDrawerItem(
+                        label = { Text("Notificaciones") },
+                        icon = { Icon(Icons.Default.Notifications, contentDescription = null) },
+                        selected = isNotificationsSelected,
+                        onClick = { navigateFromDrawer(NavRoutes.NOTIFICATIONS) },
+                        modifier = Modifier
+                            .padding(NavigationDrawerItemDefaults.ItemPadding)
+                            .clearAndSetSemantics {
+                                testTag = "drawer_item_notifications"
+                                traversalIndex = if (isNotificationsTarget) -1f else 0f
+                                contentDescription = "Notificaciones"
+                                role = Role.Tab
+                                selected = isNotificationsSelected
+                                onClick(label = "Notificaciones") {
+                                    navigateFromDrawer(NavRoutes.NOTIFICATIONS)
+                                    true
+                                }
+                            }
+                            .then(
+                                if (drawerState.isOpen && isNotificationsTarget) {
+                                    Modifier.initialAccessibilityFocus(
+                                        tag = "drawer_item_notifications",
+                                        reassertAfterTransition = true
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
                     )
                 }
-
-                if (isCommunityVisible) {
-                    NavigationDrawerItem(
-                        label = { Text("Comunidad") },
-                        icon = { Icon(Icons.Default.People, contentDescription = null) },
-                        selected = baseRoute == "community",
-                        onClick = { navigateFromDrawer(NavRoutes.community("chat")) }
-                    )
-                }
-
-                NavigationDrawerItem(
-                    label = { Text("Asistente IA") },
-                    icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
-                    selected = baseRoute == NavRoutes.AI_CHAT,
-                    onClick = { navigateFromDrawer(NavRoutes.AI_CHAT) }
-                )
-
-                NavigationDrawerItem(
-                    label = { Text("Notificaciones") },
-                    icon = { Icon(Icons.Default.Notifications, contentDescription = null) },
-                    selected = baseRoute == NavRoutes.NOTIFICATIONS,
-                    onClick = { navigateFromDrawer(NavRoutes.NOTIFICATIONS) }
-                )
             }
         }
     ) {
@@ -815,9 +1017,7 @@ private fun MainAppScreen(
                 downloadRepository = downloadRepository,
                 ttsManager = ttsManager,
                 onOpenDrawer = {
-                    scope.launch {
-                        drawerState.open()
-                    }
+                    openDrawerSavingFocus()
                 },
                 modifier = Modifier
                     .fillMaxSize()

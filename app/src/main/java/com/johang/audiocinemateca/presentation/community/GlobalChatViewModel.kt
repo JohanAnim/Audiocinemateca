@@ -193,6 +193,8 @@ class GlobalChatViewModel @Inject constructor(
         _unreadPosition.value = null
     }
 
+    fun speakText(text: String) { ttsManager.speak(text, interrupt = true) }
+
     fun onVoiceStart() { ttsManager.stop(); soundEffectsManager.playSound("aura_voice_start") }
     fun onVoiceEnd() { soundEffectsManager.playSound("aura_voice_end") }
     fun onVoiceError() { soundEffectsManager.playSound("aura_error") }

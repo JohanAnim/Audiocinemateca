@@ -67,12 +67,12 @@ class LoginViewModel @Inject constructor(
     }
 
     fun onCatalogDownloadStart() {
-        voicePlayer.playVoice(R.raw.voz_descargando)
+        voicePlayer.playVoiceAsset("sonidos/voces/voz_descargando.mp3")
         viewModelScope.launch {
             loadCatalogUseCase.execute().collect {
                 _catalogDownloadState.value = it
                 if (it is AuthCatalogRepository.LoadCatalogResultWithProgress.Success) {
-                    voicePlayer.playVoice(R.raw.voz_descarga_lista)
+                    voicePlayer.playVoiceAsset("sonidos/voces/voz_descarga_lista.mp3")
                 }
             }
         }
@@ -142,17 +142,12 @@ class LoginViewModel @Inject constructor(
     fun playWelcomeSounds() {
         welcomeSoundsJob?.cancel()
         welcomeSoundsJob = viewModelScope.launch {
-            soundEffectsPlayer.loadSound(R.raw.efecto_bienvenida) { resId ->
-                soundEffectsPlayer.playSound(resId, 0.5f) // Volumen a la mitad
+            soundEffectsPlayer.loadAndPlaySoundAsset("sonidos/efectos/efecto_bienvenida.wav", 0.5f)
+            delay(500)
+            voicePlayer.playVoiceAsset("sonidos/voces/voz_bienvenida.mp3") {
                 welcomeSoundsJob = viewModelScope.launch {
-                    delay(500)
-                    voicePlayer.playVoice(R.raw.voz_bienvenida) {
-                        // Se ejecuta al completar la primera voz
-                        welcomeSoundsJob = viewModelScope.launch {
-                            delay(1000) // Retraso de 1 segundo
-                            voicePlayer.playVoice(R.raw.voz_instrucciones_login)
-                        }
-                    }
+                    delay(1000)
+                    voicePlayer.playVoiceAsset("sonidos/voces/voz_instrucciones_login.mp3")
                 }
             }
         }

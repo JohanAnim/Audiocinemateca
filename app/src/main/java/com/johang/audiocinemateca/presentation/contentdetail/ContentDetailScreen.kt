@@ -37,6 +37,7 @@ import com.johang.audiocinemateca.presentation.catalog.DetailToolbar
 import com.johang.audiocinemateca.util.TimeFormatUtils
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
 import com.johang.audiocinemateca.util.buildInteractionDescription
+import com.johang.audiocinemateca.util.initialAccessibilityFocus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,14 +103,22 @@ fun ContentDetailScreen(
     }
 
     Scaffold(
+        modifier = Modifier.semantics { isTraversalGroup = true },
         topBar = {
-            DetailToolbar(
-                title = toolbarTitle,
-                isFavorite = isFavorite,
-                onBackClick = onBackClick,
-                onFavoriteClick = onFavoriteToggle,
-                onShareClick = onShareClick
-            )
+            Box(
+                modifier = Modifier.semantics {
+                    isTraversalGroup = true
+                    traversalIndex = 1f
+                }
+            ) {
+                DetailToolbar(
+                    title = toolbarTitle,
+                    isFavorite = isFavorite,
+                    onBackClick = onBackClick,
+                    onFavoriteClick = onFavoriteToggle,
+                    onShareClick = onShareClick
+                )
+            }
         }
     ) { paddingValues ->
         if (isLoading && item == null) {
@@ -189,7 +198,11 @@ fun ContentDetailScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(paddingValues)
+                    .semantics {
+                        isTraversalGroup = true
+                        traversalIndex = -1f
+                    },
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -433,13 +446,16 @@ fun ContentDetailScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clearAndSetSemantics {
+                                        testTag = "content_detail_play_button"
+                                        traversalIndex = -1f
                                         contentDescription = playButtonLabel
                                         role = Role.Button
                                         onClick(label = playButtonLabel) {
                                             onPlayClick(playActionPart, playActionEpisode)
                                             true
                                         }
-                                    },
+                                    }
+                                    .initialAccessibilityFocus(tag = "content_detail_play_button"),
                                 contentPadding = PaddingValues(vertical = 12.dp)
                             ) {
                                 Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null)

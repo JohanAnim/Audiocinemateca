@@ -73,6 +73,7 @@ fun GeneralSettingsScreen(
             entries = themeEntries,
             entryValues = themeValues,
             currentValue = currentTheme,
+            isInitialFocus = true,
             onValueChange = { 
                 viewModel.updateString("theme", it)
                 ThemeManager.applyTheme(it)

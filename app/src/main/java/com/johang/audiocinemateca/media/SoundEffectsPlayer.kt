@@ -3,6 +3,7 @@ package com.johang.audiocinemateca.media
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,9 +14,7 @@ class SoundEffectsPlayer @Inject constructor(
 ) {
 
     private val soundPool: SoundPool
-    private val loadedSounds = mutableMapOf<Int, Int>()
-    private val loadingSounds = mutableSetOf<Int>()
-    private var onLoadCompleted: ((Int) -> Unit)? = null
+    private val loadedAssetSounds = mutableMapOf<String, Int>()
 
     init {
         val audioAttributes = AudioAttributes.Builder()
@@ -27,38 +26,27 @@ class SoundEffectsPlayer @Inject constructor(
             .setMaxStreams(5)
             .setAudioAttributes(audioAttributes)
             .build()
+    }
 
-        soundPool.setOnLoadCompleteListener { _, sampleId, status ->
-            if (status == 0) {
-                val resId = loadedSounds.entries.find { it.value == sampleId }?.key
-                resId?.let {
-                    loadingSounds.remove(it)
-                    onLoadCompleted?.invoke(it)
+    fun loadAndPlaySoundAsset(assetPath: String, volume: Float = 1.0f) {
+        val existingSoundId = loadedAssetSounds[assetPath]
+        if (existingSoundId != null) {
+            soundPool.play(existingSoundId, volume, volume, 1, 0, 1.0f)
+            return
+        }
+
+        try {
+            val afd = context.assets.openFd(assetPath)
+            val soundId = soundPool.load(afd, 1)
+            afd.close()
+            loadedAssetSounds[assetPath] = soundId
+            soundPool.setOnLoadCompleteListener { _, sampleId, status ->
+                if (status == 0 && sampleId == soundId) {
+                    soundPool.play(soundId, volume, volume, 1, 0, 1.0f)
                 }
             }
-        }
-    }
-
-    fun loadSound(resId: Int, onLoaded: (Int) -> Unit) {
-        if (loadedSounds.containsKey(resId)) {
-            onLoaded(resId)
-            return
-        }
-        if (loadingSounds.contains(resId)) {
-            this.onLoadCompleted = onLoaded
-            return
-        }
-
-        loadingSounds.add(resId)
-        val soundId = soundPool.load(context, resId, 1)
-        loadedSounds[resId] = soundId
-        this.onLoadCompleted = onLoaded
-    }
-
-    fun playSound(resId: Int, volume: Float = 1.0f) {
-        val soundId = loadedSounds[resId]
-        soundId?.let {
-            soundPool.play(it, volume, volume, 1, 0, 1.0f)
+        } catch (e: Exception) {
+            Log.e("SoundEffectsPlayer", "Error cargando asset de sonido: $assetPath", e)
         }
     }
 
