@@ -571,6 +571,11 @@ fun PlayerScreen(
 
                 // Vista Previa de Comentarios de la Comunidad
                 if (viewModel.isUserLoggedIn) {
+                    val previewDesc = remember(commentPreview.first, commentPreview.second) {
+                        val countStr = if (commentPreview.first == 1L) "1 comentario" else "${commentPreview.first} comentarios"
+                        val latestStr = commentPreview.second?.let { ". Último de ${it.userName}: ${it.commentText}" } ?: ""
+                        "Comentarios de la comunidad, $countStr$latestStr"
+                    }
                     Card(
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
@@ -578,7 +583,9 @@ fun PlayerScreen(
                             .fillMaxWidth()
                             .clickable { onOpenCommentsClick(false) }
                             .clearAndSetSemantics {
-                                contentDescription = "Comentarios de la comunidad, ${commentPreview.first} comentarios"
+                                testTag = "player_comments_preview_card"
+                                role = Role.Button
+                                contentDescription = previewDesc
                                 onClick(label = "Abrir comentarios") {
                                     onOpenCommentsClick(false)
                                     true

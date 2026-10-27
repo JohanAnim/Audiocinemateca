@@ -111,6 +111,9 @@ class MainActivity : AppCompatActivity() {
     ) { _ -> }
 
     private var activeNavController: NavHostController? = null
+    private var activeDrawerState: DrawerState? = null
+    private var activeComposeView: android.view.View? = null
+    private var dualSenseControllerManager: com.johang.audiocinemateca.media.DualSenseControllerManager? = null
 
     private val miniPlayerTitleState = MutableStateFlow("")
     private val miniPlayerSubtitleState = MutableStateFlow("")
@@ -253,9 +256,13 @@ class MainActivity : AppCompatActivity() {
             AudiocinematecaTheme {
                 val navController = rememberNavController()
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                val composeView = androidx.compose.ui.platform.LocalView.current
+                val coroutineScope = rememberCoroutineScope()
 
                 SideEffect {
                     activeNavController = navController
+                    activeDrawerState = drawerState
+                    activeComposeView = composeView
                 }
 
                 val username by headerUsernameState.collectAsState()
@@ -341,12 +348,88 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        dualSenseControllerManager = com.johang.audiocinemateca.media.DualSenseControllerManager(
+            context = this,
+            ttsManager = ttsManager,
+            onBackAction = {
+                val drawer = activeDrawerState
+                if (drawer?.isOpen == true) {
+                    lifecycleScope.launch { drawer.close() }
+                } else {
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            },
+            onToggleDrawerAction = {
+                val drawer = activeDrawerState
+                if (drawer?.isOpen == true) {
+                    lifecycleScope.launch { drawer.close() }
+                } else {
+                    openNavigationDrawer()
+                }
+            },
+            isDrawerOpenProvider = {
+                activeDrawerState?.isOpen == true
+            },
+            isOnPlayerScreenProvider = {
+                activeNavController?.currentDestination?.route?.startsWith("player") == true
+            },
+            fallbackPlayPauseAction = {
+                if (miniPlayerTitleState.value.isNotBlank() || isPlayerActive) {
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(PlayerService.ACTION_PLAY_PAUSE))
+                } else {
+                    openNavigationDrawer()
+                }
+            },
+            fallbackPreviousAction = {
+                if (miniPlayerTitleState.value.isNotBlank() || isPlayerActive) {
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(ACTION_SEEK_TO_PREVIOUS))
+                }
+            },
+            fallbackNextAction = {
+                if (miniPlayerTitleState.value.isNotBlank() || isPlayerActive) {
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(Intent(ACTION_SEEK_TO_NEXT))
+                }
+            },
+            fallbackAnnounceMiniPlayerAction = {
+                val title = miniPlayerTitleState.value
+                val subtitle = miniPlayerSubtitleState.value
+                if (title.isNotBlank()) {
+                    val stateStr = if (miniPlayerIsPlayingState.value) "Reproduciendo" else "En pausa"
+                    val fullInfo = if (subtitle.isNotBlank() && subtitle != title) "$title, $subtitle" else title
+                    ttsManager.speak("$stateStr: $fullInfo", interrupt = true)
+                    true
+                } else {
+                    false
+                }
+            }
+        )
+
         handleIntent(intent)
         checkAndRequestPermissions()
     }
 
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        val manager = dualSenseControllerManager
+        val rootView = activeComposeView
+        if (manager != null && rootView != null && manager.handleKeyEvent(rootView, event)) {
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    override fun dispatchGenericMotionEvent(ev: android.view.MotionEvent): Boolean {
+        val manager = dualSenseControllerManager
+        val rootView = activeComposeView
+        if (manager != null && rootView != null && manager.handleGenericMotionEvent(rootView, ev)) {
+            return true
+        }
+        return super.dispatchGenericMotionEvent(ev)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        dualSenseControllerManager?.release()
+        dualSenseControllerManager = null
         LocalBroadcastManager.getInstance(this).unregisterReceiver(miniPlayerUpdateReceiver)
         stopGlobalChatWatcher()
         stopAnnouncementsWatcher()

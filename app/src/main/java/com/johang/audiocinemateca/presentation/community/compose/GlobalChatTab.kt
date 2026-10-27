@@ -1,22 +1,39 @@
 package com.johang.audiocinemateca.presentation.community.compose
 
+import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AlternateEmail
-import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
@@ -30,35 +47,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import android.app.Activity
-import android.content.Intent
-import android.speech.RecognizerIntent
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.isTraversalGroup
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTag
-import androidx.compose.ui.semantics.traversalIndex
-import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.disabled
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.semantics.role
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
 import com.johang.audiocinemateca.data.model.ChatMessage
 import com.johang.audiocinemateca.domain.model.CatalogItem
@@ -101,31 +100,72 @@ fun GlobalChatTab(
     var showBannedUsersDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val speechLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val spokenText = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-            if (!spokenText.isNullOrBlank()) {
-                messageText = if (messageText.isBlank()) {
-                    spokenText
-                } else {
-                    "${messageText.trim()} $spokenText"
-                }
-            }
+    var isListeningVoice by remember { mutableStateOf(false) }
+    var inAppRecognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
+
+    fun stopInAppVoice() {
+        isListeningVoice = false
+        inAppRecognizer?.stopListening()
+    }
+
+    fun startInAppVoice() {
+        val recognizer = inAppRecognizer
+        if (recognizer == null) {
+            Toast.makeText(context, "El dictado por voz no está disponible en este dispositivo.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        isListeningVoice = true
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES")
+        }
+        recognizer.startListening(intent)
+    }
+
+    val requestRecordAudioPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            startInAppVoice()
+        } else {
+            Toast.makeText(context, "Se necesita permiso de micrófono para dictar por voz.", Toast.LENGTH_SHORT).show()
         }
     }
 
-    val startVoiceDictation = {
-        try {
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-ES")
-                putExtra(RecognizerIntent.EXTRA_PROMPT, "Dicta tu mensaje para la comunidad...")
-            }
-            speechLauncher.launch(intent)
-        } catch (_: Exception) {
-            Toast.makeText(context, "El dictado por voz no está disponible en este dispositivo.", Toast.LENGTH_SHORT).show()
+    DisposableEffect(context) {
+        if (SpeechRecognizer.isRecognitionAvailable(context)) {
+            val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
+            recognizer.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) {}
+                override fun onBeginningOfSpeech() {}
+                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onBufferReceived(buffer: ByteArray?) {}
+                override fun onEndOfSpeech() {
+                    isListeningVoice = false
+                }
+                override fun onError(error: Int) {
+                    isListeningVoice = false
+                }
+                override fun onResults(results: Bundle?) {
+                    isListeningVoice = false
+                    val spokenText = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
+                    if (!spokenText.isNullOrBlank()) {
+                        messageText = if (messageText.isBlank()) {
+                            spokenText
+                        } else {
+                            "${messageText.trim()} $spokenText"
+                        }
+                    }
+                }
+                override fun onPartialResults(partialResults: Bundle?) {}
+                override fun onEvent(eventType: Int, params: Bundle?) {}
+            })
+            inAppRecognizer = recognizer
+        }
+
+        onDispose {
+            inAppRecognizer?.destroy()
+            inAppRecognizer = null
         }
     }
 
@@ -525,10 +565,15 @@ fun GlobalChatTab(
                     )
                 }
 
+                var isPointerDownVoice by remember { mutableStateOf(false) }
+                val isPttActive = isListeningVoice || isPointerDownVoice
+
                 OutlinedTextField(
                     value = messageText,
                     onValueChange = { messageText = it },
-                    placeholder = { Text("Escribe un mensaje...") },
+                    placeholder = {
+                        Text(if (isPttActive) "Escuchando voz... (suelta para terminar)" else "Escribe un mensaje...")
+                    },
                     enabled = isOpen,
                     singleLine = false,
                     maxLines = 4,
@@ -536,6 +581,9 @@ fun GlobalChatTab(
                         .weight(1f)
                         .semantics {
                             traversalIndex = -1f
+                            if (isPttActive) {
+                                contentDescription = "Escuchando voz. Suelta el botón de micrófono para terminar el dictado"
+                            }
                         }
                         .initialAccessibilityFocus(
                             tag = "global_chat_message_input",
@@ -545,25 +593,59 @@ fun GlobalChatTab(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default)
                 )
 
-                IconButton(
-                    onClick = { startVoiceDictation() },
-                    enabled = isOpen,
-                    modifier = Modifier.clearAndSetSemantics {
-                        contentDescription = "Dictar mensaje por voz"
-                        role = Role.Button
-                        onClick(label = "Dictar mensaje por voz") {
-                            if (isOpen) {
-                                startVoiceDictation()
+                Surface(
+                    shape = CircleShape,
+                    color = if (isPttActive) MaterialTheme.colorScheme.error.copy(alpha = 0.2f) else Color.Transparent,
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .pointerInput(isOpen) {
+                            if (!isOpen) return@pointerInput
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false)
+                                isPointerDownVoice = true
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                    startInAppVoice()
+                                } else {
+                                    requestRecordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                                waitForUpOrCancellation()
+                                isPointerDownVoice = false
+                                stopInAppVoice()
                             }
-                            true
                         }
-                    }
+                        .clearAndSetSemantics {
+                            role = Role.Button
+                            contentDescription = if (isPttActive) {
+                                "Escuchando voz. Suelta para terminar el dictado, o toca dos veces para detener"
+                            } else {
+                                "Dictar mensaje por voz. Mantén presionado para hablar y suelta para terminar el dictado, o toca dos veces para iniciar"
+                            }
+                            onClick(label = if (isPttActive) "Terminar dictado por voz" else "Dictar mensaje por voz") {
+                                if (isOpen) {
+                                    if (isPttActive) {
+                                        isPointerDownVoice = false
+                                        stopInAppVoice()
+                                    } else {
+                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                                            startInAppVoice()
+                                        } else {
+                                            requestRecordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+                                        }
+                                    }
+                                }
+                                true
+                            }
+                        }
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = null,
+                            tint = if (isPttActive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
 
                 val isSendEnabled = isOpen && messageText.isNotBlank()

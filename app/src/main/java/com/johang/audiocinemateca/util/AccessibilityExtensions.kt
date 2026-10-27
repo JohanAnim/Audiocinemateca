@@ -323,6 +323,530 @@ fun View.requestComposeAccessibilityFocus(
     }.getOrDefault(false)
 }
 
+enum class GamepadNavDirection {
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT
+}
+
+data class AccessibilityFocusMoveResult(
+    val moved: Boolean,
+    val hitBoundary: Boolean,
+    val focusedLabel: String? = null,
+    val scrolledPendingFocus: Boolean = false
+)
+
+private data class PanelNodeEntry(
+    val node: SemanticsNode,
+    val panelKey: String,
+    val scrollableAncestor: SemanticsNode?
+)
+
+private class LogicalUiPanel(
+    val panelKey: String,
+    val rows: List<List<SemanticsNode>>,
+    val scrollableNode: SemanticsNode?,
+    val topY: Float
+) {
+    val canScrollVertically: Boolean
+        get() = scrollableNode?.config?.contains(SemanticsProperties.VerticalScrollAxisRange) == true
+}
+
+private fun isNodeFocusableForGamepad(node: SemanticsNode): Boolean {
+    if (node.boundsInRoot.isEmpty || node.boundsInRoot.width <= 1f || node.boundsInRoot.height <= 1f) {
+        return false
+    }
+    val config = node.config
+    if (config.contains(SemanticsProperties.Disabled)) {
+        return false
+    }
+    val hasClick = config.contains(SemanticsActions.OnClick)
+    val hasEditable = config.contains(SemanticsProperties.EditableText) || config.contains(SemanticsActions.SetText)
+    val hasSetProgress = config.contains(SemanticsActions.SetProgress)
+    val hasRole = config.contains(SemanticsProperties.Role)
+    val isHeading = config.contains(SemanticsProperties.Heading)
+    val desc = config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ")?.trim()
+    val text = config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }?.trim()
+    val hasReadableText = !desc.isNullOrBlank() || !text.isNullOrBlank()
+
+    // Ignorar contenedores puramente estructurales sin acción ni encabezado propio
+    val isPureContainer = config.getOrNull(SemanticsProperties.IsTraversalGroup) == true &&
+        !hasClick && !hasEditable && !hasSetProgress && !isHeading
+
+    if (isPureContainer) return false
+
+    return hasClick || hasEditable || hasSetProgress || isHeading || (hasRole && hasReadableText) ||
+        (config.isMergingSemanticsOfDescendants && hasReadableText)
+}
+
+private fun extractNodeSpokenLabel(node: SemanticsNode): String? {
+    val config = node.config
+    val parts = mutableListOf<String>()
+
+    val stateDesc = config.getOrNull(SemanticsProperties.StateDescription)?.trim()
+    val contentDesc = config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(". ")?.trim()
+    val editableText = config.getOrNull(SemanticsProperties.EditableText)?.text?.trim()
+    val text = config.getOrNull(SemanticsProperties.Text)?.joinToString(". ") { it.text }?.trim()
+
+    val primary = when {
+        !contentDesc.isNullOrBlank() -> contentDesc
+        !editableText.isNullOrBlank() -> editableText
+        !text.isNullOrBlank() -> text
+        else -> null
+    }
+    if (!primary.isNullOrBlank()) {
+        parts.add(primary)
+    }
+    if (!stateDesc.isNullOrBlank() && primary?.contains(stateDesc, ignoreCase = true) != true) {
+        parts.add(stateDesc)
+    }
+    if (config.getOrNull(SemanticsProperties.Selected) == true &&
+        parts.none { it.contains("seleccionado", ignoreCase = true) }
+    ) {
+        parts.add("Seleccionado")
+    }
+    return parts.joinToString(", ").ifBlank { null }
+}
+
+private fun collectPanelNodeEntries(
+    node: SemanticsNode,
+    restrictToTagPrefix: String?,
+    currentScrollable: SemanticsNode?,
+    out: MutableList<PanelNodeEntry>
+) {
+    val nextScrollable = if (node.config.contains(SemanticsActions.ScrollBy) &&
+        (node.config.contains(SemanticsProperties.VerticalScrollAxisRange) ||
+            node.config.contains(SemanticsProperties.HorizontalScrollAxisRange))
+    ) {
+        node
+    } else {
+        currentScrollable
+    }
+
+    val tag = node.config.getOrNull(SemanticsProperties.TestTag)
+    val matchesPrefix = restrictToTagPrefix == null || (tag != null && tag.startsWith(restrictToTagPrefix))
+
+    if (matchesPrefix && isNodeFocusableForGamepad(node)) {
+        val panelKey = when {
+            restrictToTagPrefix != null -> "restricted_$restrictToTagPrefix"
+            nextScrollable != null -> "scroll_${nextScrollable.id}"
+            node.config.getOrNull(SemanticsProperties.Role) == Role.Tab -> {
+                "tabs_row_${(node.boundsInRoot.center.y / 76f).toInt()}"
+            }
+            else -> {
+                "bar_row_${(node.boundsInRoot.center.y / 76f).toInt()}"
+            }
+        }
+        out.add(
+            PanelNodeEntry(
+                node = node,
+                panelKey = panelKey,
+                scrollableAncestor = nextScrollable
+            )
+        )
+        if (node.config.isMergingSemanticsOfDescendants || node.config.contains(SemanticsActions.OnClick)) {
+            return
+        }
+    }
+
+    for (child in node.children) {
+        collectPanelNodeEntries(child, restrictToTagPrefix, nextScrollable, out)
+    }
+}
+
+private fun buildLogicalPanels(
+    rootNode: SemanticsNode,
+    restrictToTagPrefix: String?
+): List<LogicalUiPanel> {
+    val entries = mutableListOf<PanelNodeEntry>()
+    collectPanelNodeEntries(rootNode, restrictToTagPrefix, null, entries)
+    if (entries.isEmpty()) return emptyList()
+
+    val grouped = entries.distinctBy { it.node.id }.groupBy { it.panelKey }
+    val panels = mutableListOf<LogicalUiPanel>()
+
+    for ((key, groupEntries) in grouped) {
+        val sortedByY = groupEntries.map { it.node }.sortedBy { it.boundsInRoot.center.y }
+        val rows = mutableListOf<MutableList<SemanticsNode>>()
+
+        for (item in sortedByY) {
+            val itemCenterY = item.boundsInRoot.center.y
+            val matchingRow = rows.lastOrNull { row ->
+                val rowAvgY = row.map { it.boundsInRoot.center.y }.average().toFloat()
+                kotlin.math.abs(itemCenterY - rowAvgY) <= 42f
+            }
+            if (matchingRow != null) {
+                matchingRow.add(item)
+            } else {
+                rows.add(mutableListOf(item))
+            }
+        }
+
+        val finalRows = rows.map { row ->
+            row.sortedBy { it.boundsInRoot.left }
+        }.filter { it.isNotEmpty() }
+
+        if (finalRows.isNotEmpty()) {
+            val topY = finalRows.first().minOf { it.boundsInRoot.top }
+            val scrollable = groupEntries.firstOrNull { it.scrollableAncestor != null }?.scrollableAncestor
+            panels.add(
+                LogicalUiPanel(
+                    panelKey = key,
+                    rows = finalRows,
+                    scrollableNode = scrollable,
+                    topY = topY
+                )
+            )
+        }
+    }
+
+    return panels.sortedBy { it.topY }
+}
+
+private fun nodeMatchesOrContainsId(node: SemanticsNode, targetId: Int): Boolean {
+    if (node.id == targetId) return true
+    for (child in node.children) {
+        if (nodeMatchesOrContainsId(child, targetId)) return true
+    }
+    return false
+}
+
+private fun canScrollVerticallyInDirection(scrollableNode: SemanticsNode?, down: Boolean): Boolean {
+    val node = scrollableNode ?: return false
+    val vRange = node.config.getOrNull(SemanticsProperties.VerticalScrollAxisRange) ?: return false
+    val value = vRange.value()
+    val maxValue = vRange.maxValue()
+    val reverse = vRange.reverseScrolling
+    return if (!reverse) {
+        if (down) value < maxValue - 1f else value > 1f
+    } else {
+        if (down) value > 1f else value < maxValue - 1f
+    }
+}
+
+private fun canScrollHorizontallyInDirection(scrollableNode: SemanticsNode?, right: Boolean): Boolean {
+    val node = scrollableNode ?: return false
+    val hRange = node.config.getOrNull(SemanticsProperties.HorizontalScrollAxisRange) ?: return false
+    val value = hRange.value()
+    val maxValue = hRange.maxValue()
+    return if (right) value < maxValue - 1f else value > 1f
+}
+
+private fun View.focusTargetSemanticsNode(
+    provider: android.view.accessibility.AccessibilityNodeProvider,
+    currentFocusedId: Int?,
+    targetNode: SemanticsNode
+): AccessibilityFocusMoveResult {
+    val focusTarget = findEditableDescendant(targetNode) ?: targetNode
+    if (currentFocusedId != null && currentFocusedId != focusTarget.id) {
+        provider.performAction(
+            currentFocusedId,
+            AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS,
+            null
+        )
+    }
+    val focused = requestComposeAccessibilityFocusById(focusTarget.id)
+    val label = extractNodeSpokenLabel(targetNode)
+    if (!focused) {
+        val a11yEvent = obtainAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED).apply {
+            packageName = context.packageName
+            className = Button::class.java.name
+            isEnabled = true
+            if (!label.isNullOrBlank()) {
+                contentDescription = label
+            }
+            setSource(this@focusTargetSemanticsNode, focusTarget.id)
+        }
+        parent?.requestSendAccessibilityEvent(this, a11yEvent)
+    }
+    return AccessibilityFocusMoveResult(
+        moved = true,
+        hitBoundary = false,
+        focusedLabel = label,
+        scrolledPendingFocus = false
+    )
+}
+
+/**
+ * Mueve el foco real de accesibilidad en 2D (Arriba, Abajo, Izquierda, Derecha)
+ * respetando estrictamente la orientación y los límites del panel actual:
+ * - En barras horizontales: solo permite Izquierda / Derecha; Arriba / Abajo da límite.
+ * - En listas verticales de 1 columna: solo permite Arriba / Abajo (con auto-scroll); Izquierda / Derecha da límite.
+ * - En cuadrículas 2D: permite moverse entre filas (Arriba/Abajo) y columnas de la misma fila (Izquierda/Derecha) con límites reales.
+ */
+fun View.moveComposeAccessibilityFocusInPanel(
+    direction: GamepadNavDirection,
+    restrictToTagPrefix: String? = null
+): AccessibilityFocusMoveResult {
+    val rootForTest = this as? RootForTest ?: return AccessibilityFocusMoveResult(false, false)
+    val owner = runCatching { rootForTest.semanticsOwner }.getOrNull() ?: return AccessibilityFocusMoveResult(false, false)
+    val provider = accessibilityNodeProvider ?: return AccessibilityFocusMoveResult(false, false)
+
+    return runCatching {
+        provider.createAccessibilityNodeInfo(View.NO_ID)
+        val panels = buildLogicalPanels(owner.rootSemanticsNode, restrictToTagPrefix)
+        if (panels.isEmpty()) {
+            return@runCatching AccessibilityFocusMoveResult(moved = false, hitBoundary = true)
+        }
+
+        val currentFocusedId = findFocusedSemanticsNode(owner.rootSemanticsNode, provider, null)
+            ?: findFocusedSemanticsNode(owner.unmergedRootSemanticsNode, provider, null)
+
+        var activePanelIndex = -1
+        var activeRowIndex = -1
+        var activeColIndex = -1
+
+        if (currentFocusedId != null) {
+            outer@ for (pIdx in panels.indices) {
+                val rows = panels[pIdx].rows
+                for (rIdx in rows.indices) {
+                    val row = rows[rIdx]
+                    for (cIdx in row.indices) {
+                        if (nodeMatchesOrContainsId(row[cIdx], currentFocusedId)) {
+                            activePanelIndex = pIdx
+                            activeRowIndex = rIdx
+                            activeColIndex = cIdx
+                            break@outer
+                        }
+                    }
+                }
+            }
+        }
+
+        // Si ningún elemento tiene foco aún, enfocar el elemento principal de la pantalla
+        if (activePanelIndex == -1) {
+            val defaultPanel = panels.firstOrNull { p ->
+                p.rows.any { r -> r.any { it.config.getOrNull(SemanticsProperties.TestTag) == "player_play_pause_button" } }
+            } ?: panels.firstOrNull { it.canScrollVertically } ?: panels.first()
+
+            val defaultNode = defaultPanel.rows.flatten().firstOrNull {
+                it.config.getOrNull(SemanticsProperties.TestTag) == "player_play_pause_button"
+            } ?: defaultPanel.rows.first().first()
+
+            return@runCatching focusTargetSemanticsNode(provider, currentFocusedId, defaultNode)
+        }
+
+        val activePanel = panels[activePanelIndex]
+        val currentRow = activePanel.rows[activeRowIndex]
+        val currentNode = currentRow[activeColIndex]
+
+        when (direction) {
+            GamepadNavDirection.LEFT, GamepadNavDirection.RIGHT -> {
+                val isRight = direction == GamepadNavDirection.RIGHT
+                val targetCol = if (isRight) activeColIndex + 1 else activeColIndex - 1
+
+                if (targetCol in currentRow.indices) {
+                    val targetNode = currentRow[targetCol]
+                    return@runCatching focusTargetSemanticsNode(provider, currentFocusedId, targetNode)
+                }
+
+                // Verificar si el panel tiene scroll horizontal real (ej. carrusel horizontal)
+                if (canScrollHorizontallyInDirection(activePanel.scrollableNode, right = isRight)) {
+                    val scrollAction = activePanel.scrollableNode?.config?.getOrNull(SemanticsActions.ScrollBy)?.action
+                    if (scrollAction != null) {
+                        val deltaX = if (isRight) (width * 0.45f) else -(width * 0.45f)
+                        if (scrollAction.invoke(deltaX, 0f)) {
+                            return@runCatching AccessibilityFocusMoveResult(
+                                moved = true,
+                                hitBoundary = false,
+                                focusedLabel = null,
+                                scrolledPendingFocus = true
+                            )
+                        }
+                    }
+                }
+
+                // Límite horizontal alcanzado dentro de la fila o lista vertical
+                return@runCatching AccessibilityFocusMoveResult(
+                    moved = false,
+                    hitBoundary = true,
+                    focusedLabel = null
+                )
+            }
+
+            GamepadNavDirection.UP, GamepadNavDirection.DOWN -> {
+                val isDown = direction == GamepadNavDirection.DOWN
+
+                // Si estamos en una barra horizontal (1 sola fila y sin scroll vertical), Arriba/Abajo es límite directo
+                if (activePanel.rows.size == 1 && !activePanel.canScrollVertically) {
+                    return@runCatching AccessibilityFocusMoveResult(
+                        moved = false,
+                        hitBoundary = true,
+                        focusedLabel = null
+                    )
+                }
+
+                val targetRowIndex = if (isDown) activeRowIndex + 1 else activeRowIndex - 1
+                if (targetRowIndex in activePanel.rows.indices) {
+                    val targetRow = activePanel.rows[targetRowIndex]
+                    val currentCenterX = currentNode.boundsInRoot.center.x
+                    val targetNode = targetRow.minByOrNull {
+                        kotlin.math.abs(it.boundsInRoot.center.x - currentCenterX)
+                    } ?: targetRow.first()
+
+                    return@runCatching focusTargetSemanticsNode(provider, currentFocusedId, targetNode)
+                }
+
+                // Estamos en el borde superior o inferior visible del panel: verificar si tiene scroll vertical disponible
+                if (canScrollVerticallyInDirection(activePanel.scrollableNode, down = isDown)) {
+                    val scrollAction = activePanel.scrollableNode?.config?.getOrNull(SemanticsActions.ScrollBy)?.action
+                    if (scrollAction != null) {
+                        val deltaY = if (isDown) (height * 0.42f) else -(height * 0.42f)
+                        if (scrollAction.invoke(0f, deltaY)) {
+                            return@runCatching AccessibilityFocusMoveResult(
+                                moved = true,
+                                hitBoundary = false,
+                                focusedLabel = null,
+                                scrolledPendingFocus = true
+                            )
+                        }
+                    }
+                }
+
+                // Límite vertical alcanzado en el panel
+                return@runCatching AccessibilityFocusMoveResult(
+                    moved = false,
+                    hitBoundary = true,
+                    focusedLabel = null
+                )
+            }
+        }
+    }.getOrDefault(AccessibilityFocusMoveResult(false, false))
+}
+
+/**
+ * Cambia el foco real de accesibilidad al siguiente o anterior Panel de la pantalla (usado con el Joystick Derecho).
+ * Por ejemplo: Barra Superior <-> Pestañas de Contenido <-> Lista Principal <-> MiniReproductor <-> Pestañas Principales.
+ */
+fun View.switchComposeAccessibilityPanel(
+    nextPanel: Boolean,
+    restrictToTagPrefix: String? = null
+): AccessibilityFocusMoveResult {
+    val rootForTest = this as? RootForTest ?: return AccessibilityFocusMoveResult(false, false)
+    val owner = runCatching { rootForTest.semanticsOwner }.getOrNull() ?: return AccessibilityFocusMoveResult(false, false)
+    val provider = accessibilityNodeProvider ?: return AccessibilityFocusMoveResult(false, false)
+
+    return runCatching {
+        provider.createAccessibilityNodeInfo(View.NO_ID)
+        val panels = buildLogicalPanels(owner.rootSemanticsNode, restrictToTagPrefix)
+        if (panels.isEmpty()) {
+            return@runCatching AccessibilityFocusMoveResult(moved = false, hitBoundary = true)
+        }
+
+        val currentFocusedId = findFocusedSemanticsNode(owner.rootSemanticsNode, provider, null)
+            ?: findFocusedSemanticsNode(owner.unmergedRootSemanticsNode, provider, null)
+
+        var currentPanelIndex = -1
+        if (currentFocusedId != null) {
+            for (pIdx in panels.indices) {
+                val found = panels[pIdx].rows.any { row ->
+                    row.any { nodeMatchesOrContainsId(it, currentFocusedId) }
+                }
+                if (found) {
+                    currentPanelIndex = pIdx
+                    break
+                }
+            }
+        }
+
+        val targetPanelIndex = when {
+            currentPanelIndex == -1 -> if (nextPanel) 0 else panels.lastIndex
+            nextPanel -> currentPanelIndex + 1
+            else -> currentPanelIndex - 1
+        }
+
+        if (targetPanelIndex !in panels.indices) {
+            return@runCatching AccessibilityFocusMoveResult(
+                moved = false,
+                hitBoundary = true,
+                focusedLabel = null
+            )
+        }
+
+        val targetPanel = panels[targetPanelIndex]
+        val allPanelNodes = targetPanel.rows.flatten()
+
+        // Priorizar dentro del panel destino: botón principal del reproductor -> pestaña seleccionada -> primer elemento
+        val targetNode = allPanelNodes.firstOrNull {
+            it.config.getOrNull(SemanticsProperties.TestTag) == "player_play_pause_button"
+        } ?: allPanelNodes.firstOrNull {
+            it.config.getOrNull(SemanticsProperties.Selected) == true
+        } ?: allPanelNodes.first()
+
+        focusTargetSemanticsNode(provider, currentFocusedId, targetNode)
+    }.getOrDefault(AccessibilityFocusMoveResult(false, false))
+}
+
+private fun findSemanticsNodeById(node: SemanticsNode, id: Int): SemanticsNode? {
+    if (node.id == id) return node
+    for (child in node.children) {
+        findSemanticsNodeById(child, id)?.let { return it }
+    }
+    return null
+}
+
+/**
+ * Ejecuta la acción principal de clic (`OnClick` / `ACTION_CLICK`) sobre el nodo que tiene
+ * actualmente el foco de accesibilidad. Si ningún nodo tiene foco, enfoca el primero disponible.
+ */
+fun View.performClickOnAccessibilityFocusedNode(restrictToTagPrefix: String? = null): Boolean {
+    val rootForTest = this as? RootForTest ?: return false
+    val owner = runCatching { rootForTest.semanticsOwner }.getOrNull() ?: return false
+    val provider = accessibilityNodeProvider ?: return false
+
+    return runCatching {
+        provider.createAccessibilityNodeInfo(View.NO_ID)
+        val focusedId = findFocusedSemanticsNode(owner.rootSemanticsNode, provider, null)
+            ?: findFocusedSemanticsNode(owner.unmergedRootSemanticsNode, provider, null)
+
+        if (focusedId == null) {
+            val moveRes = moveComposeAccessibilityFocusInPanel(
+                direction = GamepadNavDirection.DOWN,
+                restrictToTagPrefix = restrictToTagPrefix
+            )
+            return@runCatching moveRes.moved
+        }
+
+        val node = findSemanticsNodeById(owner.rootSemanticsNode, focusedId)
+            ?: findSemanticsNodeById(owner.unmergedRootSemanticsNode, focusedId)
+
+        val semanticClick = node?.config?.getOrNull(SemanticsActions.OnClick)?.action
+        if (semanticClick != null) {
+            return@runCatching semanticClick.invoke()
+        }
+
+        provider.performAction(focusedId, AccessibilityNodeInfo.ACTION_CLICK, null)
+    }.getOrDefault(false)
+}
+
+/**
+ * Ejecuta la acción secundaria / menú de opciones (`OnLongClick` / `ACTION_LONG_CLICK`) sobre el nodo
+ * que tiene actualmente el foco de accesibilidad.
+ */
+fun View.performLongClickOnAccessibilityFocusedNode(): Boolean {
+    val rootForTest = this as? RootForTest ?: return false
+    val owner = runCatching { rootForTest.semanticsOwner }.getOrNull() ?: return false
+    val provider = accessibilityNodeProvider ?: return false
+
+    return runCatching {
+        provider.createAccessibilityNodeInfo(View.NO_ID)
+        val focusedId = findFocusedSemanticsNode(owner.rootSemanticsNode, provider, null)
+            ?: findFocusedSemanticsNode(owner.unmergedRootSemanticsNode, provider, null)
+            ?: return@runCatching false
+
+        val node = findSemanticsNodeById(owner.rootSemanticsNode, focusedId)
+            ?: findSemanticsNodeById(owner.unmergedRootSemanticsNode, focusedId)
+
+        val semanticLongClick = node?.config?.getOrNull(SemanticsActions.OnLongClick)?.action
+        if (semanticLongClick != null) {
+            return@runCatching semanticLongClick.invoke()
+        }
+
+        provider.performAction(focusedId, AccessibilityNodeInfo.ACTION_LONG_CLICK, null)
+    }.getOrDefault(false)
+}
+
 /**
  * Modificador global reutilizable que convierte cualquier componente de Compose en un destino de foco
  * inicial garantizado para Jieshuo y TalkBack, preservando `SemanticsProperties.Focused` y

@@ -46,6 +46,8 @@ import com.johang.audiocinemateca.presentation.player.PlayerService
 import com.johang.audiocinemateca.presentation.player.PlayerViewModel
 import com.johang.audiocinemateca.util.ShareUtils
 import com.johang.audiocinemateca.util.TtsManager
+import com.johang.audiocinemateca.util.requestComposeAccessibilityFocus
+import androidx.compose.ui.platform.LocalView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -71,6 +73,7 @@ fun PlayerRoute(
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val rootView = LocalView.current
     val scope = rememberCoroutineScope()
 
     var currentContentItem by remember {
@@ -353,6 +356,132 @@ fun PlayerRoute(
     val titleText = currentContentItem?.title ?: "Reproduciendo"
     val subtitleText = viewModel.getDetailedTitle()
 
+    val doPlayPause: () -> Unit = {
+        val controller = mediaController
+        if (controller != null) {
+            if (controller.isPlaying) {
+                controller.pause()
+            } else {
+                if (controller.playbackState == Player.STATE_IDLE || controller.playbackState == Player.STATE_ENDED) {
+                    controller.prepare()
+                }
+                controller.playWhenReady = true
+                controller.play()
+            }
+        }
+    }
+
+    val doRewind: () -> Unit = {
+        val controller = mediaController
+        if (controller != null) {
+            val duration = controller.duration
+            val targetPos = (controller.currentPosition - rewindSec * 1000L)
+                .coerceIn(0L, if (duration > 0) duration else Long.MAX_VALUE)
+            controller.seekTo(targetPos)
+            currentPos = targetPos
+        }
+    }
+
+    val doForward: () -> Unit = {
+        val controller = mediaController
+        if (controller != null) {
+            val duration = controller.duration
+            val targetPos = (controller.currentPosition + forwardSec * 1000L)
+                .coerceIn(0L, if (duration > 0) duration else Long.MAX_VALUE)
+            controller.seekTo(targetPos)
+            currentPos = targetPos
+        }
+    }
+
+    val doPreviousChapter: () -> Unit = {
+        val extras = mediaController?.currentMediaItem?.mediaMetadata?.extras
+        val intent = Intent(MainActivity.ACTION_SEEK_TO_PREVIOUS).apply {
+            putExtra(MainActivity.EXTRA_ITEM_ID, extras?.getString("itemId"))
+            putExtra(MainActivity.EXTRA_ITEM_TYPE, extras?.getString("itemType"))
+            putExtra(MainActivity.EXTRA_PART_INDEX, extras?.getInt("partIndex", -1))
+            putExtra(MainActivity.EXTRA_EPISODE_INDEX, extras?.getInt("episodeIndex", -1))
+            putExtra(MainActivity.EXTRA_CURRENT_POSITION, mediaController?.currentPosition ?: 0L)
+        }
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
+        mediaController?.playWhenReady = true
+        mediaController?.play()
+    }
+
+    val doNextChapter: () -> Unit = {
+        val extras = mediaController?.currentMediaItem?.mediaMetadata?.extras
+        val intent = Intent(MainActivity.ACTION_SEEK_TO_NEXT).apply {
+            putExtra(MainActivity.EXTRA_ITEM_ID, extras?.getString("itemId"))
+            putExtra(MainActivity.EXTRA_ITEM_TYPE, extras?.getString("itemType"))
+            putExtra(MainActivity.EXTRA_PART_INDEX, extras?.getInt("partIndex", -1))
+            putExtra(MainActivity.EXTRA_EPISODE_INDEX, extras?.getInt("episodeIndex", -1))
+            putExtra(MainActivity.EXTRA_CURRENT_POSITION, mediaController?.currentPosition ?: 0L)
+        }
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
+        mediaController?.playWhenReady = true
+        mediaController?.play()
+    }
+
+    DisposableEffect(mediaController, titleText, subtitleText, rewindSec, forwardSec, hasPrev, hasNext) {
+        val actions = object : com.johang.audiocinemateca.media.PlayerGamepadActions {
+            override fun onRewind() {
+                doRewind()
+            }
+
+            override fun onForward() {
+                doForward()
+            }
+
+            override fun onPreviousChapter() {
+                val hadPrev = mediaController?.hasPreviousMediaItem() == true
+                doPreviousChapter()
+                if (hadPrev) {
+                    ttsManager.speak("Capítulo anterior", interrupt = true)
+                } else {
+                    ttsManager.speak("Inicio de la reproducción", interrupt = true)
+                }
+            }
+
+            override fun onNextChapter() {
+                val canNext = mediaController?.hasNextMediaItem() == true
+                if (canNext) {
+                    doNextChapter()
+                    ttsManager.speak("Siguiente capítulo", interrupt = true)
+                } else {
+                    ttsManager.speak("No hay más capítulos disponibles", interrupt = true)
+                }
+            }
+
+            override fun onAnnounceInfo() {
+                val controller = mediaController
+                val playing = controller?.isPlaying ?: isPlaying
+                val pos = (controller?.currentPosition ?: currentPos).coerceAtLeast(0L)
+                val dur = (controller?.duration ?: totalDur).coerceAtLeast(0L)
+                val stateStr = if (playing) "Reproduciendo" else "Pausado"
+                val workInfo = if (subtitleText.isNotBlank() && subtitleText != titleText) {
+                    "$titleText, $subtitleText"
+                } else {
+                    titleText
+                }
+                val currentFormatted = com.johang.audiocinemateca.util.TimeFormatUtils.formatDuration(pos)
+                val totalFormatted = com.johang.audiocinemateca.util.TimeFormatUtils.formatDuration(dur)
+                ttsManager.speak(
+                    "$stateStr: $workInfo. $currentFormatted transcurridos de $totalFormatted.",
+                    interrupt = true
+                )
+            }
+
+            override fun onTogglePlayPause() {
+                doPlayPause()
+            }
+        }
+        com.johang.audiocinemateca.media.DualSenseControllerManager.activePlayerActions = actions
+        onDispose {
+            if (com.johang.audiocinemateca.media.DualSenseControllerManager.activePlayerActions === actions) {
+                com.johang.audiocinemateca.media.DualSenseControllerManager.activePlayerActions = null
+            }
+        }
+    }
+
     PlayerScreen(
         title = titleText,
         subtitle = if (subtitleText != titleText) subtitleText else "",
@@ -368,60 +497,11 @@ fun PlayerRoute(
         hasNext = hasNext,
         viewModel = viewModel,
         onBackClick = onBackClick,
-        onPlayPauseClick = {
-            val controller = mediaController ?: return@PlayerScreen
-            if (controller.isPlaying) {
-                controller.pause()
-            } else {
-                if (controller.playbackState == Player.STATE_IDLE || controller.playbackState == Player.STATE_ENDED) {
-                    controller.prepare()
-                }
-                controller.playWhenReady = true
-                controller.play()
-            }
-        },
-        onRewindClick = {
-            val controller = mediaController ?: return@PlayerScreen
-            val duration = controller.duration
-            val targetPos = (controller.currentPosition - rewindSec * 1000L)
-                .coerceIn(0L, if (duration > 0) duration else Long.MAX_VALUE)
-            controller.seekTo(targetPos)
-            currentPos = targetPos
-        },
-        onForwardClick = {
-            val controller = mediaController ?: return@PlayerScreen
-            val duration = controller.duration
-            val targetPos = (controller.currentPosition + forwardSec * 1000L)
-                .coerceIn(0L, if (duration > 0) duration else Long.MAX_VALUE)
-            controller.seekTo(targetPos)
-            currentPos = targetPos
-        },
-        onPreviousClick = {
-            val extras = mediaController?.currentMediaItem?.mediaMetadata?.extras
-            val intent = Intent(MainActivity.ACTION_SEEK_TO_PREVIOUS).apply {
-                putExtra(MainActivity.EXTRA_ITEM_ID, extras?.getString("itemId"))
-                putExtra(MainActivity.EXTRA_ITEM_TYPE, extras?.getString("itemType"))
-                putExtra(MainActivity.EXTRA_PART_INDEX, extras?.getInt("partIndex", -1))
-                putExtra(MainActivity.EXTRA_EPISODE_INDEX, extras?.getInt("episodeIndex", -1))
-                putExtra(MainActivity.EXTRA_CURRENT_POSITION, mediaController?.currentPosition ?: 0L)
-            }
-            LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
-            mediaController?.playWhenReady = true
-            mediaController?.play()
-        },
-        onNextClick = {
-            val extras = mediaController?.currentMediaItem?.mediaMetadata?.extras
-            val intent = Intent(MainActivity.ACTION_SEEK_TO_NEXT).apply {
-                putExtra(MainActivity.EXTRA_ITEM_ID, extras?.getString("itemId"))
-                putExtra(MainActivity.EXTRA_ITEM_TYPE, extras?.getString("itemType"))
-                putExtra(MainActivity.EXTRA_PART_INDEX, extras?.getInt("partIndex", -1))
-                putExtra(MainActivity.EXTRA_EPISODE_INDEX, extras?.getInt("episodeIndex", -1))
-                putExtra(MainActivity.EXTRA_CURRENT_POSITION, mediaController?.currentPosition ?: 0L)
-            }
-            LocalBroadcastManager.getInstance(context).sendBroadcast(intent)
-            mediaController?.playWhenReady = true
-            mediaController?.play()
-        },
+        onPlayPauseClick = doPlayPause,
+        onRewindClick = doRewind,
+        onForwardClick = doForward,
+        onPreviousClick = doPreviousChapter,
+        onNextClick = doNextChapter,
         onSeekTo = { pos -> mediaController?.seekTo(pos) },
         onPlaybackSpeedChange = { s ->
             mediaController?.playbackParameters = PlaybackParameters(s)
@@ -471,7 +551,13 @@ fun PlayerRoute(
         CommentsBottomSheet(
             viewModel = viewModel,
             sharedPreferencesManager = sharedPreferencesManager,
-            onDismiss = { showCommentsSheet = false }
+            onDismiss = {
+                showCommentsSheet = false
+                scope.launch {
+                    delay(80)
+                    rootView.requestComposeAccessibilityFocus("player_comments_preview_card")
+                }
+            }
         )
     }
 

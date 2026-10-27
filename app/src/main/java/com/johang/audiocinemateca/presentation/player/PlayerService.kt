@@ -520,11 +520,34 @@ class PlayerService : MediaSessionService() {
             .setUsage(androidx.media3.common.C.USAGE_MEDIA)
             .build()
 
-        val localExoPlayer = ExoPlayer.Builder(this)
+        if (cinemaHapticEngine == null) {
+            cinemaHapticEngine = com.johang.audiocinemateca.media.CinemaHapticEngine(this, sharedPreferencesManager)
+        }
+        val hapticProcessor = cinemaHapticEngine!!.audioProcessor
+
+        val renderersFactory = object : androidx.media3.exoplayer.DefaultRenderersFactory(this) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean
+            ): androidx.media3.exoplayer.audio.AudioSink {
+                return androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+                    .setEnableFloatOutput(enableFloatOutput)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .setAudioProcessors(arrayOf(hapticProcessor))
+                    .build()
+            }
+        }
+
+        val localExoPlayer = ExoPlayer.Builder(this, renderersFactory)
             .setMediaSourceFactory(mediaSourceFactory)
             .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ false)
             .build()
         exoPlayer = localExoPlayer
+
+        if (localExoPlayer.audioSessionId > 0) {
+            setupHapticSystem(localExoPlayer.audioSessionId)
+        }
 
         playerListener = object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -534,6 +557,7 @@ class PlayerService : MediaSessionService() {
                 LocalBroadcastManager.getInstance(this@PlayerService).sendBroadcast(intent)
 
                 sharedPreferencesManager.saveBoolean("is_currently_playing", isPlaying)
+                cinemaHapticEngine?.onIsPlayingChanged(isPlaying && (mediaSession?.player === localExoPlayer || mediaSession == null))
                 if (isPlaying) {
                     serviceScope.launch { savePlaybackProgress() }
                     requestPlaybackAudioFocus()
@@ -735,7 +759,7 @@ class PlayerService : MediaSessionService() {
         }
     }
 
-    private var hapticGenerator: android.media.audiofx.HapticGenerator? = null
+    private var cinemaHapticEngine: com.johang.audiocinemateca.media.CinemaHapticEngine? = null
 
     private fun setupEqualizer(audioSessionId: Int) {
         if (equalizer == null) {
@@ -756,19 +780,15 @@ class PlayerService : MediaSessionService() {
     }
 
     private fun setupHapticSystem(audioSessionId: Int) {
-        if (sharedPreferencesManager.getBoolean("haptic_audio_enabled", false) && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            try {
-                if (android.media.audiofx.HapticGenerator.isAvailable()) {
-                    hapticGenerator?.release()
-                    hapticGenerator = android.media.audiofx.HapticGenerator.create(audioSessionId)
-                    hapticGenerator?.enabled = true
-                }
-            } catch (e: Exception) { Log.e("PlayerService", "Haptic Error", e) }
+        if (cinemaHapticEngine == null) {
+            cinemaHapticEngine = com.johang.audiocinemateca.media.CinemaHapticEngine(this, sharedPreferencesManager)
         }
+        cinemaHapticEngine?.onAudioSessionIdChanged(audioSessionId)
     }
 
     private fun releaseHapticSystem() {
-        hapticGenerator?.release(); hapticGenerator = null
+        cinemaHapticEngine?.release()
+        cinemaHapticEngine = null
     }
 
     private fun broadcastMiniPlayerState(action: String) {
@@ -1002,6 +1022,7 @@ class PlayerService : MediaSessionService() {
         mediaSession = null
         exoPlayer = null
         castPlayer = null
+        releaseHapticSystem()
         equalizer?.release()
         equalizer = null
         super.onDestroy()

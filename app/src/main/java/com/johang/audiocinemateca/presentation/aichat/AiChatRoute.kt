@@ -29,6 +29,12 @@ fun AiChatRoute(
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val auraStatus by viewModel.auraStatus.collectAsState()
+    val chatSessions by viewModel.chatSessions.collectAsState()
+    val activeSessionId by viewModel.activeSessionId.collectAsState()
+    val activeSessionTitle by viewModel.activeSessionTitle.collectAsState()
+    val activeProvider by viewModel.activeProvider.collectAsState()
+    val selectedModelId by viewModel.selectedModelId.collectAsState()
+    val availableModels by viewModel.availableModels.collectAsState()
 
     var inputText by remember { mutableStateOf("") }
     var isListening by remember { mutableStateOf(false) }
@@ -126,6 +132,12 @@ fun AiChatRoute(
         messages = messages,
         isLoading = isLoading,
         auraStatus = auraStatus,
+        chatSessions = chatSessions,
+        activeSessionId = activeSessionId,
+        activeSessionTitle = activeSessionTitle,
+        activeProvider = activeProvider,
+        selectedModelId = selectedModelId,
+        availableModels = availableModels,
         inputText = inputText,
         isListening = isListening,
         onInputTextChange = { inputText = it },
@@ -133,19 +145,26 @@ fun AiChatRoute(
             viewModel.sendMessage(text)
             inputText = ""
         },
-        onVoiceClick = {
+        onVoicePressStart = {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            } else {
+                startListening()
+            }
+        },
+        onVoicePressEnd = {
             if (isListening) {
                 stopListening()
-            } else {
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                    requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                } else {
-                    startListening()
-                }
             }
         },
         onNavigateBack = onNavigateBack,
         onNavigateToAiSettings = onNavigateToAiSettings,
+        onNewChat = { viewModel.startNewChatSession() },
+        onSelectSession = { sessionId -> viewModel.selectChatSession(sessionId) },
+        onRenameSession = { sessionId, newTitle -> viewModel.renameChatSession(sessionId, newTitle) },
+        onDeleteSession = { sessionId -> viewModel.deleteChatSession(sessionId) },
+        onClearAllSessions = { viewModel.clearAllChatSessions() },
+        onSelectModel = { modelId -> viewModel.selectAiModel(modelId) },
         onRestartChat = { viewModel.restartChat() },
         onRetryMessage = { viewModel.reinitializeAndRetry() },
         onLinkedContentClick = { linked ->

@@ -342,7 +342,9 @@ fun SettingsEditTextItem(
     placeholder: String = "",
     enabled: Boolean = true,
     isInitialFocus: Boolean = false,
-    focusTag: String = "category_first_option"
+    focusTag: String = "category_first_option",
+    helperButtonLabel: String? = null,
+    onHelperButtonClick: (() -> Unit)? = null
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var tempValue by remember(showDialog) { mutableStateOf(value) }
@@ -482,6 +484,27 @@ fun SettingsEditTextItem(
                             ) {
                                 Text("❌ Limpiar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
+                        }
+                    }
+
+                    if (!helperButtonLabel.isNullOrBlank() && onHelperButtonClick != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = onHelperButtonClick,
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = androidx.compose.ui.graphics.Color(0xFF38BDF8)
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .audiocinematecaAccessibility(
+                                    label = helperButtonLabel,
+                                    role = Role.Button,
+                                    onClickAction = onHelperButtonClick
+                                )
+                        ) {
+                            Text("🔑 $helperButtonLabel", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

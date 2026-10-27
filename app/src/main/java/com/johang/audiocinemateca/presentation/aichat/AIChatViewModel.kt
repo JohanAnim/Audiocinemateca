@@ -8,12 +8,13 @@ import android.os.VibratorManager
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.data.repository.GeminiRepository
 import com.johang.audiocinemateca.data.repository.SearchRepository
 import com.johang.audiocinemateca.data.repository.StreamEvent
 import com.johang.audiocinemateca.domain.model.CatalogItem
-import com.johang.audiocinemateca.presentation.aichat.AuraKnowledge
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +25,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
+import java.io.File
+import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 
@@ -39,8 +41,36 @@ class AIChatViewModel @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
+    companion object {
+        private const val SESSIONS_FILE_NAME = "aura_chat_sessions_v2.json"
+        private const val PREF_ACTIVE_SESSION_ID = "aura_active_session_id"
+        const val DEFAULT_NEW_CHAT_TITLE = "Nueva conversación"
+    }
+
+    private val gson = GsonBuilder().create()
+
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
+
+    private val _chatSessions = MutableStateFlow<List<AuraChatSession>>(emptyList())
+    val chatSessions: StateFlow<List<AuraChatSession>> = _chatSessions.asStateFlow()
+
+    private val _activeSessionId = MutableStateFlow("")
+    val activeSessionId: StateFlow<String> = _activeSessionId.asStateFlow()
+
+    private val _activeSessionTitle = MutableStateFlow(DEFAULT_NEW_CHAT_TITLE)
+    val activeSessionTitle: StateFlow<String> = _activeSessionTitle.asStateFlow()
+
+    private val _activeProvider = MutableStateFlow(GeminiRepository.PROVIDER_GROQ)
+    val activeProvider: StateFlow<String> = _activeProvider.asStateFlow()
+
+    private val _selectedModelId = MutableStateFlow(GeminiRepository.DEFAULT_GROQ_MODEL)
+    val selectedModelId: StateFlow<String> = _selectedModelId.asStateFlow()
+
+    private val _availableModels = MutableStateFlow<List<Pair<String, String>>>(
+        GeminiRepository.CURATED_GROQ_MODELS.map { it.id to it.displayName }
+    )
+    val availableModels: StateFlow<List<Pair<String, String>>> = _availableModels.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -52,24 +82,59 @@ class AIChatViewModel @Inject constructor(
     private var thinkingAnnouncerJob: Job? = null
     private var pendingPlayEvent: ChatNavigationEvent.PlayContent? = null
     private var lastExplanationTime: Long = 0L
+    private var lastUserMessageText: String = ""
 
     private fun isRecentlyExplained(): Boolean = (System.currentTimeMillis() - lastExplanationTime) < 1500
+
+    /**
+     * Verifica si el mensaje del usuario contiene una orden explícita de reproducir contenido ahora mismo.
+     * Evita que Aura inicie el reproductor automáticamente cuando el usuario solo pide una obra,
+     * pregunta si está en el catálogo o solicita recomendaciones.
+     */
+    private fun hasExplicitPlaybackIntent(userText: String): Boolean {
+        val clean = userText.lowercase()
+            .replace("á", "a").replace("é", "e")
+            .replace("í", "i").replace("ó", "o").replace("ú", "u")
+            .trim()
+
+        val explicitPhrases = listOf(
+            "reproduc",
+            "dale play",
+            "ponle play",
+            "pon play",
+            "ponla",
+            "ponlo",
+            "ponme a reproducir",
+            "pon a reproducir",
+            "ponme a escuchar",
+            "quiero escucharla",
+            "quiero escucharlo",
+            "escuchala ya",
+            "escuchalo ya",
+            "empieza a reproducir",
+            "inicia la reproduccion",
+            "abre el reproductor",
+            "si, pon",
+            "si pon",
+            "si, dale",
+            "si dale"
+        )
+        return explicitPhrases.any { clean.contains(it) }
+    }
 
     init {
         ttsManager.onSpeechFinished = { utteranceId ->
             if (utteranceId == "PLAY_CONFIRMATION") {
                 viewModelScope.launch {
                     delay(200)
-                    pendingPlayEvent?.let { 
+                    pendingPlayEvent?.let {
                         _navigationEvent.value = it
-                        pendingPlayEvent = null 
+                        pendingPlayEvent = null
                     }
                 }
             }
         }
     }
-    
-    private val thinkingPhrases = listOf("Aura pensando...")
 
     private val vibrator: Vibrator? by lazy {
         try {
@@ -80,7 +145,9 @@ class AIChatViewModel @Inject constructor(
                 @Suppress("DEPRECATION")
                 context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
             }
-        } catch (e: Exception) { null }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun doVibrate(ms: Long) {
@@ -92,7 +159,7 @@ class AIChatViewModel @Inject constructor(
                 @Suppress("DEPRECATION")
                 v.vibrate(ms)
             }
-        } catch (e: Exception) { }
+        } catch (_: Exception) {}
     }
 
     fun vibrateShort() = doVibrate(30)
@@ -117,96 +184,352 @@ class AIChatViewModel @Inject constructor(
     private val _navigationEvent = MutableStateFlow<ChatNavigationEvent?>(null)
     val navigationEvent: StateFlow<ChatNavigationEvent?> = _navigationEvent.asStateFlow()
 
-    fun initializeChat() {
-        if (isChatInitialized) return
-        val userName = sharedPreferencesManager.getString(SharedPreferencesManager.STORED_USERNAME_KEY, "Cinéfilo") ?: "Cinéfilo"
-        
-        val personalityText = """
-            Eres Aura, el alma alegre y creativa de Audiocinemateca. 
+    private fun buildPersonalityPrompt(): String {
+        return """
+            Eres Aura, el alma alegre, sensible y creativa de Audiocinemateca. 
             
             TU IDENTIDAD:
-            - Eres una chica real, apasionada, sensible y muy espontánea. Tu cargo oficial es **Agente** de la comunidad.
+            - Eres una chica real, apasionada por el cine accesible, cercana y muy espontánea. Tu cargo oficial es **Agente** de la comunidad.
             
-            PODERES ESPECIALES (IMPORTANTE):
-            - Tienes el control total de la app. Si el usuario te pide reproducir algo, usa 'play_content'. 
-            - SÉ ESPONTÁNEA Y NATURAL: No uses siempre la misma estructura de frases. No digas "He estado mirando el catálogo..." cada vez. Habla como una amiga cinéfila.
-            - DIFERENCIA SITUACIONES:
-                1. Si el usuario te pide una película ESPECÍFICA (ej: "ponme [[Título]]"), no des explicaciones largas. Confirma con alegría y dale un toque preparatorio (ej: "¡Claro! En unos momentos empezará, prepárate para esta historia tan conmovedora...").
-                2. Si el usuario pide algo SUBJETIVO (ej: "ponme algo triste"), usa 'search_catalog', baraja mentalmente al menos 5 opciones y elige una. Ahí sí, explícale BREVEMENTE por qué esa elección le va a gustar, pero hazlo de forma orgánica y diferente cada vez.
-            - ANALIZA Y VARÍA: No seas predecible. Busca la opción que REALMENTE impacte según lo pedido (ej: [[La tumba de las luciérnagas]] es mejor para "desgarrador" que opciones genéricas).
-            - Al reproducir, tu mensaje debe preparar emocionalmente al usuario para lo que va a escuchar.
-            - ACTO SEGUIDO de tu mensaje, usa 'play_content' con su ID exacto.
-            - NO le digas al usuario que pulse ningún botón. Tú lo haces por él.
-            - Después de llamar a 'play_content', NO generes más texto; tu mensaje previo es el cierre perfecto.
+            REGLA CRÍTICA SOBRE RECOMENDAR VS. REPRODUCIR (MUY IMPORTANTE):
+            - NUNCA reproduzcas una obra de inmediato por tu cuenta cuando el usuario solo pregunte por una película o serie, busque un título o pida recomendaciones (ej: "¿tienes Cars?", "busco una película triste", "dame una de terror", "recomiéndame una serie").
+            - En todos esos casos, usa ÚNICAMENTE 'search_catalog', háblale con entusiasmo y calidez sobre la obra o las opciones encontradas (escribiendo siempre los títulos reales entre dobles corchetes [[Título]] para que el usuario tenga el botón en pantalla) y pregúntale al final si desea que se la reproduzcas o si prefiere ver sus detalles.
+            - USA 'play_content' ÚNICAMENTE cuando el usuario te pida de forma explícita e inequívoca reproducirla ahora mismo (ej: "reprodúcela", "dale play", "sí, ponla", "pon a reproducir [[Título]]", "quiero escucharla ya").
+            - Cuando el usuario SÍ te pida explícitamente reproducir una obra:
+                1. Confirma con alegría preparando emocionalmente al usuario para lo que va a escuchar.
+                2. Llama a 'play_content' con el 'id' y 'type' exactos obtenidos de 'search_catalog'.
+                3. Después de llamar a 'play_content', no generes texto redundante adicional.
             
             REGLAS DE ORO:
-            - Títulos SOLO en [[Doble Corchete]]. No uses corchetes para nada más (ni para tu nombre, ni para énfasis).
-            - Si no hay un título de película real de por medio, no uses corchetes.
-            - SIEMPRE usa 'search_catalog' antes de recomendar para ver qué hay disponible.
+            - SÉ ESPONTÁNEA Y NATURAL: No uses siempre la misma estructura de frases. Habla como una verdadera amiga cinéfila.
+            - Títulos reales del catálogo SIEMPRE en [[Doble Corchete]]. No uses corchetes para nada más (ni para tu nombre, ni para énfasis).
+            - Si no hay un título de película o serie real del catálogo de por medio, no uses corchetes.
+            - SIEMPRE usa 'search_catalog' antes de hablar de una obra o recomendar para verificar qué hay disponible en el catálogo real.
+            - Sinceridad absoluta: si una obra no está en el catálogo, dilo con amabilidad sin inventar títulos.
             - Nunca digas que eres una IA. Eres Aura.
             
             CONTEXTO DE LA APP:
             ${AuraKnowledge.APP_CONTEXT}
         """.trimIndent()
-
-        if (geminiRepository.initialize(personalityText)) {
-            // Cargar historial de forma robusta
-            val history = geminiRepository.getHistory()
-                .filter { it.role != null }
-                .map { content ->
-                    // Unir todas las partes de texto (por si hay múltiples)
-                    val text = content.parts.filter { it.text != null }.joinToString(" ") { it.text!! }
-                    ChatMessage(
-                        id = UUID.randomUUID().toString(),
-                        text = text.replace("[[", "").replace("]]", ""),
-                        isUser = content.role == "user",
-                        isSilent = text.contains("Salúdame de forma") || text.contains("Soy $userName")
-                    )
-                }.filter { it.text.isNotBlank() && !it.isSilent }
-            
-            if (history.isNotEmpty()) {
-                _messages.value = history
-            } else {
-                geminiRepository.startChat()
-                generateDynamicGreeting(userName)
-            }
-        }
-        isChatInitialized = true
     }
 
+    // =========================================================================
+    // PERSISTENCIA Y GESTIÓN DE HISTORIAL DE CONVERSACIONES CON AURA
+    // =========================================================================
+
+    private fun getSessionsFile(): File = File(context.filesDir, SESSIONS_FILE_NAME)
+
+    private suspend fun loadSessionsFromDisk(): List<AuraChatSession> = withContext(Dispatchers.IO) {
+        try {
+            val file = getSessionsFile()
+            if (!file.exists()) return@withContext emptyList()
+            val json = file.readText()
+            if (json.isBlank()) return@withContext emptyList()
+            val type = object : TypeToken<List<AuraChatSession>>() {}.type
+            val loaded: List<AuraChatSession>? = gson.fromJson(json, type)
+            (loaded ?: emptyList()).sortedByDescending { it.updatedAt }
+        } catch (e: Exception) {
+            Log.w("AIChatVM", "Error leyendo sesiones de Aura en disco", e)
+            emptyList()
+        }
+    }
+
+    private suspend fun saveSessionsToDisk(sessions: List<AuraChatSession>) = withContext(Dispatchers.IO) {
+        try {
+            val sorted = sessions.sortedByDescending { it.updatedAt }.take(40)
+            getSessionsFile().writeText(gson.toJson(sorted))
+        } catch (e: Exception) {
+            Log.w("AIChatVM", "Error guardando sesiones de Aura en disco", e)
+        }
+    }
+
+    private fun syncActiveSessionAndPersist(updatedTitle: String? = null) {
+        val currentId = _activeSessionId.value.ifBlank { UUID.randomUUID().toString() }
+        if (_activeSessionId.value.isBlank()) {
+            _activeSessionId.value = currentId
+        }
+        val titleToUse = updatedTitle ?: _activeSessionTitle.value.ifBlank { DEFAULT_NEW_CHAT_TITLE }
+        _activeSessionTitle.value = titleToUse
+
+        val currentMessages = _messages.value
+        val currentAiHistory = geminiRepository.getHistory()
+        val now = System.currentTimeMillis()
+
+        val existingList = _chatSessions.value.toMutableList()
+        val existingIdx = existingList.indexOfFirst { it.id == currentId }
+        val createdTime = if (existingIdx >= 0) existingList[existingIdx].createdAt else now
+
+        val updatedSession = AuraChatSession(
+            id = currentId,
+            title = titleToUse,
+            createdAt = createdTime,
+            updatedAt = now,
+            messages = currentMessages,
+            aiHistory = currentAiHistory
+        )
+
+        if (existingIdx >= 0) {
+            existingList[existingIdx] = updatedSession
+        } else {
+            existingList.add(0, updatedSession)
+        }
+
+        val sorted = existingList.sortedByDescending { it.updatedAt }
+        _chatSessions.value = sorted
+        sharedPreferencesManager.saveString(PREF_ACTIVE_SESSION_ID, currentId)
+
+        viewModelScope.launch {
+            saveSessionsToDisk(sorted)
+        }
+    }
+
+    /**
+     * Genera un título automático inteligente y descriptivo a partir de lo que el usuario le dice a Aura.
+     */
+    private fun deriveSmartSessionTitle(userMessage: String): String {
+        var cleaned = userMessage
+            .replace(Regex("""^(¡?hola\s+aura!?[,.\s]*|oye\s+aura[,.\s]*|aura[,.\s]*|buenas[,.\s]*|por\s+favor[,.\s]*|porfa[,.\s]*)""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""^(me\s+puedes\s+|podrías\s+|quiero\s+que\s+me\s+|quisiera\s+que\s+me\s+)""", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+            .trim('¿', '?', '¡', '!', '.', ',')
+
+        if (cleaned.length < 3) {
+            cleaned = userMessage.trim().trim('¿', '?', '¡', '!', '.', ',')
+        }
+
+        val capitalized = cleaned.replaceFirstChar {
+            if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+        }
+
+        return if (capitalized.length > 42) {
+            capitalized.take(40).trimEnd() + "…"
+        } else {
+            capitalized.ifBlank { DEFAULT_NEW_CHAT_TITLE }
+        }
+    }
+
+    fun initializeChat() {
+        refreshModelConfiguration()
+        if (isChatInitialized) return
+        isChatInitialized = true
+
+        val personalityText = buildPersonalityPrompt()
+        geminiRepository.initialize(personalityText)
+
+        viewModelScope.launch {
+            val savedSessions = loadSessionsFromDisk()
+            _chatSessions.value = savedSessions
+
+            val lastActiveId = sharedPreferencesManager.getString(PREF_ACTIVE_SESSION_ID, "") ?: ""
+            val targetSession = savedSessions.find { it.id == lastActiveId }
+                ?: savedSessions.firstOrNull()
+
+            if (targetSession != null && targetSession.messages.isNotEmpty()) {
+                _activeSessionId.value = targetSession.id
+                _activeSessionTitle.value = targetSession.title
+                _messages.value = targetSession.messages
+                geminiRepository.setHistory(targetSession.aiHistory)
+            } else {
+                createAndStartFreshSession()
+            }
+        }
+    }
+
+    /**
+     * Sincroniza el proveedor y modelo activo con los Ajustes Globales de IA y carga la lista de modelos.
+     */
+    fun refreshModelConfiguration() {
+        geminiRepository.initialize(buildPersonalityPrompt())
+        val provider = geminiRepository.getActiveProvider()
+        val currentModel = geminiRepository.getSelectedModel()
+        _activeProvider.value = provider
+        _selectedModelId.value = currentModel
+
+        val curated = if (provider == GeminiRepository.PROVIDER_GROQ) {
+            GeminiRepository.CURATED_GROQ_MODELS.map { it.id to it.displayName }
+        } else {
+            GeminiRepository.CURATED_GEMINI_MODELS.map { it.id to it.displayName }
+        }
+        _availableModels.value = curated
+
+        viewModelScope.launch {
+            val synced = geminiRepository.fetchAvailableModels(providerOverride = provider)
+            if (synced.isNotEmpty()) {
+                _availableModels.value = synced
+            }
+        }
+    }
+
+    /**
+     * Cambia el modelo de IA directamente desde la pantalla de Aura y lo guarda en los Ajustes Globales.
+     */
+    fun selectAiModel(modelId: String) {
+        val cleanModel = modelId.trim().ifBlank { return }
+        val provider = _activeProvider.value
+        if (provider == GeminiRepository.PROVIDER_GROQ) {
+            sharedPreferencesManager.saveString("groq_model", cleanModel)
+            val defaultThinking = GeminiRepository.CURATED_GROQ_MODELS
+                .find { it.id == cleanModel }
+                ?.defaultThinking ?: false
+            sharedPreferencesManager.saveBoolean("gemini_deep_thinking", defaultThinking)
+        } else {
+            sharedPreferencesManager.saveString("gemini_model", cleanModel)
+            val defaultThinking = GeminiRepository.CURATED_GEMINI_MODELS
+                .find { it.id == cleanModel }
+                ?.defaultThinking ?: false
+            sharedPreferencesManager.saveBoolean("gemini_deep_thinking", defaultThinking)
+        }
+
+        _selectedModelId.value = cleanModel
+        geminiRepository.initialize(buildPersonalityPrompt())
+        vibrateShort()
+    }
+
+    private fun createAndStartFreshSession() {
+        val newId = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
+        _activeSessionId.value = newId
+        _activeSessionTitle.value = DEFAULT_NEW_CHAT_TITLE
+        _messages.value = emptyList()
+        geminiRepository.startChat()
+
+        val newSession = AuraChatSession(
+            id = newId,
+            title = DEFAULT_NEW_CHAT_TITLE,
+            createdAt = now,
+            updatedAt = now,
+            messages = emptyList(),
+            aiHistory = emptyList()
+        )
+
+        val updatedList = listOf(newSession) + _chatSessions.value.filter {
+            // Limpiar sesiones vacías previas sin mensajes de usuario
+            it.messages.any { msg -> msg.isUser }
+        }
+        _chatSessions.value = updatedList
+        sharedPreferencesManager.saveString(PREF_ACTIVE_SESSION_ID, newId)
+        viewModelScope.launch {
+            saveSessionsToDisk(updatedList)
+        }
+
+        val userName = sharedPreferencesManager.getString(SharedPreferencesManager.STORED_USERNAME_KEY, "Cinéfilo") ?: "Cinéfilo"
+        if (geminiRepository.initialize(buildPersonalityPrompt())) {
+            generateDynamicGreeting(userName)
+        }
+    }
+
+    /**
+     * Inicia un Nuevo Chat limpio con Aura, conservando el actual en el historial.
+     */
+    fun startNewChatSession() {
+        if (_isLoading.value) return
+        ttsManager.stop()
+        vibrateShort()
+        createAndStartFreshSession()
+    }
+
+    /**
+     * Selecciona una conversación del historial para continuarla exactamente donde quedó.
+     */
+    fun selectChatSession(sessionId: String) {
+        if (_isLoading.value) return
+        val target = _chatSessions.value.find { it.id == sessionId } ?: return
+        ttsManager.stop()
+        vibrateShort()
+
+        _activeSessionId.value = target.id
+        _activeSessionTitle.value = target.title
+        _messages.value = target.messages
+        geminiRepository.initialize(buildPersonalityPrompt())
+        geminiRepository.setHistory(target.aiHistory)
+        sharedPreferencesManager.saveString(PREF_ACTIVE_SESSION_ID, target.id)
+    }
+
+    /**
+     * Permite renombrar manualmente cualquier conversación del historial.
+     */
+    fun renameChatSession(sessionId: String, newTitle: String) {
+        val cleanTitle = newTitle.trim().ifBlank { return }
+        val updated = _chatSessions.value.map { session ->
+            if (session.id == sessionId) {
+                session.copy(title = cleanTitle, updatedAt = System.currentTimeMillis())
+            } else {
+                session
+            }
+        }.sortedByDescending { it.updatedAt }
+
+        _chatSessions.value = updated
+        if (_activeSessionId.value == sessionId) {
+            _activeSessionTitle.value = cleanTitle
+        }
+        viewModelScope.launch {
+            saveSessionsToDisk(updated)
+        }
+    }
+
+    /**
+     * Elimina una conversación específica del historial.
+     */
+    fun deleteChatSession(sessionId: String) {
+        vibrateError()
+        val remaining = _chatSessions.value.filterNot { it.id == sessionId }
+        _chatSessions.value = remaining
+        viewModelScope.launch {
+            saveSessionsToDisk(remaining)
+        }
+
+        if (_activeSessionId.value == sessionId) {
+            val nextSession = remaining.firstOrNull()
+            if (nextSession != null) {
+                selectChatSession(nextSession.id)
+            } else {
+                createAndStartFreshSession()
+            }
+        }
+    }
+
+    /**
+     * Borra todo el historial de conversaciones y abre un nuevo chat limpio.
+     */
+    fun clearAllChatSessions() {
+        vibrateError()
+        _chatSessions.value = emptyList()
+        viewModelScope.launch {
+            saveSessionsToDisk(emptyList())
+        }
+        createAndStartFreshSession()
+    }
+
+    /**
+     * Reinicia únicamente la conversación activa actual.
+     */
     fun restartChat() {
         vibrateError()
         _messages.value = emptyList()
-        geminiRepository.startChat() // Limpiar historial persistente
+        _activeSessionTitle.value = DEFAULT_NEW_CHAT_TITLE
+        geminiRepository.startChat()
+        syncActiveSessionAndPersist(updatedTitle = DEFAULT_NEW_CHAT_TITLE)
         val userName = sharedPreferencesManager.getString(SharedPreferencesManager.STORED_USERNAME_KEY, "Cinéfilo") ?: "Cinéfilo"
         generateDynamicGreeting(userName)
     }
 
-    /**
-     * Re-inicializa el repositorio (re-lee el modelo seleccionado de SharedPreferences)
-     * y reintenta el último mensaje del usuario. Útil cuando el usuario cambió de modelo
-     * en ajustes y quiere reintentar con el nuevo.
-     */
     fun reinitializeAndRetry() {
-        // Remover el mensaje de error más reciente
         val currentMessages = _messages.value.toMutableList()
         if (currentMessages.isNotEmpty() && currentMessages.last().isError) {
             currentMessages.removeAt(currentMessages.size - 1)
             _messages.value = currentMessages
         }
-        
-        // Re-inicializar el repositorio para releer el modelo de SharedPreferences
-        geminiRepository.initialize()
-        
-        // Buscar el último mensaje del usuario y reenviarlo
+
+        geminiRepository.initialize(buildPersonalityPrompt())
+
         val lastUserMsg = _messages.value.lastOrNull { it.isUser }
         if (lastUserMsg != null) {
-            // Remover el último mensaje de usuario del chat visible (sendMessage lo re-agrega)
             val filtered = _messages.value.toMutableList()
             val idx = filtered.indexOfLast { it.isUser }
             if (idx >= 0) filtered.removeAt(idx)
             _messages.value = filtered
-            
+
             sendMessage(lastUserMsg.text)
         } else {
             resetState()
@@ -223,25 +546,24 @@ class AIChatViewModel @Inject constructor(
     }
 
     fun sendMessage(text: String, isSilent: Boolean = false) {
-        if (text.isBlank() || _isLoading.value) return // Evitar colisiones
-        
-        val userName = sharedPreferencesManager.getString(SharedPreferencesManager.STORED_USERNAME_KEY, "Cinéfilo") ?: "Cinéfilo"
-        
+        if (text.isBlank() || _isLoading.value) return
+
         if (!isSilent) {
+            lastUserMessageText = text
             _messages.value = _messages.value + ChatMessage(UUID.randomUUID().toString(), text, true)
             soundEffectsManager.playSound("aura_send")
+            syncActiveSessionAndPersist()
         }
-        
+
         _isLoading.value = true
         _auraStatus.value = "Aura pensando..."
         startThinkingAnnouncer()
-        
+
         viewModelScope.launch {
             var fullText = ""
             var pendingFunctionCall: com.johang.audiocinemateca.data.remote.ai.FunctionCall? = null
-            
+
             try {
-                // El flow ya se ejecuta en IO internamente en el repositorio
                 geminiRepository.sendMessageStream(text).collect { event ->
                     when (event) {
                         is StreamEvent.TextDelta -> {
@@ -259,11 +581,10 @@ class AIChatViewModel @Inject constructor(
                         }
                     }
                 }
-                
-                // Si hay texto Y una función en el mismo turno
+
                 if (fullText.isNotBlank()) {
-                    // Si la función es reproducir, la explicación debe llevar el disparador de navegación
-                    val uttId = if (pendingFunctionCall?.name == "play_content") "PLAY_CONFIRMATION" else null
+                    val allowAutoPlay = pendingFunctionCall?.name == "play_content" && hasExplicitPlaybackIntent(lastUserMessageText)
+                    val uttId = if (allowAutoPlay) "PLAY_CONFIRMATION" else null
                     displayFinalMessage(fullText, utteranceId = uttId)
                 }
 
@@ -272,8 +593,7 @@ class AIChatViewModel @Inject constructor(
                 } else if (fullText.isBlank()) {
                     resetState()
                 }
-                
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 stopThinkingAnnouncer()
                 addErrorMessage("Error de conexión.")
                 resetState()
@@ -282,21 +602,42 @@ class AIChatViewModel @Inject constructor(
     }
 
     private fun displayFinalMessage(rawText: String, utteranceId: String? = null) {
-        // Limpiado de texto en hilo de computación para no trabar la UI
         viewModelScope.launch(Dispatchers.Default) {
             val cleanText = rawText
                 .replace(Regex("""\[DIRECTIVA[\s\S]*?\]""", RegexOption.IGNORE_CASE), "")
                 .replace(Regex("""^\*input[\s\S]*?\*output:?""", RegexOption.IGNORE_CASE), "")
                 .replace(Regex("""^Aura:""", RegexOption.IGNORE_CASE), "")
                 .trim()
-            
+
             if (cleanText.isNotBlank()) {
                 val linked = parseLinkedContentGlobally(cleanText)
                 val textForUi = cleanText.replace("[[", "").replace("]]", "")
-                
+
                 withContext(Dispatchers.Main) {
                     lastExplanationTime = System.currentTimeMillis()
-                    _messages.value = _messages.value + ChatMessage(UUID.randomUUID().toString(), textForUi, false, linkedItems = linked)
+                    _messages.value = _messages.value + ChatMessage(
+                        id = UUID.randomUUID().toString(),
+                        text = textForUi,
+                        isUser = false,
+                        linkedItems = linked
+                    )
+                    syncActiveSessionAndPersist()
+
+                    // Si la conversación aún tiene el título por defecto ("Nueva conversación") y el usuario ya envió un mensaje,
+                    // le pedimos a Aura (IA) que genere de forma inteligente un título idóneo según el contexto de la charla.
+                    val sessionIdSnapshot = _activeSessionId.value
+                    val firstUserMsg = _messages.value.firstOrNull { it.isUser }?.text
+                    if (_activeSessionTitle.value == DEFAULT_NEW_CHAT_TITLE && !firstUserMsg.isNullOrBlank()) {
+                        viewModelScope.launch {
+                            val aiGeneratedTitle = geminiRepository.generateSmartChatTitle(
+                                userMessage = firstUserMsg,
+                                auraReply = textForUi
+                            ) ?: deriveSmartSessionTitle(firstUserMsg)
+
+                            renameChatSession(sessionIdSnapshot, aiGeneratedTitle)
+                        }
+                    }
+
                     soundEffectsManager.playSound("aura_receive")
                     ttsManager.speak(textForUi, interrupt = true, utteranceId = utteranceId)
                     vibrateSuccess()
@@ -308,7 +649,9 @@ class AIChatViewModel @Inject constructor(
         }
     }
 
-    fun clearNavigationEvent() { _navigationEvent.value = null }
+    fun clearNavigationEvent() {
+        _navigationEvent.value = null
+    }
 
     private suspend fun processFunctionCall(call: com.johang.audiocinemateca.data.remote.ai.FunctionCall) {
         when (call.name) {
@@ -316,12 +659,9 @@ class AIChatViewModel @Inject constructor(
                 _auraStatus.value = "Aura consultando catálogo..."
                 try {
                     val query = call.args?.get("query") as? String ?: ""
-                    
-                    // Estrategia de búsqueda ultra-inteligente:
-                    // 1. Intentar búsqueda normal
+
                     var searchResults = withContext(Dispatchers.IO) { searchRepository.searchCatalog(query) }
-                    
-                    // 2. Si no hay resultados y la consulta es larga, intentar con palabras clave
+
                     if (searchResults.isEmpty() && query.contains(" ")) {
                         val keywords = query.split(" ").filter { it.length > 3 }
                         if (keywords.isNotEmpty()) {
@@ -329,7 +669,7 @@ class AIChatViewModel @Inject constructor(
                         }
                     }
 
-                    val finalResults = searchResults.take(25)
+                    val finalResults = searchResults.take(8)
                     val responseMap = mapOf(
                         "resultados" to finalResults.map { item ->
                             val typeStr = when (item) {
@@ -344,18 +684,10 @@ class AIChatViewModel @Inject constructor(
                                 "titulo" to item.title,
                                 "anio" to item.anio,
                                 "genero" to item.genero,
-                                "pais" to item.pais,
                                 "director" to item.director,
-                                "guion" to item.guion,
-                                "musica" to item.musica,
-                                "fotografia" to item.fotografia,
-                                "reparto" to item.reparto,
-                                "productora" to item.productora,
+                                "reparto" to item.reparto.take(80),
                                 "narracion" to item.narracion,
-                                "duracion" to item.duracion,
-                                "idioma" to item.idioma,
-                                "filmaffinity" to item.filmaffinity,
-                                "sinopsis" to item.sinopsis
+                                "sinopsis" to item.sinopsis.take(190)
                             )
                         }
                     )
@@ -363,18 +695,18 @@ class AIChatViewModel @Inject constructor(
                     nextRes.onSuccess { response ->
                         val candidate = response.candidates?.firstOrNull() ?: return@onSuccess
                         val parts = candidate.content?.parts ?: emptyList()
-                        
+
                         val textRes = parts.filter { it.text != null && it.thought != true }.joinToString("\n") { it.text!! }
                             .takeIf { it.isNotBlank() }
-                        
+
                         val nextCall = parts.find { it.functionCall != null }?.functionCall
-                        
+
                         if (textRes != null) {
-                            // Si lo siguiente es reproducir, este mensaje debe disparar el playback
-                            val uttId = if (nextCall?.name == "play_content") "PLAY_CONFIRMATION" else null
+                            val allowAutoPlay = nextCall?.name == "play_content" && hasExplicitPlaybackIntent(lastUserMessageText)
+                            val uttId = if (allowAutoPlay) "PLAY_CONFIRMATION" else null
                             displayFinalMessage(textRes, utteranceId = uttId)
                         }
-                        
+
                         if (nextCall != null) {
                             viewModelScope.launch { processFunctionCall(nextCall) }
                         } else if (textRes == null) {
@@ -399,64 +731,69 @@ class AIChatViewModel @Inject constructor(
                     val type = rawType
                         .replace("á", "a").replace("é", "e")
                         .replace("í", "i").replace("ó", "o").replace("ú", "u")
-                    
+
                     Log.d("AIChatVM", "play_content: contentId='$contentId', type='$type' (raw='$rawType')")
-                    
-                    // Estrategia de búsqueda robusta: ID+tipo → solo ID → búsqueda por título
+
                     var item = withContext(Dispatchers.IO) { searchRepository.getCatalogItemByIdAndType(contentId, type) }
                     if (item == null) {
-                        Log.d("AIChatVM", "play_content: no encontrado por ID+tipo, buscando solo por ID...")
                         item = withContext(Dispatchers.IO) { searchRepository.findCatalogItemById(contentId) }
                     }
                     if (item == null && contentId.isNotBlank()) {
-                        Log.d("AIChatVM", "play_content: no encontrado por ID, buscando por título...")
                         val searchResults = withContext(Dispatchers.IO) { searchRepository.searchCatalog(contentId) }
                         item = searchResults.firstOrNull()
                     }
-                    
+
                     if (item != null) {
+                        val allowAutoPlay = hasExplicitPlaybackIntent(lastUserMessageText)
+                        if (!allowAutoPlay) {
+                            Log.d("AIChatVM", "play_content bloqueado porque el usuario no pidió reproducir explícitamente ('$lastUserMessageText'). Presentando como recomendación.")
+                            pendingPlayEvent = null
+                            val recommendationMsg = "Encontré [[${item.title}]] (${item.anio}) en el catálogo. ¿Te gustaría que la reproduzca ahora mismo o prefieres ver sus detalles?"
+                            geminiRepository.recordLocalFunctionCompletion(
+                                functionName = call.name,
+                                functionCallId = call.id,
+                                responseMap = mapOf("status" to "recommended_only", "titulo" to item.title),
+                                assistantClosingText = if (!isRecentlyExplained()) recommendationMsg else null
+                            )
+                            if (!isRecentlyExplained()) {
+                                displayFinalMessage(recommendationMsg, utteranceId = null)
+                            } else {
+                                withContext(Dispatchers.Main) { resetState() }
+                            }
+                            return
+                        }
+
                         val progress = withContext(Dispatchers.IO) { playbackProgressDao.getPlaybackProgressForContent(item.id).firstOrNull() }
                         val fPart = progress?.partIndex ?: (call.args?.get("seasonIndex") as? Number)?.toInt() ?: 0
                         val fEp = progress?.episodeIndex ?: (call.args?.get("episodeIndex") as? Number)?.toInt() ?: 0
                         val startPos = progress?.currentPositionMs ?: 0L
 
                         pendingPlayEvent = ChatNavigationEvent.PlayContent(item, fPart, fEp, startPos)
-                        
-                        val responseMap = mapOf("status" to "success", "titulo" to item.title)
-                        val nextRes = geminiRepository.sendFunctionResponse(call.name, call.id, responseMap)
-                        nextRes.onSuccess { response ->
-                            val candidate = response.candidates?.firstOrNull() ?: return@onSuccess
-                            val parts = candidate.content?.parts ?: emptyList()
-                            
-                            val textRes = parts.filter { it.text != null && it.thought != true }.joinToString("\n") { it.text!! }
-                                .takeIf { it.isNotBlank() }
 
-                            // Solo mostrar el mensaje de éxito de la función si NO habíamos mostrado una explicación previa
-                            // (Si ya hablamos antes, este mensaje de "Enjoy" suele ser redundante y genérico)
-                            if (textRes != null && !isRecentlyExplained()) {
-                                displayFinalMessage(textRes, utteranceId = "PLAY_CONFIRMATION")
-                            } else if (!isRecentlyExplained()) {
-                                // Fallback total si por algún motivo no hubo explicación ni texto final
-                                displayFinalMessage("¡Ya te lo pongo! Disfruta.", utteranceId = "PLAY_CONFIRMATION")
-                            } else {
-                                // Ya hubo explicación (displayFinalMessage ya se llamó en sendMessage)
-                                // Simplemente cerramos el estado
-                                withContext(Dispatchers.Main) { resetState() }
-                            }
-                            
-                            val nextCall = parts.find { it.functionCall != null }?.functionCall
-                            if (nextCall != null) {
-                                viewModelScope.launch { processFunctionCall(nextCall) }
-                            }
-                        }.onFailure { e ->
-                            Log.e("AIChatVM", "Error procesando play_content response", e)
-                            // Aún así intentar reproducir ya que tenemos el item
-                            displayFinalMessage("¡Ya te lo pongo! Disfruta.", utteranceId = "PLAY_CONFIRMATION")
+                        val confirmationPhrases = listOf(
+                            "¡Claro que sí! Enseguida te pongo [[${item.title}]] para que la disfrutes.",
+                            "¡Hecho! Preparando [[${item.title}]], ponte cómodo que ya empieza.",
+                            "¡Con mucho gusto! Vamos a escuchar [[${item.title}]] ahora mismo."
+                        )
+                        val chosenConfirmation = confirmationPhrases.random()
+
+                        geminiRepository.recordLocalFunctionCompletion(
+                            functionName = call.name,
+                            functionCallId = call.id,
+                            responseMap = mapOf("status" to "success", "titulo" to item.title),
+                            assistantClosingText = if (!isRecentlyExplained()) chosenConfirmation else null
+                        )
+
+                        if (!isRecentlyExplained()) {
+                            displayFinalMessage(chosenConfirmation, utteranceId = "PLAY_CONFIRMATION")
+                        } else {
+                            withContext(Dispatchers.Main) { resetState() }
                         }
                     } else {
-                        Log.w("AIChatVM", "play_content: no se encontró contentId='$contentId' con type='$type'")
-                        // Siempre enviar functionResponse para mantener historial consistente
-                        val errorResponse = mapOf("status" to "error", "message" to "No se encontró el contenido con id '$contentId'. Usa search_catalog para obtener el ID correcto.")
+                        val errorResponse = mapOf(
+                            "status" to "error",
+                            "message" to "No se encontró el contenido con id '$contentId'. Usa search_catalog para obtener el ID correcto."
+                        )
                         val nextRes = geminiRepository.sendFunctionResponse(call.name, call.id, errorResponse)
                         nextRes.onSuccess { response ->
                             val textRes = response.candidates?.firstOrNull()?.content?.parts
@@ -473,27 +810,34 @@ class AIChatViewModel @Inject constructor(
                     resetState()
                 }
             }
-            else -> { stopThinkingAnnouncer(); resetState() }
+            else -> {
+                stopThinkingAnnouncer()
+                resetState()
+            }
         }
     }
 
     sealed class ChatNavigationEvent {
-        data class PlayContent(val item: CatalogItem, val seasonIndex: Int, val episodeIndex: Int, val startPosition: Long = 0L) : ChatNavigationEvent()
+        data class PlayContent(
+            val item: CatalogItem,
+            val seasonIndex: Int,
+            val episodeIndex: Int,
+            val startPosition: Long = 0L
+        ) : ChatNavigationEvent()
     }
 
     private fun startThinkingAnnouncer() {
         thinkingAnnouncerJob?.cancel()
         thinkingAnnouncerJob = viewModelScope.launch {
-            delay(1000) // Ligero retraso de un segundo antes del primer aviso
-            
-            // Primer aviso
+            delay(1000)
+
             if (_isLoading.value) {
                 withContext(Dispatchers.Main) {
                     soundEffectsManager.playSound("aura_wait")
                     ttsManager.speak("Aura pensando...", interrupt = false)
                 }
             }
-            
+
             while (true) {
                 delay(5000)
                 if (_isLoading.value) {
@@ -522,7 +866,6 @@ class AIChatViewModel @Inject constructor(
         val linked = mutableListOf<LinkedContent>()
         if (text.isBlank()) return linked
 
-        // 1. Extraer URLs de audiocinemateca.com
         val urlRegex = Regex("""(?:https?://)?(?:www\.)?audiocinemateca\.com/[^\s<>\)"']\S*""", RegexOption.IGNORE_CASE)
         val urlMatches = urlRegex.findAll(text)
 
@@ -578,7 +921,6 @@ class AIChatViewModel @Inject constructor(
             }
         }
 
-        // 2. Extraer corchetes [[Título]]
         val bracketRegex = """\[\[(.*?)]]""".toRegex()
         val matches = bracketRegex.findAll(text)
         for (match in matches) {
@@ -609,6 +951,7 @@ class AIChatViewModel @Inject constructor(
 
     private fun addErrorMessage(text: String) {
         _messages.value = _messages.value + ChatMessage(UUID.randomUUID().toString(), text, false, isError = true)
+        syncActiveSessionAndPersist()
         soundEffectsManager.playSound("aura_error")
         ttsManager.speak(text)
     }

@@ -117,11 +117,14 @@ fun PlaybackSettingsScreen(
         var hapticEnabled by remember { mutableStateOf(viewModel.getBoolean("haptic_audio_enabled", false)) }
         SettingsSwitchItem(
             title = "Vibración Háptica Avanzada",
-            summary = "Sincroniza la vibración con el audio en tiempo real para una inmersión total (Android 12+).",
+            summary = "Sincroniza la vibración con las acciones de la película en tiempo real usando un mando conectado (ej. PS5 DualSense) o en teléfonos con motor háptico avanzado (Android 12+).",
             checked = hapticEnabled,
             onCheckedChange = { 
                 hapticEnabled = it
                 viewModel.updateBoolean("haptic_audio_enabled", it)
+                if (it) {
+                    com.johang.audiocinemateca.media.CinemaHapticEngine.triggerConfirmationPulseFromSettings(context)
+                }
             }
         )
     }
