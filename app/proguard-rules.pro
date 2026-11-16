@@ -3,17 +3,8 @@
 # /Users/johan/AppData/Local/Android/sdk/tools/proguard/proguard-android-optimize.txt
 # You can remove the line above and specify your own ProGuard rules here.
 
-# Keep PlayerFragment
--keep class com.johang.audiocinemateca.presentation.player.PlayerFragment { *; }
-
-# Keep its ViewModel (if used directly by the fragment and not just injected)
+# Keep PlayerViewModel
 -keep class com.johang.audiocinemateca.presentation.player.PlayerViewModel { *; }
-
-# Keep the generated Safe Args classes for PlayerFragment
--keep class com.johang.audiocinemateca.presentation.player.PlayerFragmentArgs { *; }
-
-# Keep all fragments used in navigation graphs
--keep class * extends androidx.fragment.app.Fragment { *; }
 
 # Keep all views used in layouts
 -keep public class * extends android.view.View {

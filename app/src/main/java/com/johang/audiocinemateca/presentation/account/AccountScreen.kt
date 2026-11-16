@@ -2,7 +2,6 @@ package com.johang.audiocinemateca.presentation.account
 
 import android.content.Intent
 import android.net.Uri
-import android.widget.TextView
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,18 +22,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.johang.audiocinemateca.MainActivity
-import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.data.AuthCatalogRepository
 import com.johang.audiocinemateca.domain.model.UpdateInfo
 import com.johang.audiocinemateca.domain.usecase.UpdateCheckResult
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
 import com.johang.audiocinemateca.util.initialAccessibilityFocus
-import io.noties.markwon.Markwon
+import com.johang.audiocinemateca.util.parseMarkdownToAnnotatedString
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -61,6 +57,7 @@ fun AccountScreen(
     var showNovedadesDialog by remember { mutableStateOf<UpdateInfo?>(null) }
     var showCatalogProgressDialog by remember { mutableStateOf(false) }
     var catalogProgress by remember { mutableIntStateOf(0) }
+    var activeDialog by remember { mutableStateOf<AccountDialogSpec?>(null) }
 
     // Recuerda el último botón accionado en Cuenta (ej. "account_settings" al ir a Configuración)
     // para restaurar el foco exactamente en ese botón al regresar con Volver.
@@ -348,11 +345,13 @@ fun AccountScreen(
                     fontSize = 14.sp,
                     modifier = Modifier
                         .weight(1f)
-                        .clickable { 
-                            MaterialAlertDialogBuilder(context)
-                                .setTitle("Reparar Catálogo")
-                                .setMessage("¿Deseas forzar la descarga del catálogo completo de nuevo?")
-                                .setPositiveButton("Redescargar") { _, _ ->
+                        .clickable {
+                            activeDialog = AccountDialogSpec(
+                                title = "Reparar Catálogo",
+                                message = "¿Deseas forzar la descarga del catálogo completo de nuevo?",
+                                confirmText = "Redescargar",
+                                dismissText = "Cancelar",
+                                onConfirm = {
                                     scope.launch {
                                         val serverVersion = authCatalogRepository.getCatalogVersion() ?: java.util.Date()
                                         showCatalogProgressDialog = true
@@ -371,43 +370,42 @@ fun AccountScreen(
                                         }
                                     }
                                 }
-                                .setNegativeButton("Cancelar", null)
-                                .show()
+                            )
                         }
                         .audiocinematecaAccessibility(label = "Versión del catálogo local: $catalogVersionText. Toca para opciones de reparación")
                 )
                 
                 val onCheckCatalogUpdate: () -> Unit = {
                     scope.launch {
-                        val loadingDialog = MaterialAlertDialogBuilder(context)
-                            .setTitle("Comprobando Catálogo")
-                            .setMessage("Verificando si hay actualizaciones en el servidor...")
-                            .setCancelable(false)
-                            .create()
-                        loadingDialog.show()
+                        activeDialog = AccountDialogSpec(
+                            title = "Comprobando Catálogo",
+                            message = "Verificando si hay actualizaciones en el servidor...",
+                            isLoading = true
+                        )
 
                         try {
                             authCatalogRepository.loadCatalog().collect { res ->
                                 if (res is AuthCatalogRepository.LoadCatalogResultWithProgress.Progress) return@collect
 
-                                loadingDialog.dismiss()
                                 when (res) {
                                     is AuthCatalogRepository.LoadCatalogResultWithProgress.Success -> {
-                                        val verStr = authCatalogRepository.getCatalogVersion()?.let { 
-                                            android.text.format.DateFormat.format("dd/MM/yyyy HH:mm", it).toString() 
+                                        val verStr = authCatalogRepository.getCatalogVersion()?.let {
+                                            android.text.format.DateFormat.format("dd/MM/yyyy HH:mm", it).toString()
                                         } ?: catalogVersionText
-                                        MaterialAlertDialogBuilder(context)
-                                            .setTitle("Catálogo Actualizado")
-                                            .setMessage("El catálogo de Audiocinemateca ya se encuentra completamente actualizado a la última versión disponible (versión del $verStr). No hay títulos nuevos por descargar en este momento.")
-                                            .setPositiveButton("Entendido", null)
-                                            .show()
+                                        activeDialog = AccountDialogSpec(
+                                            title = "Catálogo Actualizado",
+                                            message = "El catálogo de Audiocinemateca ya se encuentra completamente actualizado a la última versión disponible (versión del $verStr). No hay títulos nuevos por descargar en este momento.",
+                                            confirmText = "Entendido"
+                                        )
                                     }
                                     is AuthCatalogRepository.LoadCatalogResultWithProgress.UpdateAvailable -> {
                                         val serverVerStr = android.text.format.DateFormat.format("dd/MM/yyyy HH:mm", res.serverVersion).toString()
-                                        MaterialAlertDialogBuilder(context)
-                                            .setTitle("Actualización Disponible")
-                                            .setMessage("Hay una nueva versión del catálogo disponible en el servidor (versión del $serverVerStr). ¿Deseas descargar los nuevos títulos ahora?")
-                                            .setPositiveButton("Descargar Ahora") { _, _ ->
+                                        activeDialog = AccountDialogSpec(
+                                            title = "Actualización Disponible",
+                                            message = "Hay una nueva versión del catálogo disponible en el servidor (versión del $serverVerStr). ¿Deseas descargar los nuevos títulos ahora?",
+                                            confirmText = "Descargar Ahora",
+                                            dismissText = "Cancelar",
+                                            onConfirm = {
                                                 scope.launch {
                                                     showCatalogProgressDialog = true
                                                     authCatalogRepository.downloadAndSaveCatalog(res.serverVersion).collect { dRes ->
@@ -425,20 +423,19 @@ fun AccountScreen(
                                                     }
                                                 }
                                             }
-                                            .setNegativeButton("Cancelar", null)
-                                            .show()
+                                        )
                                     }
                                     is AuthCatalogRepository.LoadCatalogResultWithProgress.Error -> {
-                                        MaterialAlertDialogBuilder(context)
-                                            .setTitle("Sin Conexión o Error")
-                                            .setMessage("No se pudo comprobar la versión del catálogo en el servidor: ${res.message}")
-                                            .setPositiveButton("Aceptar", null)
-                                            .show()
+                                        activeDialog = AccountDialogSpec(
+                                            title = "Sin Conexión o Error",
+                                            message = "No se pudo comprobar la versión del catálogo en el servidor: ${res.message}",
+                                            confirmText = "Aceptar"
+                                        )
                                     }
                                 }
                             }
                         } catch (e: Exception) {
-                            loadingDialog.dismiss()
+                            activeDialog = null
                             Toast.makeText(context, "Error al comprobar catálogo: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -458,46 +455,46 @@ fun AccountScreen(
 
             val onCheckAppUpdate: () -> Unit = {
                 scope.launch {
-                    val loadingDialog = MaterialAlertDialogBuilder(context)
-                        .setTitle("Buscando Actualizaciones")
-                        .setMessage("Comprobando si hay una nueva versión de Audiocinemateca...")
-                        .setCancelable(false)
-                        .create()
-                    loadingDialog.show()
+                    activeDialog = AccountDialogSpec(
+                        title = "Buscando Actualizaciones",
+                        message = "Comprobando si hay una nueva versión de Audiocinemateca...",
+                        isLoading = true
+                    )
 
                     try {
-                        val res = viewModel.manualCheckForUpdates(appVersion)
-                        loadingDialog.dismiss()
-                        when (res) {
+                        when (val res = viewModel.manualCheckForUpdates(appVersion)) {
                             is UpdateCheckResult.UpdateAvailable -> {
-                                MaterialAlertDialogBuilder(context)
-                                    .setTitle("Actualización Disponible")
-                                    .setMessage("Hay una nueva versión (${res.updateInfo.version}) de Audiocinemateca disponible. ¿Deseas descargarla e instalarla ahora?")
-                                    .setPositiveButton("Actualizar") { _, _ ->
+                                activeDialog = AccountDialogSpec(
+                                    title = "Actualización Disponible",
+                                    message = "Hay una nueva versión (${res.updateInfo.version}) de Audiocinemateca disponible. ¿Deseas descargarla e instalarla ahora?",
+                                    confirmText = "Actualizar",
+                                    dismissText = "Cancelar",
+                                    onConfirm = {
                                         viewModel.downloadUpdate(res.updateInfo)
                                         onShowUpdateProgress()
                                     }
-                                    .setNegativeButton("Cancelar", null)
-                                    .show()
+                                )
                             }
                             is UpdateCheckResult.NoUpdateAvailable -> {
-                                MaterialAlertDialogBuilder(context)
-                                    .setTitle("Aplicación Actualizada")
-                                    .setMessage("¡Ya tienes instalada la versión más reciente ($appVersion) de Audiocinemateca! No hay actualizaciones disponibles.")
-                                    .setPositiveButton("Aceptar", null)
-                                    .show()
+                                activeDialog = AccountDialogSpec(
+                                    title = "Aplicación Actualizada",
+                                    message = "¡Ya tienes instalada la versión más reciente ($appVersion) de Audiocinemateca! No hay actualizaciones disponibles.",
+                                    confirmText = "Aceptar"
+                                )
                             }
                             is UpdateCheckResult.Error -> {
-                                MaterialAlertDialogBuilder(context)
-                                    .setTitle("Sin Conexión o Error")
-                                    .setMessage("No se pudo comprobar si hay actualizaciones en el servidor: ${res.message}")
-                                    .setPositiveButton("Aceptar", null)
-                                    .show()
+                                activeDialog = AccountDialogSpec(
+                                    title = "Sin Conexión o Error",
+                                    message = "No se pudo comprobar si hay actualizaciones en el servidor: ${res.message}",
+                                    confirmText = "Aceptar"
+                                )
                             }
-                            else -> {}
+                            else -> {
+                                activeDialog = null
+                            }
                         }
                     } catch (e: Exception) {
-                        loadingDialog.dismiss()
+                        activeDialog = null
                         Toast.makeText(context, "Error al comprobar actualizaciones: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -585,13 +582,14 @@ fun AccountScreen(
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Text("Fecha de lanzamiento: $formattedDate", fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
-                    AndroidView(
-                        factory = { ctx ->
-                            TextView(ctx).apply {
-                                Markwon.create(ctx).setMarkdown(this, info.changelog)
-                                setTextColor(android.graphics.Color.GRAY)
-                            }
-                        },
+                    val formattedChangelog = remember(info.changelog) {
+                        parseMarkdownToAnnotatedString(info.changelog)
+                    }
+                    Text(
+                        text = formattedChangelog,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 20.sp,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -613,6 +611,46 @@ fun AccountScreen(
                 }
             },
             confirmButton = { }
+        )
+    }
+
+    activeDialog?.let { dialog ->
+        AlertDialog(
+            onDismissRequest = { if (!dialog.isLoading) activeDialog = null },
+            title = { Text(dialog.title) },
+            text = {
+                if (dialog.isLoading) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                        Text(dialog.message, modifier = Modifier.weight(1f))
+                    }
+                } else {
+                    Text(dialog.message)
+                }
+            },
+            confirmButton = {
+                if (!dialog.isLoading) {
+                    TextButton(
+                        onClick = {
+                            val confirmAction = dialog.onConfirm
+                            activeDialog = null
+                            confirmAction?.invoke()
+                        }
+                    ) {
+                        Text(dialog.confirmText)
+                    }
+                }
+            },
+            dismissButton = if (!dialog.isLoading && dialog.dismissText != null) {
+                {
+                    TextButton(onClick = { activeDialog = null }) {
+                        Text(dialog.dismissText)
+                    }
+                }
+            } else null
         )
     }
 }
@@ -655,3 +693,12 @@ fun AccountButton(
         Text(text = text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
     }
 }
+
+private data class AccountDialogSpec(
+    val title: String,
+    val message: String,
+    val isLoading: Boolean = false,
+    val confirmText: String = "Aceptar",
+    val dismissText: String? = null,
+    val onConfirm: (() -> Unit)? = null
+)

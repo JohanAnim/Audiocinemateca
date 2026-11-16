@@ -7,8 +7,6 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringArrayResource
-import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.presentation.settings.ThemeManager
 import com.johang.audiocinemateca.util.CrashLogger
 import androidx.core.content.FileProvider
@@ -30,15 +28,15 @@ fun GeneralSettingsScreen(
     val autoCheckCatalog by viewModel.autoCheckCatalog.collectAsState()
     val autoCheckApp by viewModel.autoCheckApp.collectAsState()
     
-    // Cargamos los arrays de recursos
-    val themeEntries = stringArrayResource(id = R.array.theme_entries).toList()
-    val themeValues = stringArrayResource(id = R.array.theme_values).toList()
+    // Listas de opciones
+    val themeEntries = remember { listOf("Claro", "Oscuro", "Predeterminado del sistema") }
+    val themeValues = remember { listOf("light", "dark", "system") }
 
-    val bootEntries = stringArrayResource(id = R.array.boot_animation_frequency_entries).toList()
-    val bootValues = stringArrayResource(id = R.array.boot_animation_frequency_values).toList()
+    val bootEntries = remember { listOf("Siempre (en cada inicio)", "Cada 6 horas", "Cada 12 horas", "Cada 24 horas (diario)") }
+    val bootValues = remember { listOf("always", "6_hours", "12_hours", "24_hours") }
     
-    val rawStartupEntries = stringArrayResource(id = R.array.startup_tab_entries).toList()
-    val rawStartupValues = stringArrayResource(id = R.array.startup_tab_values).toList()
+    val rawStartupEntries = remember { listOf("Inicio", "Explorar (Catálogo)", "Mis Listas", "Cuenta") }
+    val rawStartupValues = remember { listOf("home", "catalog", "mylists", "account") }
 
     val (startupEntries, startupValues) = remember(hideHomeFeed, rawStartupEntries, rawStartupValues) {
         if (hideHomeFeed) {
@@ -56,11 +54,11 @@ fun GeneralSettingsScreen(
         }
     }
 
-    val contentEntries = stringArrayResource(id = R.array.default_content_tab_entries).toList()
-    val contentValues = stringArrayResource(id = R.array.default_content_tab_values).toList()
+    val contentEntries = remember { listOf("Películas", "Series", "Documentales", "Cortometrajes") }
+    val contentValues = remember { listOf("peliculas", "series", "documentales", "cortometrajes") }
 
-    val filterEntries = stringArrayResource(id = R.array.default_filter_entries).toList()
-    val filterValues = stringArrayResource(id = R.array.default_filter_values).toList()
+    val filterEntries = remember { listOf("Alfabético (A-Z)", "Alfabético (Z-A)", "Fecha (Más Nuevo)", "Fecha (Más Antiguo)") }
+    val filterValues = remember { listOf("alpha_asc", "alpha_desc", "date_desc", "date_asc") }
 
     CategorySettingsScreen(
         title = "Ajustes generales",

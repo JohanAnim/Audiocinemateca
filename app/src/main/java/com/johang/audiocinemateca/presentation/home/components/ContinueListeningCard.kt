@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -23,13 +22,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity
 import com.johang.audiocinemateca.domain.model.CatalogItem
 import java.util.Locale
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.ThumbUp
 
 data class ContinueListeningItem(
     val catalogItem: CatalogItem,
@@ -146,7 +146,7 @@ fun ContinueListeningCard(
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_more_vert),
+                        imageVector = Icons.Default.MoreVert,
                         contentDescription = "Opciones para ${item.catalogItem.title}",
                         tint = Color(0xFFCBD5E1)
                     )
@@ -176,7 +176,7 @@ fun ContinueListeningCard(
                         },
                         leadingIcon = {
                             Icon(
-                                painter = painterResource(R.drawable.ic_thumb_up),
+                                imageVector = Icons.Default.ThumbUp,
                                 contentDescription = null
                             )
                         }

@@ -1,9 +1,6 @@
 package com.johang.audiocinemateca.presentation.settings.compose
 
 import androidx.compose.runtime.*
-import androidx.compose.ui.res.stringArrayResource
-import com.johang.audiocinemateca.R
-import android.app.AlertDialog
 import androidx.compose.ui.platform.LocalContext
 
 @Composable
@@ -16,16 +13,16 @@ fun PlaybackSettingsScreen(
     val autoplay by viewModel.autoplay.collectAsState()
     val sleepTimerEnabled by viewModel.sleepTimerEnabled.collectAsState()
     
-    val sleepDurationEntries = stringArrayResource(id = R.array.sleep_timer_entries).toList()
-    val sleepDurationValues = stringArrayResource(id = R.array.sleep_timer_values).toList()
+    val sleepDurationEntries = remember { listOf("30 minutos", "1 hora", "2 horas") }
+    val sleepDurationValues = remember { listOf("30", "60", "120") }
     var currentSleepDuration by remember { mutableStateOf(viewModel.getString("sleep_timer_duration", "60")) }
 
-    val rewindEntries = stringArrayResource(id = R.array.rewind_interval_entries).toList()
-    val rewindValues = stringArrayResource(id = R.array.rewind_interval_values).toList()
+    val rewindEntries = remember { listOf("5 segundos", "10 segundos", "15 segundos", "30 segundos") }
+    val rewindValues = remember { listOf("5", "10", "15", "30") }
     var currentRewind by remember { mutableStateOf(viewModel.getString("rewind_interval", "5")) }
 
-    val forwardEntries = stringArrayResource(id = R.array.forward_interval_entries).toList()
-    val forwardValues = stringArrayResource(id = R.array.forward_interval_values).toList()
+    val forwardEntries = remember { listOf("5 segundos", "10 segundos", "15 segundos", "30 segundos") }
+    val forwardValues = remember { listOf("5", "10", "15", "30") }
     var currentForward by remember { mutableStateOf(viewModel.getString("forward_interval", "15")) }
 
     CategorySettingsScreen(

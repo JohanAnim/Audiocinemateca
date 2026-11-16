@@ -134,7 +134,6 @@ class MainActivity : AppCompatActivity() {
     private var currentPlayingEpisodeIndex: Int = -1
 
     private var isPlayerActive = false
-    private var chatMessagesJob: kotlinx.coroutines.Job? = null
     var openDrawerCallback: (() -> Unit)? = null
 
     fun openNavigationDrawer() {
@@ -230,13 +229,11 @@ class MainActivity : AppCompatActivity() {
             }
 
             if (user != null) {
-                startGlobalChatWatcher()
                 startRealtimeSync()
                 startAnnouncementsWatcher()
                 checkCatalogUpdateAutomatically()
-                setupCatalogUpdateWorker()
+                runCatching { androidx.work.WorkManager.getInstance(applicationContext).cancelUniqueWork("CatalogUpdateWorker") }
             } else {
-                stopGlobalChatWatcher()
                 stopRealtimeSync()
                 stopAnnouncementsWatcher()
             }
@@ -431,7 +428,6 @@ class MainActivity : AppCompatActivity() {
         dualSenseControllerManager?.release()
         dualSenseControllerManager = null
         LocalBroadcastManager.getInstance(this).unregisterReceiver(miniPlayerUpdateReceiver)
-        stopGlobalChatWatcher()
         stopAnnouncementsWatcher()
     }
 
@@ -507,53 +503,6 @@ class MainActivity : AppCompatActivity() {
         announcementsListener = null
     }
 
-    private fun startGlobalChatWatcher() {
-        stopGlobalChatWatcher()
-        chatMessagesJob = lifecycleScope.launch {
-            globalChatRepository.getMessages().collect { messages ->
-                val latest = messages.firstOrNull() ?: return@collect
-                val lastNotifiedId = sharedPreferencesManager.getString("last_notified_chat_id", "")
-                if (latest.id != lastNotifiedId) {
-                    sharedPreferencesManager.saveString("last_notified_chat_id", latest.id)
-                    val currentRoute = activeNavController?.currentDestination?.route
-                    if (currentRoute?.startsWith("community") != true) {
-                        val auth = FirebaseAuth.getInstance()
-                        val am = getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
-                        handleChatAnnouncement(latest, null, am, auth)
-                    }
-                }
-            }
-        }
-    }
-
-    private fun stopGlobalChatWatcher() {
-        chatMessagesJob?.cancel()
-        chatMessagesJob = null
-    }
-
-    private fun handleChatAnnouncement(
-        msg: com.johang.audiocinemateca.data.model.ChatMessage?,
-        txt: String?,
-        am: android.view.accessibility.AccessibilityManager,
-        auth: FirebaseAuth,
-        force: Boolean = false
-    ) {
-        val finalMsg = txt ?: msg?.let {
-            val isMentionAll = it.mentions.any { m -> m.equals("todos", true) } || it.text.contains("@todos", true)
-            val currentUsername = auth.currentUser?.displayName ?: ""
-            val isMentionMe = currentUsername.isNotBlank() &&
-                (it.mentions.any { m -> m.equals(currentUsername, true) } || it.text.contains("@$currentUsername", true))
-            val isMyMsg = auth.currentUser?.uid == it.senderId
-            if (!isMyMsg && (isMentionAll || isMentionMe || force)) {
-                val prefix = if (isMentionAll) "Aviso para todos de ${it.senderName}" else "Mención de ${it.senderName}"
-                "$prefix: ${it.text}"
-            } else null
-        }
-        if (finalMsg != null) {
-            ttsManager.speak(finalMsg, interrupt = true)
-        }
-    }
-
     private fun startRealtimeSync() {
         FirebaseAuth.getInstance().currentUser ?: return
         lifecycleScope.launch {
@@ -581,25 +530,6 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error en comprobación de catálogo: ${e.message}")
             }
-        }
-    }
-
-    private fun setupCatalogUpdateWorker() {
-        try {
-            val constraints = androidx.work.Constraints.Builder()
-                .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
-                .build()
-            val updateWorkRequest = androidx.work.PeriodicWorkRequestBuilder<com.johang.audiocinemateca.service.CatalogUpdateWorker>(
-                24, java.util.concurrent.TimeUnit.HOURS
-            ).setConstraints(constraints).build()
-
-            androidx.work.WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
-                "CatalogUpdateWorker",
-                androidx.work.ExistingPeriodicWorkPolicy.KEEP,
-                updateWorkRequest
-            )
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error configurando Worker: ${e.message}")
         }
     }
 
@@ -642,7 +572,8 @@ class MainActivity : AppCompatActivity() {
             when (navigateTo) {
                 "donation" -> showGlobalDonationDialogState.value = true
                 "announcements" -> pendingNavigationRouteState.value = NavRoutes.community("announcements")
-                "global_chat", "comments" -> pendingNavigationRouteState.value = NavRoutes.community("chat")
+                "global_chat" -> pendingNavigationRouteState.value = NavRoutes.community("chat")
+                "comments" -> pendingNavigationRouteState.value = NavRoutes.community("comments")
                 "catalog" -> pendingNavigationRouteState.value = NavRoutes.CATALOG
                 "content_detail" -> {
                     if (!contentId.isNullOrBlank() && !contentType.isNullOrBlank()) {
@@ -681,13 +612,37 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleDeepLink(data: Uri) {
         val segments = data.pathSegments
-        if (segments.size >= 2) {
-            val type = segments[0]
-            val id = segments[1]
+        val rawType: String?
+        val id: String?
+
+        when {
+            segments.size >= 2 -> {
+                rawType = segments[0]
+                id = segments[1]
+            }
+            segments.size == 1 && !data.getQueryParameter("id").isNullOrBlank() -> {
+                rawType = segments[0]
+                id = data.getQueryParameter("id")
+            }
+            else -> {
+                rawType = null
+                id = null
+            }
+        }
+
+        if (!rawType.isNullOrBlank() && !id.isNullOrBlank()) {
+            val normalizedType = when (rawType.lowercase()) {
+                "pelicula", "peliculas", "movie", "movies" -> "peliculas"
+                "serie", "series" -> "series"
+                "documental", "documentales", "documentary", "documentaries" -> "documentales"
+                "cortometraje", "cortometrajes", "corto", "cortos", "shortfilm", "shortfilms" -> "cortometrajes"
+                else -> rawType.lowercase()
+            }
             lifecycleScope.launch {
-                val item = searchRepository.getCatalogItemByIdAndType(id, type)
+                val item = searchRepository.getCatalogItemByIdAndType(id, normalizedType)
+                    ?: searchRepository.findCatalogItemById(id, isSeriesHint = normalizedType == "series")
                 if (item != null) {
-                    pendingNavigationRouteState.value = NavRoutes.contentDetail(item.id, type)
+                    pendingNavigationRouteState.value = NavRoutes.contentDetail(item.id, NavRoutes.itemTypeOf(item))
                 } else {
                     Toast.makeText(this@MainActivity, "No se encontró el contenido solicitado.", Toast.LENGTH_SHORT).show()
                 }

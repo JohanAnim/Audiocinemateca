@@ -104,6 +104,14 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 return
             }
 
+            val resolvedLinkUrl = if (!url.isNullOrBlank()) {
+                url
+            } else if (!contentId.isNullOrBlank() && !contentType.isNullOrBlank()) {
+                "https://audiocinemateca.com/$contentType/$contentId"
+            } else {
+                null
+            }
+
             kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                 try {
                     notificationDao.insert(
@@ -113,7 +121,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                             body = message,
                             timestamp = System.currentTimeMillis(),
                             isRead = false,
-                            linkUrl = url,
+                            linkUrl = resolvedLinkUrl,
                             destination = destination
                         )
                     )
@@ -144,7 +152,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 }
             }
 
-            showNotification(title, message, destination, url, contentId, contentType)
+            showNotification(title, message, destination, resolvedLinkUrl, contentId, contentType)
         }
     }
 

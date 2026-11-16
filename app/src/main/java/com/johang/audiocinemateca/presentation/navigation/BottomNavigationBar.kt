@@ -1,12 +1,17 @@
 package com.johang.audiocinemateca.presentation.navigation
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.CollectionInfo
 import androidx.compose.ui.semantics.CollectionItemInfo
 import androidx.compose.ui.semantics.Role
@@ -22,11 +27,10 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.johang.audiocinemateca.R
 
 data class NavigationItem(
     val route: String,
-    val icon: Int,
+    val icon: ImageVector,
     val label: String,
     val accessibilityLabel: String
 )
@@ -40,20 +44,12 @@ fun AudiocinematecaBottomNavigation(
     val prefs = remember(context) {
         sharedPreferencesManager ?: com.johang.audiocinemateca.data.local.SharedPreferencesManager(context)
     }
-    var hideHomeFeed by remember { mutableStateOf(prefs.getBoolean("hide_home_feed", false)) }
-
-    DisposableEffect(prefs) {
-        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == "hide_home_feed") {
-                hideHomeFeed = prefs.getBoolean("hide_home_feed", false)
-            }
-        }
-        val sp = prefs.getPrefs()
-        sp.registerOnSharedPreferenceChangeListener(listener)
-        onDispose {
-            sp.unregisterOnSharedPreferenceChangeListener(listener)
-        }
+    val hideHomeFeedFlow = remember(prefs) {
+        prefs.observeBoolean("hide_home_feed", false)
     }
+    val hideHomeFeed by hideHomeFeedFlow.collectAsState(
+        initial = prefs.getBoolean("hide_home_feed", false)
+    )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -61,56 +57,54 @@ fun AudiocinematecaBottomNavigation(
         currentRoute?.substringBefore("?")?.substringBefore("/")
     }
 
-    val items = remember(hideHomeFeed) {
-        if (hideHomeFeed) {
-            listOf(
-                NavigationItem(
-                    route = NavRoutes.CATALOG,
-                    icon = R.drawable.ic_catalog,
-                    label = "Explorar",
-                    accessibilityLabel = "Explorar"
-                ),
-                NavigationItem(
-                    route = NavRoutes.MY_LISTS,
-                    icon = R.drawable.ic_lists,
-                    label = "Mis Listas",
-                    accessibilityLabel = "Mis Listas"
-                ),
-                NavigationItem(
-                    route = NavRoutes.ACCOUNT,
-                    icon = R.drawable.ic_account,
-                    label = "Cuenta",
-                    accessibilityLabel = "Cuenta"
-                )
+    val items = if (hideHomeFeed) {
+        listOf(
+            NavigationItem(
+                route = NavRoutes.CATALOG,
+                icon = Icons.Default.Movie,
+                label = "Explorar",
+                accessibilityLabel = "Explorar"
+            ),
+            NavigationItem(
+                route = NavRoutes.MY_LISTS,
+                icon = Icons.Default.Bookmarks,
+                label = "Mis Listas",
+                accessibilityLabel = "Mis Listas"
+            ),
+            NavigationItem(
+                route = NavRoutes.ACCOUNT,
+                icon = Icons.Default.AccountCircle,
+                label = "Cuenta",
+                accessibilityLabel = "Cuenta"
             )
-        } else {
-            listOf(
-                NavigationItem(
-                    route = NavRoutes.HOME,
-                    icon = R.drawable.ic_home,
-                    label = "Inicio",
-                    accessibilityLabel = "Inicio"
-                ),
-                NavigationItem(
-                    route = NavRoutes.CATALOG,
-                    icon = R.drawable.ic_catalog,
-                    label = "Explorar",
-                    accessibilityLabel = "Explorar"
-                ),
-                NavigationItem(
-                    route = NavRoutes.MY_LISTS,
-                    icon = R.drawable.ic_lists,
-                    label = "Mis Listas",
-                    accessibilityLabel = "Mis Listas"
-                ),
-                NavigationItem(
-                    route = NavRoutes.ACCOUNT,
-                    icon = R.drawable.ic_account,
-                    label = "Cuenta",
-                    accessibilityLabel = "Cuenta"
-                )
+        )
+    } else {
+        listOf(
+            NavigationItem(
+                route = NavRoutes.HOME,
+                icon = Icons.Default.Home,
+                label = "Inicio",
+                accessibilityLabel = "Inicio"
+            ),
+            NavigationItem(
+                route = NavRoutes.CATALOG,
+                icon = Icons.Default.Movie,
+                label = "Explorar",
+                accessibilityLabel = "Explorar"
+            ),
+            NavigationItem(
+                route = NavRoutes.MY_LISTS,
+                icon = Icons.Default.Bookmarks,
+                label = "Mis Listas",
+                accessibilityLabel = "Mis Listas"
+            ),
+            NavigationItem(
+                route = NavRoutes.ACCOUNT,
+                icon = Icons.Default.AccountCircle,
+                label = "Cuenta",
+                accessibilityLabel = "Cuenta"
             )
-        }
+        )
     }
 
     // Lista de destinos donde NO se debe mostrar la barra
@@ -161,7 +155,7 @@ fun AudiocinematecaBottomNavigation(
                     onClick = onNavigationClick,
                     icon = {
                         Icon(
-                            painter = painterResource(id = item.icon),
+                            imageVector = item.icon,
                             contentDescription = null
                         )
                     },

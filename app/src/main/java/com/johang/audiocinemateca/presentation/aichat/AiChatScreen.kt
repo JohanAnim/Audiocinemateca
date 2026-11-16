@@ -1,7 +1,6 @@
 package com.johang.audiocinemateca.presentation.aichat
 
 import android.text.format.DateUtils
-import android.widget.TextView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -52,9 +51,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
-import io.noties.markwon.Markwon
+import com.johang.audiocinemateca.util.parseMarkdownToAnnotatedString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +91,6 @@ fun AiChatScreen(
     var sessionToRename by remember { mutableStateOf<AuraChatSession?>(null) }
     var renameText by remember { mutableStateOf("") }
     var recommendationsDialogItems by remember { mutableStateOf<List<LinkedContent>?>(null) }
-    val markwon = remember { Markwon.create(context) }
 
     // Auto-scroll al último mensaje cuando cambia la cantidad de mensajes o la sesión activa
     LaunchedEffect(messages.size, activeSessionId) {
@@ -303,7 +300,6 @@ fun AiChatScreen(
                         } else {
                             AuraChatBubble(
                                 message = message,
-                                markwon = markwon,
                                 onRetryClick = onRetryMessage,
                                 onShowRecommendations = { recommendationsDialogItems = it },
                                 onLinkedContentClick = onLinkedContentClick
@@ -962,7 +958,6 @@ fun UserChatBubble(message: ChatMessage) {
 @Composable
 fun AuraChatBubble(
     message: ChatMessage,
-    markwon: Markwon,
     onRetryClick: () -> Unit,
     onShowRecommendations: (List<LinkedContent>) -> Unit,
     onLinkedContentClick: (LinkedContent) -> Unit
@@ -988,18 +983,14 @@ fun AuraChatBubble(
                     )
             ) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                    // Renderizamos con Markwon en un AndroidView estilizado
-                    AndroidView(
-                        factory = { ctx ->
-                            TextView(ctx).apply {
-                                setTextColor(android.graphics.Color.WHITE)
-                                textSize = 15f
-                                setLineSpacing(4f, 1.15f)
-                            }
-                        },
-                        update = { textView ->
-                            markwon.setMarkdown(textView, message.text)
-                        }
+                    val formattedText = remember(message.text) {
+                        parseMarkdownToAnnotatedString(message.text)
+                    }
+                    Text(
+                        text = formattedText,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 15.sp,
+                        lineHeight = 21.sp
                     )
 
                     // Botón para reintentar si ocurrió error

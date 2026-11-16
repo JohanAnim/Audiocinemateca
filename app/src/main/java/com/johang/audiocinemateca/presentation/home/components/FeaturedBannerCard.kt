@@ -6,6 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -13,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -21,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.data.model.FeaturedBanner
 import com.johang.audiocinemateca.presentation.components.PlayButton
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
@@ -136,7 +137,7 @@ fun FeaturedBannerCard(
                         }
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_favorite_filled),
+                            imageVector = Icons.Default.Favorite,
                             contentDescription = null,
                             tint = Color(0xFFF59E0B),
                             modifier = Modifier.size(20.dp)
@@ -215,9 +216,7 @@ fun FeaturedBannerCard(
                         .semantics { contentDescription = favText }
                 ) {
                     Icon(
-                        painter = painterResource(
-                            id = if (banner.isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_border
-                        ),
+                        imageVector = if (banner.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)

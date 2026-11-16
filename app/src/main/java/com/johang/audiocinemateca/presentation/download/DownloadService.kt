@@ -505,7 +505,7 @@ class DownloadService : Service() {
     private fun createNotification(title: String, progress: Int, completed: Boolean = false): Notification {
         val builder = NotificationCompat.Builder(this, DOWNLOAD_CHANNEL_ID)
             .setContentTitle(title)
-            .setSmallIcon(R.drawable.ic_downloads)
+            .setSmallIcon(if (completed) android.R.drawable.stat_sys_download_done else android.R.drawable.stat_sys_download)
             .setOnlyAlertOnce(true)
 
         if (completed) {
@@ -521,7 +521,7 @@ class DownloadService : Service() {
     private fun createWaitingNotification(title: String): Notification {
         return NotificationCompat.Builder(this, DOWNLOAD_CHANNEL_ID)
             .setContentTitle(title)
-            .setSmallIcon(R.drawable.ic_downloads)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOnlyAlertOnce(true)
             .setContentText("Pausado: esperando conexión a internet...")
             .setProgress(0, 0, true)

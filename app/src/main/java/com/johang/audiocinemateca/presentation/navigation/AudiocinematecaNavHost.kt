@@ -536,7 +536,11 @@ fun AudiocinematecaNavHost(
             )
         ) { backStackEntry ->
             val tabArg = backStackEntry.arguments?.getString("tab") ?: "chat"
-            val initialTabIndex = if (tabArg == "announcements") 1 else 0
+            val initialTabIndex = when (tabArg) {
+                "announcements" -> 1
+                "comments" -> 2
+                else -> 0
+            }
 
             val globalChatViewModel: GlobalChatViewModel = hiltViewModel()
             val announcementsViewModel: AnnouncementsViewModel = hiltViewModel()
@@ -575,6 +579,9 @@ fun AudiocinematecaNavHost(
                 },
                 onNavigateToContentDetail = { contentId, contentType ->
                     navController.navigate(NavRoutes.contentDetail(contentId, contentType))
+                },
+                onNavigateToCommunitySettings = {
+                    navController.navigate(NavRoutes.categorySettings("community"))
                 }
             )
         }

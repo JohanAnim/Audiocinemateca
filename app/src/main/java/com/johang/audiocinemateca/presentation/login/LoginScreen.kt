@@ -57,6 +57,7 @@ fun LoginScreen(
 
     var showPassword by remember { mutableStateOf(false) }
     var showWelcomeDialog by remember { mutableStateOf(false) }
+    var errorDialogState by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.playWelcomeSounds()
@@ -65,11 +66,11 @@ fun LoginScreen(
     LaunchedEffect(Unit) {
         viewModel.showErrorAlert.collect { event ->
             when (event) {
-                is LoginErrorEvent.InvalidCredentials -> AppUtil.showAlertDialog(context, "Fallo en el inicio de sesión", "Por favor, revise su usuario o contraseña e inténtelo de nuevo.")
-                is LoginErrorEvent.ServerError -> AppUtil.showAlertDialog(context, "Error del Servidor", "Ocurrió un error en el servidor. Por favor, inténtelo más tarde.")
+                is LoginErrorEvent.InvalidCredentials -> errorDialogState = "Fallo en el inicio de sesión" to "Por favor, revise su usuario o contraseña e inténtelo de nuevo."
+                is LoginErrorEvent.ServerError -> errorDialogState = "Error del Servidor" to "Ocurrió un error en el servidor. Por favor, inténtelo más tarde."
                 is LoginErrorEvent.MissingUsername -> Toast.makeText(context, "Por favor, ingrese su nombre de usuario.", Toast.LENGTH_SHORT).show()
                 is LoginErrorEvent.MissingPassword -> Toast.makeText(context, "Por favor, ingrese su contraseña.", Toast.LENGTH_SHORT).show()
-                is LoginErrorEvent.Unknown -> AppUtil.showAlertDialog(context, "Error Desconocido", event.message)
+                is LoginErrorEvent.Unknown -> errorDialogState = "Error Desconocido" to event.message
             }
         }
     }
@@ -288,9 +289,15 @@ fun LoginScreen(
     }
 
     LaunchedEffect(catalogState) {
-        if (catalogState is AuthCatalogRepository.LoadCatalogResultWithProgress.Success) {
-            context.startActivity(Intent(context, MainActivity::class.java))
-            (context as? LoginActivity)?.finish()
+        when (val state = catalogState) {
+            is AuthCatalogRepository.LoadCatalogResultWithProgress.Success -> {
+                context.startActivity(Intent(context, MainActivity::class.java))
+                (context as? LoginActivity)?.finish()
+            }
+            is AuthCatalogRepository.LoadCatalogResultWithProgress.Error -> {
+                errorDialogState = "Error" to "Error al descargar el catálogo: ${state.message}"
+            }
+            else -> {}
         }
     }
 
@@ -312,8 +319,21 @@ fun LoginScreen(
             // Manejado por LaunchedEffect superior
         }
         is AuthCatalogRepository.LoadCatalogResultWithProgress.Error -> {
-            AppUtil.showAlertDialog(context, "Error", "Error al descargar el catálogo: ${state.message}")
+            // Manejado por LaunchedEffect superior
         }
         else -> {}
+    }
+
+    errorDialogState?.let { (title, message) ->
+        AlertDialog(
+            onDismissRequest = { errorDialogState = null },
+            title = { Text(title) },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { errorDialogState = null }) {
+                    Text("Aceptar")
+                }
+            }
+        )
     }
 }

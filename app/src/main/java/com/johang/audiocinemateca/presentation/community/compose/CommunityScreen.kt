@@ -38,6 +38,9 @@ fun CommunityScreen(
     onNavigateToCommunitySettings: () -> Unit = {}
 ) {
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(initialTabIndex.coerceIn(0, 2)) }
+    LaunchedEffect(initialTabIndex) {
+        selectedTabIndex = initialTabIndex.coerceIn(0, 2)
+    }
     val tabTitles = listOf("Global", "Anuncios", "Comentarios")
 
     Column(

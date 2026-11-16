@@ -1,7 +1,6 @@
 package com.johang.audiocinemateca.presentation.notifications
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import com.johang.audiocinemateca.data.local.dao.NotificationDao
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,7 +13,6 @@ class NotificationsViewModel @Inject constructor(
 ) : ViewModel() {
 
     val notificationsFlow = notificationDao.getAllNotifications()
-    val notifications = notificationsFlow.asLiveData()
 
     fun clearNotifications() {
         viewModelScope.launch {

@@ -4,17 +4,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.unit.dp
-import com.johang.audiocinemateca.R
 
 @Composable
 fun CommunitySettingsScreen(
     viewModel: SettingsViewModel,
     onBack: () -> Unit
 ) {
-    val announcementEntries = stringArrayResource(id = R.array.chat_announcement_entries).toList()
-    val announcementValues = stringArrayResource(id = R.array.chat_announcement_values).toList()
+    val announcementEntries = remember {
+        listOf("Solo cuando no escucho nada (Por defecto)", "En todo momento", "Nunca")
+    }
+    val announcementValues = remember { listOf("idle_only", "always", "never") }
     var currentMode by remember { mutableStateOf(viewModel.getString("chat_announcement_mode", "idle_only")) }
     var showPresence by remember { mutableStateOf(viewModel.getBoolean("community_show_presence", true)) }
 

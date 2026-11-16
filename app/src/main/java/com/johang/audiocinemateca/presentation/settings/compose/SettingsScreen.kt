@@ -17,7 +17,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
@@ -25,7 +24,6 @@ import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.util.accessibleHeading
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
 import com.johang.audiocinemateca.util.initialAccessibilityFocus
@@ -145,7 +143,7 @@ fun SettingsHeader(title: String) {
 fun SettingsItem(
     title: String,
     summary: String,
-    icon: Any, // Puede ser ImageVector o Int (Resource)
+    icon: ImageVector,
     onClick: () -> Unit,
     itemTag: String = "settings_item_$title",
     isInitialFocus: Boolean = false
@@ -179,20 +177,12 @@ fun SettingsItem(
                 modifier = Modifier.size(40.dp),
                 contentAlignment = Alignment.Center
             ) {
-                when (icon) {
-                    is ImageVector -> Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    is Int -> Icon(
-                        painter = painterResource(id = icon),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(24.dp)
+                )
             }
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -225,14 +215,14 @@ data class SettingsCategory(
     val id: String,
     val title: String,
     val summary: String,
-    val icon: Int
+    val icon: ImageVector
 )
 
 fun getSettingsCategories() = listOf(
-    SettingsCategory("general", "General", "Temas, pestaña de inicio y actualizaciones.", R.drawable.ic_account),
-    SettingsCategory("playback", "Reproducción", "Controles, temporizador e historial.", R.drawable.ic_history),
-    SettingsCategory("community", "Comunidad", "Ajustes del Chat Global y anuncios de voz.", R.drawable.ic_catalog),
-    SettingsCategory("ai", "Inteligencia Artificial", "Configuración de Gemini y clave API.", R.drawable.ic_ai_chat),
-    SettingsCategory("tts", "Ajustes de Texto a Voz", "Motores de voz, tono y velocidad.", R.drawable.ic_account),
-    SettingsCategory("downloads", "Descargas", "Ubicación de archivos y modo offline.", R.drawable.ic_downloads)
+    SettingsCategory("general", "General", "Temas, pestaña de inicio y actualizaciones.", Icons.Default.Settings),
+    SettingsCategory("playback", "Reproducción", "Controles, temporizador e historial.", Icons.Default.PlayCircleOutline),
+    SettingsCategory("community", "Comunidad", "Ajustes del Chat Global y anuncios de voz.", Icons.Default.People),
+    SettingsCategory("ai", "Inteligencia Artificial", "Configuración de Gemini y clave API.", Icons.Default.AutoAwesome),
+    SettingsCategory("tts", "Ajustes de Texto a Voz", "Motores de voz, tono y velocidad.", Icons.Default.RecordVoiceOver),
+    SettingsCategory("downloads", "Descargas", "Ubicación de archivos y modo offline.", Icons.Default.Download)
 )

@@ -6,19 +6,19 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.domain.model.CatalogItem
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
 
@@ -80,7 +80,7 @@ fun RecommendationsSection(
                     .semantics { contentDescription = "Actualizar recomendaciones" }
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_refresh),
+                    imageVector = Icons.Default.Refresh,
                     contentDescription = null,
                     tint = Color(0xFFA5B4FC),
                     modifier = Modifier.size(22.dp)

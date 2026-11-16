@@ -3,6 +3,9 @@ package com.johang.audiocinemateca.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -47,6 +50,19 @@ class SharedPreferencesManager @Inject constructor(
 
     fun getBoolean(key: String, defaultValue: Boolean = false): Boolean {
         return prefs.getBoolean(key, defaultValue)
+    }
+
+    fun observeBoolean(key: String, defaultValue: Boolean = false): Flow<Boolean> = callbackFlow {
+        trySend(getBoolean(key, defaultValue))
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, changedKey ->
+            if (changedKey == key) {
+                trySend(getBoolean(key, defaultValue))
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        awaitClose {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
     }
 
     fun saveLastReadChatTimestamp(timestamp: Long) {

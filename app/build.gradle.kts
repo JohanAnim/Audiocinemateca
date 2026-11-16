@@ -67,6 +67,10 @@ android {
     }
 }
 
+composeCompiler {
+    includeSourceInformation = true
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
@@ -92,7 +96,6 @@ dependencies {
 
     // ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.androidx.lifecycle.livedata.ktx)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.core)
@@ -102,9 +105,6 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
-    // Markwon for Markdown to Spannable
-    implementation(libs.markwon)
-
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -112,7 +112,6 @@ dependencies {
 
     // ExoPlayer & Cast
     implementation(libs.exoplayer.core)
-    implementation(libs.exoplayer.ui)
     implementation(libs.exoplayer.common)
     implementation(libs.exoplayer.session)
     implementation(libs.exoplayer.okhttp)

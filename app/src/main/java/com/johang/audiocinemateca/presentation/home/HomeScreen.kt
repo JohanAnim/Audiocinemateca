@@ -9,6 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -17,13 +20,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.presentation.home.components.FeaturedBannerSection
 import com.johang.audiocinemateca.presentation.home.components.HomeToolbar
 import com.johang.audiocinemateca.presentation.home.components.RecommendationsSection
@@ -263,7 +264,7 @@ fun GuestHomeSection(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_catalog),
+                                imageVector = Icons.Default.Movie,
                                 contentDescription = null,
                                 tint = Color(0xFF818CF8),
                                 modifier = Modifier.size(36.dp)
@@ -313,7 +314,7 @@ fun GuestHomeSection(
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_catalog),
+                                    imageVector = Icons.Default.Movie,
                                     contentDescription = null,
                                     tint = Color(0xFF38BDF8),
                                     modifier = Modifier.size(24.dp)
@@ -399,7 +400,7 @@ fun GuestHomeSection(
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_account),
+                                    imageVector = Icons.Default.Person,
                                     contentDescription = null,
                                     tint = Color(0xFF818CF8),
                                     modifier = Modifier.size(24.dp)
