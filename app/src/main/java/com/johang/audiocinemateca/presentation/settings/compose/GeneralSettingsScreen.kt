@@ -27,6 +27,7 @@ fun GeneralSettingsScreen(
     val defaultFilter by viewModel.defaultFilter.collectAsState()
     val autoCheckCatalog by viewModel.autoCheckCatalog.collectAsState()
     val autoCheckApp by viewModel.autoCheckApp.collectAsState()
+    val updateChannel by viewModel.updateChannel.collectAsState()
     
     // Listas de opciones
     val themeEntries = remember { listOf("Claro", "Oscuro", "Predeterminado del sistema") }
@@ -59,6 +60,14 @@ fun GeneralSettingsScreen(
 
     val filterEntries = remember { listOf("Alfabético (A-Z)", "Alfabético (Z-A)", "Fecha (Más Nuevo)", "Fecha (Más Antiguo)") }
     val filterValues = remember { listOf("alpha_asc", "alpha_desc", "date_desc", "date_asc") }
+
+    val updateChannelEntries = remember {
+        listOf(
+            "Estable (Recomendado)",
+            "Beta (Acceso anticipado)"
+        )
+    }
+    val updateChannelValues = remember { listOf("stable", "beta") }
 
     CategorySettingsScreen(
         title = "Ajustes generales",
@@ -141,6 +150,22 @@ fun GeneralSettingsScreen(
             summary = "Mostrar un diálogo al iniciar la app si hay una nueva versión disponible.",
             checked = autoCheckApp,
             onCheckedChange = { viewModel.updateBoolean("auto_check_app", it) }
+        )
+
+        // 7. Canal de actualizaciones (Estable / Beta)
+        val normalizedChannel = if (updateChannel == "beta") "beta" else "stable"
+        val channelSummary = if (normalizedChannel == "beta") {
+            "Beta (Acceso anticipado) — Recibe versiones de prueba antes del lanzamiento oficial."
+        } else {
+            "Estable (Recomendado) — Recibe únicamente versiones finales probadas."
+        }
+        SettingsListItem(
+            title = "Canal de actualizaciones",
+            summary = channelSummary,
+            entries = updateChannelEntries,
+            entryValues = updateChannelValues,
+            currentValue = normalizedChannel,
+            onValueChange = { viewModel.updateString("update_channel", it) }
         )
 
         SettingsCategoryHeader("Accesibilidad")

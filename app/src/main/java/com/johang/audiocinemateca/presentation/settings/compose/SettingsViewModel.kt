@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.data.repository.GlobalChatRepository
+import com.johang.audiocinemateca.util.AuraVoicePlayer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +13,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val prefs: SharedPreferencesManager,
-    private val globalChatRepository: GlobalChatRepository
+    private val globalChatRepository: GlobalChatRepository,
+    val auraVoicePlayer: AuraVoicePlayer
 ) : ViewModel() {
 
     // General
@@ -40,6 +42,9 @@ class SettingsViewModel @Inject constructor(
     private val _autoCheckApp = MutableStateFlow(prefs.getBoolean("auto_check_app", true))
     val autoCheckApp: StateFlow<Boolean> = _autoCheckApp
 
+    private val _updateChannel = MutableStateFlow(prefs.getString("update_channel", "stable") ?: "stable")
+    val updateChannel: StateFlow<String> = _updateChannel
+
     private val _enableAccessibilityHints = MutableStateFlow(prefs.getBoolean("enable_accessibility_hints", true))
     val enableAccessibilityHints: StateFlow<Boolean> = _enableAccessibilityHints
 
@@ -59,6 +64,7 @@ class SettingsViewModel @Inject constructor(
             "startup_tab" -> _startupTab.value = value
             "default_content_tab" -> _defaultContentTab.value = value
             "default_filter" -> _defaultFilter.value = value
+            "update_channel" -> _updateChannel.value = value
         }
     }
 

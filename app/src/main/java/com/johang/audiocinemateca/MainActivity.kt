@@ -534,6 +534,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAppUpdateAutomatically(currentVersionName: String) {
+        if (!sharedPreferencesManager.getBoolean("auto_check_app", true)) return
         lifecycleScope.launch {
             try {
                 val result = accountViewModel.manualCheckForUpdates(currentVersionName)

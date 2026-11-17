@@ -6,5 +6,7 @@ data class UpdateInfo(
     val changelog: String,
     val downloadUrl: String,
     val updatedAt: String,
-    val downloadCount: Int
+    val downloadCount: Int,
+    val isPrerelease: Boolean = false,
+    val channel: String = UpdateChannels.STABLE
 )

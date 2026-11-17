@@ -26,6 +26,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.firebase.auth.FirebaseAuth
 import com.johang.audiocinemateca.MainActivity
 import com.johang.audiocinemateca.data.AuthCatalogRepository
+import com.johang.audiocinemateca.domain.model.UpdateChannels
 import com.johang.audiocinemateca.domain.model.UpdateInfo
 import com.johang.audiocinemateca.domain.usecase.UpdateCheckResult
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
@@ -41,6 +42,7 @@ fun AccountScreen(
     authCatalogRepository: AuthCatalogRepository,
     onNavigateToProfile: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToDocumentation: () -> Unit,
     onNavigateToWebView: (String) -> Unit,
     onShowDonation: () -> Unit,
     onShowUpdateProgress: () -> Unit
@@ -49,6 +51,8 @@ fun AccountScreen(
     val scope = rememberCoroutineScope()
     val firebaseAuth = FirebaseAuth.getInstance()
     val updateState by viewModel.updateState.collectAsState()
+    val updateChannel by viewModel.updateChannel.collectAsState()
+    val channelLabel = remember(updateChannel) { UpdateChannels.displayName(updateChannel) }
     
     var username by remember { mutableStateOf("Cargando...") }
     var catalogVersionText by remember { mutableStateOf("Cargando...") }
@@ -288,6 +292,17 @@ fun AccountScreen(
             )
 
             AccountButton(
+                text = "Documentación y Guía de Uso",
+                onClick = {
+                    focusedItemId = "documentation"
+                    onNavigateToDocumentation()
+                },
+                accessibilityLabel = "Abrir la documentación oficial y guía de uso de la aplicación",
+                itemTag = "documentation",
+                isInitialFocus = focusedItemId == "documentation"
+            )
+
+            AccountButton(
                 text = "Acerca de",
                 onClick = { showAboutDialog = true },
                 accessibilityLabel = "Información sobre Audiocinemateca"
@@ -464,9 +479,18 @@ fun AccountScreen(
                     try {
                         when (val res = viewModel.manualCheckForUpdates(appVersion)) {
                             is UpdateCheckResult.UpdateAvailable -> {
+                                val versionLabel = if (res.updateInfo.isPrerelease) {
+                                    "versión Beta (${res.updateInfo.version})"
+                                } else {
+                                    "versión (${res.updateInfo.version})"
+                                }
                                 activeDialog = AccountDialogSpec(
-                                    title = "Actualización Disponible",
-                                    message = "Hay una nueva versión (${res.updateInfo.version}) de Audiocinemateca disponible. ¿Deseas descargarla e instalarla ahora?",
+                                    title = if (res.updateInfo.isPrerelease) {
+                                        "Actualización Beta Disponible"
+                                    } else {
+                                        "Actualización Disponible"
+                                    },
+                                    message = "Hay una nueva $versionLabel de Audiocinemateca disponible. ¿Deseas descargarla e instalarla ahora?",
                                     confirmText = "Actualizar",
                                     dismissText = "Cancelar",
                                     onConfirm = {
@@ -478,7 +502,7 @@ fun AccountScreen(
                             is UpdateCheckResult.NoUpdateAvailable -> {
                                 activeDialog = AccountDialogSpec(
                                     title = "Aplicación Actualizada",
-                                    message = "¡Ya tienes instalada la versión más reciente ($appVersion) de Audiocinemateca! No hay actualizaciones disponibles.",
+                                    message = "¡Ya tienes instalada la versión más reciente ($appVersion) en el canal $channelLabel! No hay actualizaciones disponibles.",
                                     confirmText = "Aceptar"
                                 )
                             }
@@ -508,14 +532,14 @@ fun AccountScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "App Versión: $appVersion (for Android)",
+                    text = "App Versión: $appVersion • Canal $channelLabel",
                     fontSize = 14.sp,
                     textAlign = TextAlign.Start,
                     modifier = Modifier
                         .weight(1f)
                         .clickable { onCheckAppUpdate() }
                         .audiocinematecaAccessibility(
-                            label = "Versión de la aplicación: $appVersion. Toca para buscar actualizaciones de la aplicación",
+                            label = "Versión de la aplicación: $appVersion, canal $channelLabel. Toca para buscar actualizaciones de la aplicación",
                             onClickAction = onCheckAppUpdate
                         )
                 )

@@ -7,7 +7,9 @@ data class GithubRelease(
     @SerializedName("name") val name: String,
     @SerializedName("body") val body: String,
     @SerializedName("assets") val assets: List<Asset>,
-    @SerializedName("updated_at") val updatedAt: String
+    @SerializedName("updated_at") val updatedAt: String,
+    @SerializedName("prerelease") val prerelease: Boolean = false,
+    @SerializedName("draft") val draft: Boolean = false
 )
 
 data class Asset(
