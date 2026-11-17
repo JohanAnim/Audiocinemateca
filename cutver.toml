@@ -1,0 +1,38 @@
+[project]
+name = "Audiocinemateca"
+
+[version]
+strategy = "manual"
+current_source = "app/build.gradle.kts"
+
+[[manifest]]
+path = "app/build.gradle.kts"
+kind = "gradle"
+primary = true
+version_name_field = "versionName ="
+version_code_field = "versionCode ="
+
+[changelog]
+path = "CHANGELOG.md"
+format = "keep-a-changelog"
+template_file = ".github/templates/cutver/RELEASE.md"
+include_scopes = true
+fallback_entry = "Mantenimiento y mejoras generales."
+ignore_release_commits = true
+new_contributors = false
+
+[preflight]
+default_timeout = 600
+# Verifica compilación Kotlin antes de confirmar cualquier bump de versión
+compile = "gradlew.bat compileDebugKotlin --no-daemon --console=plain"
+
+[git]
+# Historial de tags del proyecto usa formato numérico directo (ej. 3.3.2, 3.4.0, 3.4.0-beta.1)
+tag_prefix = ""
+commit_message = "chore(release): {version}"
+require_clean_tree = true
+require_branch = "master"
+
+[publish]
+# En flujo Android con APK firmado localmente, se revisa/genera el APK antes de hacer push del tag
+push = false

@@ -16,11 +16,43 @@ jobs:
     steps:
       - name: "Checkout del código"
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "Instalar Cutver CLI"
+        uses: cutver/setup@v1
+
+      - name: "Detectar canal (Estable vs Beta/Pre-release)"
+        id: release_meta
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [[ "$TAG" == *-* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "channel_label=Beta" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+            echo "channel_label=Estable" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Extraer notas de la versión con Cutver"
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          if cutver changelog show "$TAG" --include-header > release-notes.md 2>/dev/null && [ -s release-notes.md ]; then
+            echo "Notas extraídas correctamente con cutver para $TAG"
+          elif [ -f CHANGELOG.md ]; then
+            cp CHANGELOG.md release-notes.md
+            echo "Usando CHANGELOG.md como respaldo para $TAG"
+          elif [ -f changelog.md ]; then
+            cp changelog.md release-notes.md
+          else
+            echo "Notas de la versión $TAG" > release-notes.md
+          fi
 
       - name: "Buscar APK local"
         id: find_apk
         run: |
-          # Buscamos cualquier archivo .apk en app/release/
           APK_FILE=$(find app/release/ -name "*.apk" | head -n 1)
           if [ -z "$APK_FILE" ]; then
             echo "Error: No se encontró ningún archivo APK en app/release/"
@@ -32,10 +64,10 @@ jobs:
       - name: "Crear GitHub Release"
         uses: softprops/action-gh-release@v2
         with:
-          name: "Nueva versión disponible de la Audiocinemateca: ${{ github.ref_name }}"
-          body_path: changelog.md
+          name: "Audiocinemateca (${{ steps.release_meta.outputs.channel_label }}): ${{ github.ref_name }}"
+          body_path: release-notes.md
           files: ${{ steps.find_apk.outputs.apk_path }}
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.release_meta.outputs.is_prerelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

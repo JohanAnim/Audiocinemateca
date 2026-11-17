@@ -1,4 +1,9 @@
-# Versión 3.3.2
+# Changelog
+
+Todos los cambios notables de **Audiocinemateca** se documentan en este archivo.
+El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones siguen [Semantic Versioning](https://semver.org/).
+
+## [3.3.2]
 
 ¡Hola a todos! Les doy la bienvenida a la **versión 3.3.2** de Audiocinemateca. En esta pequeña actualización me enfoqué en pulir la estabilidad, la comodidad en tu día a día y resolver detalles importantes que me reportaron para que disfrutes de tus películas y series sin ninguna interrupción.
 
