@@ -18,7 +18,9 @@ data class ChatMessage(
     val timestamp: Long = System.currentTimeMillis(),
     val isError: Boolean = false,
     val isSilent: Boolean = false,
-    val linkedItems: List<LinkedContent> = emptyList()
+    val linkedItems: List<LinkedContent> = emptyList(),
+    val expressiveSpeechText: String? = null,
+    val expressiveStyleHint: String? = null
 )
 
 data class AuraChatSession(

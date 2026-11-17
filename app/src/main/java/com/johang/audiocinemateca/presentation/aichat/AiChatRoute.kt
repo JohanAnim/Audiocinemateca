@@ -35,6 +35,12 @@ fun AiChatRoute(
     val activeProvider by viewModel.activeProvider.collectAsState()
     val selectedModelId by viewModel.selectedModelId.collectAsState()
     val availableModels by viewModel.availableModels.collectAsState()
+    val isAuraSpeakingExpressive by viewModel.isAuraSpeakingExpressive.collectAsState()
+    val isAuraSynthesizingVoice by viewModel.isAuraSynthesizingVoice.collectAsState()
+    val isSpeechDeviceActive by viewModel.isSpeechDeviceActive.collectAsState()
+    val isSpeechPaused by viewModel.isSpeechPaused.collectAsState()
+    val activeSpeechMessageId by viewModel.activeSpeechMessageId.collectAsState()
+    val isAuraVoiceActive = isAuraSpeakingExpressive || isAuraSynthesizingVoice || isSpeechDeviceActive
 
     var inputText by remember { mutableStateOf("") }
     var isListening by remember { mutableStateOf(false) }
@@ -125,6 +131,7 @@ fun AiChatRoute(
         onDispose {
             speechRecognizer?.destroy()
             speechRecognizer = null
+            viewModel.stopAuraSpeech()
         }
     }
 
@@ -140,6 +147,16 @@ fun AiChatRoute(
         availableModels = availableModels,
         inputText = inputText,
         isListening = isListening,
+        isAuraVoiceActive = isAuraVoiceActive,
+        activeSpeechMessageId = activeSpeechMessageId,
+        isSpeechPlaying = isAuraSpeakingExpressive || isSpeechDeviceActive,
+        isSpeechPaused = isSpeechPaused,
+        isSpeechSynthesizing = isAuraSynthesizingVoice,
+        onStopAuraSpeech = { viewModel.stopAuraSpeech() },
+        onToggleMessageSpeech = { msg -> viewModel.toggleMessageSpeech(msg) },
+        onReplayMessage = { msg -> viewModel.replayAuraMessage(msg) },
+        onDeleteMessage = { msgId -> viewModel.deleteMessage(msgId) },
+        onRegenerateMessage = { msgId -> viewModel.regenerateResponseFor(msgId) },
         onInputTextChange = { inputText = it },
         onSendMessage = { text ->
             viewModel.sendMessage(text)

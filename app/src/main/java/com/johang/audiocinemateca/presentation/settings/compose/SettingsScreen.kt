@@ -17,15 +17,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.johang.audiocinemateca.util.accessibleHeading
-import com.johang.audiocinemateca.util.audiocinematecaAccessibility
 import com.johang.audiocinemateca.util.initialAccessibilityFocus
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -152,13 +154,21 @@ fun SettingsItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .audiocinematecaAccessibility(
-                label = "$title. $summary",
-                role = Role.Button,
-                onClickAction = onClick,
-                testTag = itemTag,
-                traversalIndex = if (isInitialFocus) -1f else 0f
-            )
+            .clearAndSetSemantics {
+                testTag = itemTag
+                if (isInitialFocus) {
+                    traversalIndex = -1f
+                }
+                contentDescription = if (summary.isNotBlank() && summary != title) {
+                    "$title. $summary"
+                } else {
+                    title
+                }
+                onClick(label = title) {
+                    onClick()
+                    true
+                }
+            }
             .then(
                 if (isInitialFocus) {
                     Modifier.initialAccessibilityFocus(tag = itemTag)
@@ -222,7 +232,7 @@ fun getSettingsCategories() = listOf(
     SettingsCategory("general", "General", "Temas, pestaña de inicio y actualizaciones.", Icons.Default.Settings),
     SettingsCategory("playback", "Reproducción", "Controles, temporizador e historial.", Icons.Default.PlayCircleOutline),
     SettingsCategory("community", "Comunidad", "Ajustes del Chat Global y anuncios de voz.", Icons.Default.People),
-    SettingsCategory("ai", "Inteligencia Artificial", "Configuración de Gemini y clave API.", Icons.Default.AutoAwesome),
+    SettingsCategory("ai", "Inteligencia Artificial", "Proveedores, modelos y clave de acceso.", Icons.Default.AutoAwesome),
     SettingsCategory("tts", "Ajustes de Texto a Voz", "Motores de voz, tono y velocidad.", Icons.Default.RecordVoiceOver),
     SettingsCategory("downloads", "Descargas", "Ubicación de archivos y modo offline.", Icons.Default.Download)
 )

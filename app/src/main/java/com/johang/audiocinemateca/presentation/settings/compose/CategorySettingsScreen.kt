@@ -197,7 +197,6 @@ fun SettingsListItem(
                     traversalIndex = -1f
                 }
                 contentDescription = fullDescription
-                role = Role.Button
                 onClick(label = "Cambiar opción") {
                     if (enabled) showDialog = true
                     true
@@ -300,7 +299,6 @@ fun SettingsClickItem(
                     traversalIndex = -1f
                 }
                 contentDescription = fullDescription
-                role = Role.Button
                 onClick(label = title) {
                     if (enabled) onClick()
                     true
@@ -369,7 +367,6 @@ fun SettingsEditTextItem(
                     traversalIndex = -1f
                 }
                 contentDescription = fullDescription
-                role = Role.Button
                 onClick(label = "Editar $title") {
                     if (enabled) showDialog = true
                     true
@@ -455,15 +452,16 @@ fun SettingsEditTextItem(
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .audiocinematecaAccessibility(
-                                    label = "Pegar clave desde el portapapeles",
-                                    role = Role.Button,
-                                    onClickAction = {
+                                .clearAndSetSemantics {
+                                    contentDescription = "Pegar clave desde el portapapeles"
+                                    role = Role.Button
+                                    onClick(label = "Pegar") {
                                         val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
                                         val clip = clipboard?.primaryClip?.getItemAt(0)?.text?.toString()
                                         if (!clip.isNullOrBlank()) tempValue = clip.trim()
+                                        true
                                     }
-                                )
+                                }
                         ) {
                             Text("📋 Pegar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
@@ -476,11 +474,14 @@ fun SettingsEditTextItem(
                                 ),
                                 shape = RoundedCornerShape(10.dp),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                                modifier = Modifier.audiocinematecaAccessibility(
-                                    label = "Borrar clave ingresada",
-                                    role = Role.Button,
-                                    onClickAction = { tempValue = "" }
-                                )
+                                modifier = Modifier.clearAndSetSemantics {
+                                    contentDescription = "Borrar clave ingresada"
+                                    role = Role.Button
+                                    onClick(label = "Limpiar") {
+                                        tempValue = ""
+                                        true
+                                    }
+                                }
                             ) {
                                 Text("❌ Limpiar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
@@ -498,11 +499,14 @@ fun SettingsEditTextItem(
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .audiocinematecaAccessibility(
-                                    label = helperButtonLabel,
-                                    role = Role.Button,
-                                    onClickAction = onHelperButtonClick
-                                )
+                                .clearAndSetSemantics {
+                                    contentDescription = helperButtonLabel
+                                    role = Role.Button
+                                    onClick(label = helperButtonLabel) {
+                                        onHelperButtonClick()
+                                        true
+                                    }
+                                }
                         ) {
                             Text("🔑 $helperButtonLabel", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }

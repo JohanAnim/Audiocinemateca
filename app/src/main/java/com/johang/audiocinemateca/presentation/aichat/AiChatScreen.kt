@@ -1,6 +1,11 @@
 package com.johang.audiocinemateca.presentation.aichat
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
 import android.text.format.DateUtils
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,11 +19,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -26,15 +33,23 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -68,6 +83,16 @@ fun AiChatScreen(
     availableModels: List<Pair<String, String>> = emptyList(),
     inputText: String,
     isListening: Boolean,
+    isAuraVoiceActive: Boolean = false,
+    activeSpeechMessageId: String? = null,
+    isSpeechPlaying: Boolean = false,
+    isSpeechPaused: Boolean = false,
+    isSpeechSynthesizing: Boolean = false,
+    onStopAuraSpeech: () -> Unit = {},
+    onToggleMessageSpeech: (ChatMessage) -> Unit = {},
+    onReplayMessage: (ChatMessage) -> Unit = {},
+    onDeleteMessage: (String) -> Unit = {},
+    onRegenerateMessage: (String) -> Unit = {},
     onInputTextChange: (String) -> Unit,
     onSendMessage: (String) -> Unit,
     onVoicePressStart: () -> Unit = {},
@@ -91,6 +116,7 @@ fun AiChatScreen(
     var sessionToRename by remember { mutableStateOf<AuraChatSession?>(null) }
     var renameText by remember { mutableStateOf("") }
     var recommendationsDialogItems by remember { mutableStateOf<List<LinkedContent>?>(null) }
+    var optionsTargetMessage by remember { mutableStateOf<ChatMessage?>(null) }
 
     // Auto-scroll al último mensaje cuando cambia la cantidad de mensajes o la sesión activa
     LaunchedEffect(messages.size, activeSessionId) {
@@ -125,6 +151,22 @@ fun AiChatScreen(
                     }
                 },
                 actions = {
+                    if (isAuraVoiceActive) {
+                        IconButton(
+                            onClick = onStopAuraSpeech,
+                            modifier = Modifier.audiocinematecaAccessibility(
+                                label = "Detener voz de Aura",
+                                role = Role.Button
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Stop,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+
                     // Selector desplegable del Modelo de IA actual (sincronizado con Ajustes Globales)
                     AuraModelDropdownSelector(
                         activeProvider = activeProvider,
@@ -298,9 +340,16 @@ fun AiChatScreen(
                         if (message.isUser) {
                             UserChatBubble(message = message)
                         } else {
+                            val isCurrentSpeech = activeSpeechMessageId == message.id
                             AuraChatBubble(
                                 message = message,
+                                isSpeechPlaying = isCurrentSpeech && isSpeechPlaying,
+                                isSpeechPaused = isCurrentSpeech && isSpeechPaused,
+                                isSpeechSynthesizing = isCurrentSpeech && isSpeechSynthesizing,
+                                onToggleSpeech = { onToggleMessageSpeech(message) },
+                                onMoreOptionsClick = { optionsTargetMessage = message },
                                 onRetryClick = onRetryMessage,
+                                onReplayClick = { onReplayMessage(message) },
                                 onShowRecommendations = { recommendationsDialogItems = it },
                                 onLinkedContentClick = onLinkedContentClick
                             )
@@ -349,7 +398,10 @@ fun AiChatScreen(
             onDismissRequest = { sessionToRename = null },
             title = { Text(text = "Renombrar conversación") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
                     Text(
                         text = "Personaliza el título de esta conversación con Aura:",
                         style = MaterialTheme.typography.bodyMedium,
@@ -415,7 +467,10 @@ fun AiChatScreen(
             onDismissRequest = { recommendationsDialogItems = null },
             title = { Text(text = "Recomendaciones de Aura") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
                     items.forEach { linked ->
                         Surface(
                             shape = RoundedCornerShape(8.dp),
@@ -426,10 +481,15 @@ fun AiChatScreen(
                                     recommendationsDialogItems = null
                                     onLinkedContentClick(linked)
                                 }
-                                .audiocinematecaAccessibility(
-                                    label = "Ver detalles de ${linked.title}",
+                                .clearAndSetSemantics {
+                                    contentDescription = "Ver detalles de ${linked.title}"
                                     role = Role.Button
-                                )
+                                    onClick(label = "Ver detalles de ${linked.title}") {
+                                        recommendationsDialogItems = null
+                                        onLinkedContentClick(linked)
+                                        true
+                                    }
+                                }
                         ) {
                             Row(
                                 modifier = Modifier.padding(12.dp),
@@ -461,6 +521,109 @@ fun AiChatScreen(
             }
         )
     }
+
+    // Ventana emergente de más opciones para un mensaje de Aura
+    optionsTargetMessage?.let { targetMsg ->
+        AlertDialog(
+            onDismissRequest = { optionsTargetMessage = null },
+            title = {
+                Text(
+                    text = "Opciones del mensaje",
+                    modifier = Modifier.semantics {
+                        heading()
+                        stateDescription = "Encabezado"
+                    }
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    MessageOptionRow(
+                        icon = Icons.Default.ContentCopy,
+                        label = "Copiar texto",
+                        description = "Copia la respuesta de Aura al portapapeles",
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                            clipboard?.setPrimaryClip(ClipData.newPlainText("Respuesta de Aura", targetMsg.text))
+                            Toast.makeText(context, "Mensaje copiado al portapapeles", Toast.LENGTH_SHORT).show()
+                            optionsTargetMessage = null
+                        }
+                    )
+
+                    MessageOptionRow(
+                        icon = Icons.Default.Share,
+                        label = "Compartir respuesta",
+                        description = "Envía este texto a otra aplicación",
+                        onClick = {
+                            optionsTargetMessage = null
+                            runCatching {
+                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, targetMsg.text)
+                                }
+                                context.startActivity(Intent.createChooser(sendIntent, "Compartir respuesta de Aura"))
+                            }.onFailure {
+                                Toast.makeText(context, "No se pudo abrir el menú de compartir", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+
+                    MessageOptionRow(
+                        icon = Icons.Default.Replay,
+                        label = "Escuchar desde el principio",
+                        description = "Reproduce el mensaje completo desde el inicio",
+                        onClick = {
+                            optionsTargetMessage = null
+                            onReplayMessage(targetMsg)
+                        }
+                    )
+
+                    if (!isLoading) {
+                        MessageOptionRow(
+                            icon = Icons.Default.AutoAwesome,
+                            label = "Regenerar respuesta",
+                            description = "Pide a Aura una respuesta nueva y distinta",
+                            onClick = {
+                                optionsTargetMessage = null
+                                onRegenerateMessage(targetMsg.id)
+                            }
+                        )
+                    }
+
+                    if (targetMsg.linkedItems.isNotEmpty() && !targetMsg.isError) {
+                        MessageOptionRow(
+                            icon = Icons.Default.VideoLibrary,
+                            label = "Ver recomendaciones (${targetMsg.linkedItems.size})",
+                            description = "Abre las obras del catálogo mencionadas aquí",
+                            onClick = {
+                                optionsTargetMessage = null
+                                recommendationsDialogItems = targetMsg.linkedItems
+                            }
+                        )
+                    }
+
+                    MessageOptionRow(
+                        icon = Icons.Default.DeleteOutline,
+                        label = "Eliminar mensaje",
+                        description = "Borra solo esta respuesta de la conversación",
+                        isDestructive = true,
+                        onClick = {
+                            optionsTargetMessage = null
+                            onDeleteMessage(targetMsg.id)
+                        }
+                    )
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { optionsTargetMessage = null }) {
+                    Text(text = "Cerrar")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -473,6 +636,7 @@ fun AuraHeaderSelector(
     val indicatorColor = when {
         auraStatus.contains("pensando", ignoreCase = true) ||
                 auraStatus.contains("escribiendo", ignoreCase = true) ||
+                auraStatus.contains("preparando", ignoreCase = true) ||
                 auraStatus.contains("consultando", ignoreCase = true) ||
                 auraStatus.contains("redactando", ignoreCase = true) -> Color(0xFFFBC02D) // Amarillo
         auraStatus.contains("En línea", ignoreCase = true) -> Color(0xFF4CAF50) // Verde
@@ -623,36 +787,52 @@ fun AuraModelDropdownSelector(
                     }
             )
 
-            availableModels.forEach { (modelId, displayName) ->
-                val isCurrent = modelId == selectedModelId
+            if (availableModels.isEmpty()) {
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = displayName,
-                            fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                            fontSize = 13.sp
+                            text = "Sin modelos cargados. Configura o revisa tu Clave API en Ajustes.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
                         )
-                    },
-                    leadingIcon = {
-                        if (isCurrent) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
                     },
                     onClick = {
                         expanded = false
-                        onSelectModel(modelId)
-                    },
-                    modifier = Modifier.semantics {
-                        selected = isCurrent
-                        contentDescription = if (isCurrent) "$displayName, Seleccionado" else displayName
+                        onNavigateToAiSettings()
                     }
                 )
+            } else {
+                availableModels.forEach { (modelId, displayName) ->
+                    val isCurrent = modelId == selectedModelId
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = displayName,
+                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                fontSize = 13.sp
+                            )
+                        },
+                        leadingIcon = {
+                            if (isCurrent) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        },
+                        onClick = {
+                            expanded = false
+                            onSelectModel(modelId)
+                        },
+                        modifier = Modifier.semantics {
+                            selected = isCurrent
+                            contentDescription = if (isCurrent) "$displayName, Seleccionado" else displayName
+                        }
+                    )
+                }
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
@@ -940,9 +1120,9 @@ fun UserChatBubble(message: ChatMessage) {
         Surface(
             shape = RoundedCornerShape(18.dp).copy(bottomEnd = CornerSize(4.dp)),
             color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.audiocinematecaAccessibility(
-                label = "Tú: ${message.text}"
-            )
+            modifier = Modifier.clearAndSetSemantics {
+                contentDescription = "Tú: ${message.text}"
+            }
         ) {
             Text(
                 text = message.text,
@@ -958,79 +1138,230 @@ fun UserChatBubble(message: ChatMessage) {
 @Composable
 fun AuraChatBubble(
     message: ChatMessage,
+    isSpeechPlaying: Boolean = false,
+    isSpeechPaused: Boolean = false,
+    isSpeechSynthesizing: Boolean = false,
+    onToggleSpeech: () -> Unit = {},
+    onMoreOptionsClick: () -> Unit = {},
     onRetryClick: () -> Unit,
+    onReplayClick: () -> Unit = {},
     onShowRecommendations: (List<LinkedContent>) -> Unit,
     onLinkedContentClick: (LinkedContent) -> Unit
 ) {
     val hasLinks = message.linkedItems.isNotEmpty()
     val borderColor = if (message.isError) MaterialTheme.colorScheme.error else Color.Transparent
 
-    Box(
+    val speechButtonLabel = when {
+        isSpeechSynthesizing -> "Preparando voz, toca dos veces para cancelar"
+        isSpeechPlaying -> "Pausar lectura de Aura"
+        isSpeechPaused -> "Reanudar lectura de Aura"
+        else -> "Escuchar respuesta de Aura"
+    }
+    val speechButtonIcon = when {
+        isSpeechPlaying -> Icons.Default.Pause
+        isSpeechPaused -> Icons.Default.PlayArrow
+        else -> Icons.Default.VolumeUp
+    }
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 4.dp, end = 40.dp),
-        contentAlignment = Alignment.CenterStart
+            .padding(start = 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.Bottom
     ) {
-        Column {
-            Surface(
-                shape = RoundedCornerShape(18.dp).copy(bottomStart = CornerSize(4.dp)),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                border = if (message.isError) BorderStroke(1.5.dp, borderColor) else null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .audiocinematecaAccessibility(
-                        label = "Aura dice: ${message.text}"
-                    )
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                    val formattedText = remember(message.text) {
-                        parseMarkdownToAnnotatedString(message.text)
-                    }
-                    Text(
-                        text = formattedText,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 15.sp,
-                        lineHeight = 21.sp
-                    )
-
-                    // Botón para reintentar si ocurrió error
-                    if (message.isError) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = onRetryClick,
-                            modifier = Modifier.audiocinematecaAccessibility(
-                                label = "Reintentar respuesta de Aura",
-                                role = Role.Button
-                            )
-                        ) {
-                            Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = "Reintentar", color = MaterialTheme.colorScheme.error)
-                        }
-                    }
-
-                    // Chips interactivos de recomendaciones directas
-                    if (hasLinks && !message.isError) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            FilledTonalButton(
-                                onClick = { onShowRecommendations(message.linkedItems) },
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                modifier = Modifier.audiocinematecaAccessibility(
-                                    label = "Ver todas las recomendaciones de Aura",
-                                    role = Role.Button
-                                )
-                            ) {
-                                Icon(imageVector = Icons.Default.VideoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(text = "Ver recomendaciones (${message.linkedItems.size})", fontSize = 13.sp)
+        Surface(
+            shape = RoundedCornerShape(18.dp).copy(bottomStart = CornerSize(4.dp)),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            border = if (message.isError) BorderStroke(1.5.dp, borderColor) else null,
+            modifier = Modifier.weight(1f)
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                val formattedText = remember(message.text) {
+                    parseMarkdownToAnnotatedString(message.text)
+                }
+                Text(
+                    text = formattedText,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 15.sp,
+                    lineHeight = 21.sp,
+                    modifier = Modifier.clearAndSetSemantics {
+                        contentDescription = "Aura dice: ${message.text}"
+                        customActions = listOf(
+                            CustomAccessibilityAction(speechButtonLabel) {
+                                onToggleSpeech()
+                                true
+                            },
+                            CustomAccessibilityAction("Volver a escuchar desde el principio") {
+                                onReplayClick()
+                                true
+                            },
+                            CustomAccessibilityAction("Más opciones del mensaje") {
+                                onMoreOptionsClick()
+                                true
                             }
+                        )
+                    }
+                )
+
+                // Botón para reintentar si ocurrió error
+                if (message.isError) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = onRetryClick,
+                        modifier = Modifier.clearAndSetSemantics {
+                            contentDescription = "Reintentar respuesta de Aura"
+                            role = Role.Button
+                            onClick(label = "Reintentar respuesta de Aura") {
+                                onRetryClick()
+                                true
+                            }
+                        }
+                    ) {
+                        Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Reintentar", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+
+                // Chips interactivos de recomendaciones directas
+                if (hasLinks && !message.isError) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val recsLabel = "Ver recomendaciones (${message.linkedItems.size})"
+                        FilledTonalButton(
+                            onClick = { onShowRecommendations(message.linkedItems) },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.clearAndSetSemantics {
+                                contentDescription = recsLabel
+                                role = Role.Button
+                                onClick(label = "Ver todas las recomendaciones de Aura") {
+                                    onShowRecommendations(message.linkedItems)
+                                    true
+                                }
+                            }
+                        ) {
+                            Icon(imageVector = Icons.Default.VideoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = recsLabel, fontSize = 13.sp)
                         }
                     }
                 }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(6.dp))
+
+        // Botones de acción rápida al lado del mensaje de Aura: Escuchar/Pausar/Reanudar y Más opciones
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilledTonalIconButton(
+                onClick = onToggleSpeech,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clearAndSetSemantics {
+                        contentDescription = speechButtonLabel
+                        role = Role.Button
+                        onClick(label = speechButtonLabel) {
+                            onToggleSpeech()
+                            true
+                        }
+                    }
+            ) {
+                if (isSpeechSynthesizing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = speechButtonIcon,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = if (isSpeechPlaying || isSpeechPaused) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        }
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = onMoreOptionsClick,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clearAndSetSemantics {
+                        contentDescription = "Más opciones de este mensaje"
+                        role = Role.Button
+                        onClick(label = "Más opciones de este mensaje") {
+                            onMoreOptionsClick()
+                            true
+                        }
+                    }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MessageOptionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    description: String,
+    isDestructive: Boolean = false,
+    onClick: () -> Unit
+) {
+    val contentColor = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .clearAndSetSemantics {
+                contentDescription = "$label. $description"
+                role = Role.Button
+                onClick(label = label) {
+                    onClick()
+                    true
+                }
+            }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = contentColor
+                )
+                Text(
+                    text = description,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

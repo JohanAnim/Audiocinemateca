@@ -39,7 +39,18 @@ data class Part(
     @SerializedName("thought") val thought: Boolean? = null,
     @SerializedName("thoughtSignature") val thoughtSignature: String? = null,
     @SerializedName("functionCall") val functionCall: FunctionCall? = null,
-    @SerializedName("functionResponse") val functionResponse: FunctionResponse? = null
+    @SerializedName("functionResponse") val functionResponse: FunctionResponse? = null,
+    @SerializedName("inlineData") val inlineData: InlineData? = null,
+    @SerializedName("speechMetadata") val speechMetadata: SpeechMetadata? = null
+)
+
+data class InlineData(
+    @SerializedName("mimeType") val mimeType: String? = null,
+    @SerializedName("data") val data: String? = null
+)
+
+data class SpeechMetadata(
+    @SerializedName("style") val style: String? = null
 )
 
 data class FunctionCall(
@@ -80,7 +91,21 @@ data class GenerationConfig(
     @SerializedName("topP") val topP: Float? = null,
     @SerializedName("topK") val topK: Int? = null,
     @SerializedName("maxOutputTokens") val maxOutputTokens: Int? = null,
-    @SerializedName("thinkingConfig") val thinkingConfig: ThinkingConfig? = null
+    @SerializedName("thinkingConfig") val thinkingConfig: ThinkingConfig? = null,
+    @SerializedName("responseModalities") val responseModalities: List<String>? = null,
+    @SerializedName("speechConfig") val speechConfig: SpeechConfig? = null
+)
+
+data class SpeechConfig(
+    @SerializedName("voiceConfig") val voiceConfig: VoiceConfig? = null
+)
+
+data class VoiceConfig(
+    @SerializedName("prebuiltVoiceConfig") val prebuiltVoiceConfig: PrebuiltVoiceConfig? = null
+)
+
+data class PrebuiltVoiceConfig(
+    @SerializedName("voiceName") val voiceName: String
 )
 
 data class ThinkingConfig(
@@ -91,7 +116,14 @@ data class ThinkingConfig(
 
 data class GoogleAiResponse(
     @SerializedName("candidates") val candidates: List<Candidate>? = null,
+    @SerializedName("usageMetadata") val usageMetadata: UsageMetadata? = null,
     @SerializedName("error") val error: RemoteError? = null
+)
+
+data class UsageMetadata(
+    @SerializedName("promptTokenCount") val promptTokenCount: Int? = null,
+    @SerializedName("cachedContentTokenCount") val cachedContentTokenCount: Int? = null,
+    @SerializedName("candidatesTokenCount") val candidatesTokenCount: Int? = null
 )
 
 data class Candidate(
