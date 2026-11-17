@@ -136,11 +136,10 @@ fun AudiocinematecaNavHost(
                 onPlayContent = { itemId, itemType ->
                     scope.launch {
                         try {
-                            val catalog = catalogRepository.getCatalog()
-                            val foundItem = catalog?.series?.find { it.id.equals(itemId, ignoreCase = true) }
-                                ?: catalog?.movies?.find { it.id.equals(itemId, ignoreCase = true) }
-                                ?: catalog?.documentaries?.find { it.id.equals(itemId, ignoreCase = true) }
-                                ?: catalog?.shortFilms?.find { it.id.equals(itemId, ignoreCase = true) }
+                            val foundItem = searchRepository.findCatalogItemById(
+                                itemId = itemId,
+                                isSeriesHint = itemType.isBlank() || itemType.contains("serie", ignoreCase = true)
+                            )
 
                             if (foundItem != null) {
                                 val allProgress = playbackProgressRepository.getPlaybackProgressForContent(foundItem.id)
@@ -156,14 +155,13 @@ fun AudiocinematecaNavHost(
                         }
                     }
                 },
-                onResumeContentWithPosition = { itemId, _, explicitPartIndex, explicitEpisodeIndex ->
+                onResumeContentWithPosition = { itemId, itemType, explicitPartIndex, explicitEpisodeIndex ->
                     scope.launch {
                         try {
-                            val catalog = catalogRepository.getCatalog()
-                            val foundItem = catalog?.series?.find { it.id.equals(itemId, ignoreCase = true) }
-                                ?: catalog?.movies?.find { it.id.equals(itemId, ignoreCase = true) }
-                                ?: catalog?.documentaries?.find { it.id.equals(itemId, ignoreCase = true) }
-                                ?: catalog?.shortFilms?.find { it.id.equals(itemId, ignoreCase = true) }
+                            val foundItem = searchRepository.findCatalogItemById(
+                                itemId = itemId,
+                                isSeriesHint = itemType.isBlank() || itemType.contains("serie", ignoreCase = true)
+                            )
 
                             if (foundItem != null) {
                                 navController.navigate(NavRoutes.player(foundItem, explicitPartIndex, explicitEpisodeIndex))
@@ -383,6 +381,7 @@ fun AudiocinematecaNavHost(
                 authCatalogRepository = authCatalogRepository,
                 onNavigateToProfile = { navController.navigate(NavRoutes.PROFILE) },
                 onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },
+                onNavigateToDocumentation = { navController.navigate(NavRoutes.DOCUMENTATION) },
                 onNavigateToWebView = { url -> navController.navigate(NavRoutes.webView(url)) },
                 onShowDonation = { showDonationDialog = true },
                 onShowUpdateProgress = { showUpdateProgressDialog = true }
@@ -398,6 +397,14 @@ fun AudiocinematecaNavHost(
                     onDismiss = { showUpdateProgressDialog = false }
                 )
             }
+        }
+
+        // 5b. DOCUMENTATION
+        composable(NavRoutes.DOCUMENTATION) {
+            com.johang.audiocinemateca.presentation.account.DocumentationScreen(
+                ttsManager = ttsManager,
+                onBack = { navController.navigateUp() }
+            )
         }
 
         // 6. PROFILE
@@ -674,6 +681,9 @@ fun AudiocinematecaNavHost(
                 },
                 onNavigateToPlaybackSettings = {
                     navController.navigate(NavRoutes.categorySettings("playback"))
+                },
+                onNavigateToHelp = {
+                    navController.navigate(NavRoutes.DOCUMENTATION)
                 }
             )
         }

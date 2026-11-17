@@ -16,6 +16,7 @@ object NavRoutes {
     const val PROFILE = "profile"
     const val SETTINGS = "settings"
     const val CATEGORY_SETTINGS = "category_settings/{category}"
+    const val DOCUMENTATION = "documentation"
     const val LOGIN_CLOUD = "login_cloud"
     const val REGISTER_CLOUD = "register_cloud"
     const val COMMUNITY = "community?tab={tab}"
