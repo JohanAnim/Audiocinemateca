@@ -1,6 +1,10 @@
 package com.johang.audiocinemateca.presentation.community.compose
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -21,6 +25,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.johang.audiocinemateca.domain.model.CatalogItem
 import com.johang.audiocinemateca.presentation.community.AnnouncementsViewModel
 import com.johang.audiocinemateca.presentation.community.CommunityViewModel
@@ -42,6 +47,13 @@ fun CommunityScreen(
         selectedTabIndex = initialTabIndex.coerceIn(0, 2)
     }
     val tabTitles = listOf("Global", "Anuncios", "Comentarios")
+    val tabIcons = remember {
+        listOf(
+            Icons.Default.Forum,
+            Icons.Default.Campaign,
+            Icons.AutoMirrored.Filled.Comment
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -66,6 +78,13 @@ fun CommunityScreen(
                 Tab(
                     selected = isSelected,
                     onClick = { selectedTabIndex = index },
+                    icon = {
+                        Icon(
+                            imageVector = tabIcons.getOrElse(index) { Icons.Default.Forum },
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
                     text = {
                         Text(
                             text = title,

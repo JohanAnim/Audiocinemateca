@@ -192,9 +192,27 @@ fun GlobalChatTab(
                 val targetIndex = unreadPosition ?: (chatItems.size - 1)
                 listState.scrollToItem(targetIndex.coerceIn(0, chatItems.size - 1))
                 initialScrollDone = true
-            } else {
-                // Al recibir un mensaje nuevo durante la conversación, hacer scroll suave al final
+                viewModel.clearUnreadScrollPosition()
+            } else if (!listState.canScrollForward) {
+                // Al recibir un mensaje nuevo mientras está al final, hacer scroll suave y marcar leído
                 listState.animateScrollToItem(chatItems.size - 1)
+                viewModel.persistReadTimestampSilently()
+            }
+        }
+    }
+
+    // Al llegar al final de la conversación mientras lee, guardar marca de leído sin saltar el foco
+    LaunchedEffect(listState.canScrollForward, initialScrollDone, chatItems.size) {
+        if (initialScrollDone && chatItems.isNotEmpty() && !listState.canScrollForward) {
+            viewModel.persistReadTimestampSilently()
+        }
+    }
+
+    // Al salir de la pestaña/pantalla de Chat Global tras haber visto los mensajes, limpiar no leídos
+    DisposableEffect(Unit) {
+        onDispose {
+            if (initialScrollDone) {
+                viewModel.markChatAsRead()
             }
         }
     }

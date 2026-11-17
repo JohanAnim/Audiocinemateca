@@ -176,12 +176,31 @@ class GlobalChatViewModel @Inject constructor(
         return result
     }
 
-    fun markChatAsRead() {
+    private fun computeLatestReadTimestamp(): Long {
+        val latestMsgMs = _messages.value.lastOrNull()?.let { it.timestamp.seconds * 1000L } ?: 0L
+        return maxOf(System.currentTimeMillis(), latestMsgMs)
+    }
+
+    /**
+     * Guarda en disco la marca de leído cuando el usuario llega al final o lee nuevos mensajes
+     * sin quitar de golpe el separador visual mientras navega con TalkBack/Jieshuo.
+     */
+    fun persistReadTimestampSilently() {
+        if (_messages.value.isEmpty()) return
         hasHandledUnreadScroll = true
         _unreadPosition.value = null
-        val now = System.currentTimeMillis()
-        currentLastReadTimestamp = now
-        sharedPreferencesManager.saveLastReadChatTimestamp(now)
+        val targetTs = computeLatestReadTimestamp()
+        currentLastReadTimestamp = targetTs
+        sharedPreferencesManager.saveLastReadChatTimestamp(targetTs)
+    }
+
+    fun markChatAsRead() {
+        if (_messages.value.isEmpty()) return
+        hasHandledUnreadScroll = true
+        _unreadPosition.value = null
+        val targetTs = computeLatestReadTimestamp()
+        currentLastReadTimestamp = targetTs
+        sharedPreferencesManager.saveLastReadChatTimestamp(targetTs)
         val currentItems = _chatItems.value
         if (currentItems.any { it is ChatListItem.UnreadHeader }) {
             _chatItems.value = currentItems.filterNot { it is ChatListItem.UnreadHeader }
@@ -444,6 +463,7 @@ class GlobalChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        persistReadTimestampSilently()
         val uid = auth.currentUser?.uid
         if (uid != null) {
             repository.setUserPresence(uid, isOnline = false)
