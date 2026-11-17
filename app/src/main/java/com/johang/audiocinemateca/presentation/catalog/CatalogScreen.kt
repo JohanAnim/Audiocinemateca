@@ -23,9 +23,13 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Theaters
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -168,6 +172,14 @@ fun CatalogScreen(
                 }
         ) {
             // Category Tabs
+            val tabIcons = remember {
+                listOf(
+                    Icons.Default.Movie,
+                    Icons.Default.Tv,
+                    Icons.Default.Public,
+                    Icons.Default.Theaters
+                )
+            }
             PrimaryTabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -181,6 +193,13 @@ fun CatalogScreen(
                     Tab(
                         selected = isSelected,
                         onClick = { selectedTabIndex = index },
+                        icon = {
+                            Icon(
+                                imageVector = tabIcons.getOrElse(index) { Icons.Default.Movie },
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
                         text = {
                             Text(
                                 text = title,

@@ -86,20 +86,18 @@ class PeliculasViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val filterOptions = filterRepository.getFilterOptionsFlow("peliculas").first()
-                val fullCatalog = catalogRepository.getCatalog()
-                if (fullCatalog != null) {
-                    val rawItems = fullCatalog.movies.orEmpty()
-                    val catalogItems: List<com.johang.audiocinemateca.domain.model.CatalogItem> = rawItems
-                    val finalFilteredItems = catalogFilter.applyFilter(catalogItems, filterOptions).filterIsInstance<com.johang.audiocinemateca.data.model.Movie>()
+                val newMovies = catalogRepository.getFilteredAndPaginatedItems(
+                    categoryName = "peliculas",
+                    options = filterOptions,
+                    offset = currentPage * pageSize,
+                    limit = pageSize
+                ).filterIsInstance<com.johang.audiocinemateca.data.model.Movie>()
 
-                    val newMovies = finalFilteredItems.drop(currentPage * pageSize).take(pageSize)
-
-                    if (newMovies.isEmpty()) {
-                        isLastPage = true
-                    } else {
-                        _movies.value = (_movies.value) + newMovies
-                        currentPage++
-                    }
+                if (newMovies.isEmpty()) {
+                    isLastPage = true
+                } else {
+                    _movies.value = (_movies.value) + newMovies
+                    currentPage++
                 }
             } catch (e: Exception) {
                 _errorMessage.value = e.message

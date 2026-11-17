@@ -85,20 +85,18 @@ class DocumentalesViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val filterOptions = filterRepository.getFilterOptionsFlow("documentales").first()
-                val fullCatalog = catalogRepository.getCatalog()
-                if (fullCatalog != null) {
-                    val rawItems = fullCatalog.documentaries.orEmpty()
-                    val catalogItems: List<com.johang.audiocinemateca.domain.model.CatalogItem> = rawItems
-                    val finalFilteredItems = catalogFilter.applyFilter(catalogItems, filterOptions).filterIsInstance<com.johang.audiocinemateca.data.model.Documentary>()
+                val newDocumentales = catalogRepository.getFilteredAndPaginatedItems(
+                    categoryName = "documentales",
+                    options = filterOptions,
+                    offset = currentPage * pageSize,
+                    limit = pageSize
+                ).filterIsInstance<com.johang.audiocinemateca.data.model.Documentary>()
 
-                    val newDocumentales = finalFilteredItems.drop(currentPage * pageSize).take(pageSize)
-
-                    if (newDocumentales.isEmpty()) {
-                        isLastPage = true
-                    } else {
-                        _documentales.value = (_documentales.value) + newDocumentales
-                        currentPage++
-                    }
+                if (newDocumentales.isEmpty()) {
+                    isLastPage = true
+                } else {
+                    _documentales.value = (_documentales.value) + newDocumentales
+                    currentPage++
                 }
             } catch (e: Exception) {
                 _errorMessage.value = e.message

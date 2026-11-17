@@ -251,9 +251,8 @@ class AuthCatalogRepository @Inject constructor(
                 }
             }
             else {
-                val localCatalog = catalogRepository.getCatalog()
-                if (localCatalog != null) {
-                    send(LoadCatalogResultWithProgress.Success(localCatalog))
+                if (catalogRepository.hasCatalog()) {
+                    send(LoadCatalogResultWithProgress.Success(com.johang.audiocinemateca.data.model.CatalogResponse(null, null, null, null)))
                 } else {
                     // Si no hay catálogo local a pesar de que la versión es la misma, forzar descarga
                     downloadAndSaveCatalog(serverCatalogDate).collect { send(it) }

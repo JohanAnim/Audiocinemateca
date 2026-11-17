@@ -86,20 +86,18 @@ class SeriesViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val filterOptions = filterRepository.getFilterOptionsFlow("series").first()
-                val fullCatalog = catalogRepository.getCatalog()
-                if (fullCatalog != null) {
-                    val rawItems = fullCatalog.series.orEmpty()
-                    val catalogItems: List<com.johang.audiocinemateca.domain.model.CatalogItem> = rawItems
-                    val finalFilteredItems = catalogFilter.applyFilter(catalogItems, filterOptions).filterIsInstance<com.johang.audiocinemateca.data.model.Serie>()
+                val newSeries = catalogRepository.getFilteredAndPaginatedItems(
+                    categoryName = "series",
+                    options = filterOptions,
+                    offset = currentPage * pageSize,
+                    limit = pageSize
+                ).filterIsInstance<com.johang.audiocinemateca.data.model.Serie>()
 
-                    val newSeries = finalFilteredItems.drop(currentPage * pageSize).take(pageSize)
-
-                    if (newSeries.isEmpty()) {
-                        isLastPage = true
-                    } else {
-                        _series.value = (_series.value) + newSeries
-                        currentPage++
-                    }
+                if (newSeries.isEmpty()) {
+                    isLastPage = true
+                } else {
+                    _series.value = (_series.value) + newSeries
+                    currentPage++
                 }
             } catch (e: Exception) {
                 _errorMessage.value = e.message

@@ -72,13 +72,14 @@ class DownloadsViewModel @Inject constructor(
             DownloadFilter.Completed -> allDownloads.filter { it.downloadStatus == "COMPLETE" }
         }
 
-        val catalog = catalogRepository.getCatalog()
+        val seriesIds = filteredDownloads.filter { it.contentType == "serie" }.map { it.contentId }.distinct()
+        val seriesTitlesMap = catalogRepository.findSeriesTitlesByIds(seriesIds)
         val grouped = filteredDownloads
             .groupBy { it.contentId }
             .mapNotNull { (contentId, groupedEntities) ->
                 val firstEntity = groupedEntities.first()
                 val seriesTitleFromCatalog = if (firstEntity.contentType == "serie") {
-                    catalog?.series?.find { it.id == contentId }?.title
+                    seriesTitlesMap[contentId]
                 } else null
 
                 val title = if (firstEntity.contentType == "serie") {
@@ -144,13 +145,17 @@ class DownloadsViewModel @Inject constructor(
 
     fun onPlayItem(downloadEntity: DownloadEntity) {
         viewModelScope.launch {
-            val catalog = catalogRepository.getCatalog()
-            val itemFromCatalog = when (downloadEntity.contentType) {
-                "movie" -> catalog?.movies?.find { it.id == downloadEntity.contentId }
-                "serie" -> catalog?.series?.find { it.id == downloadEntity.contentId }
-                "documentary" -> catalog?.documentaries?.find { it.id == downloadEntity.contentId }
-                "shortfilm" -> catalog?.shortFilms?.find { it.id == downloadEntity.contentId }
-                else -> null
+            val pluralCategory = when (downloadEntity.contentType) {
+                "movie" -> "peliculas"
+                "serie" -> "series"
+                "documentary" -> "documentales"
+                "shortfilm" -> "cortometrajes"
+                else -> ""
+            }
+            val itemFromCatalog = if (pluralCategory.isNotEmpty()) {
+                catalogRepository.findItemByIdAndCategory(downloadEntity.contentId, pluralCategory)
+            } else {
+                catalogRepository.findItemById(downloadEntity.contentId)
             }
 
             val effectiveItem = itemFromCatalog ?: when (downloadEntity.contentType) {

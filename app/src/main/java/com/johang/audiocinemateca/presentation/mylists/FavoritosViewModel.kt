@@ -77,22 +77,17 @@ class FavoritosViewModel @Inject constructor(
     fun playFavorite(favorite: FavoriteEntity) {
         viewModelScope.launch {
             try {
-                val catalog = catalogRepository.getCatalog() ?: return@launch
-                
-                // Buscar el item en el catálogo siendo flexibles con el tipo
-                val item = when (favorite.contentType.lowercase()) {
-                    "movie", "peliculas" -> catalog.movies?.find { it.id == favorite.contentId }
-                    "serie", "series" -> catalog.series?.find { it.id == favorite.contentId }
-                    "documentary", "documentales" -> catalog.documentaries?.find { it.id == favorite.contentId }
-                    "shortfilm", "short", "cortometrajes" -> catalog.shortFilms?.find { it.id == favorite.contentId }
-                    else -> {
-                        // Búsqueda exhaustiva si el tipo no coincide
-                        catalog.movies?.find { it.id == favorite.contentId }
-                            ?: catalog.series?.find { it.id == favorite.contentId }
-                            ?: catalog.documentaries?.find { it.id == favorite.contentId }
-                            ?: catalog.shortFilms?.find { it.id == favorite.contentId }
-                    }
+                val pluralType = when (favorite.contentType.lowercase()) {
+                    "movie", "peliculas" -> "peliculas"
+                    "serie", "series" -> "series"
+                    "documentary", "documentales" -> "documentales"
+                    "shortfilm", "short", "cortometrajes" -> "cortometrajes"
+                    else -> ""
                 }
+                val item = (if (pluralType.isNotEmpty()) {
+                    catalogRepository.findItemByIdAndCategory(favorite.contentId, pluralType)
+                } else null) ?: catalogRepository.findItemById(favorite.contentId)
+                    ?: return@launch
 
                 if (item != null) {
                     // Buscar el único progreso guardado para este contenido

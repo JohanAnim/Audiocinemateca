@@ -87,20 +87,18 @@ class CortometrajesViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val filterOptions = filterRepository.getFilterOptionsFlow("cortometrajes").first()
-                val fullCatalog = catalogRepository.getCatalog()
-                if (fullCatalog != null) {
-                    val rawItems = fullCatalog.shortFilms.orEmpty()
-                    val catalogItems: List<com.johang.audiocinemateca.domain.model.CatalogItem> = rawItems
-                    val finalFilteredItems = catalogFilter.applyFilter(catalogItems, filterOptions).filterIsInstance<com.johang.audiocinemateca.data.model.ShortFilm>()
+                val newCortometrajes = catalogRepository.getFilteredAndPaginatedItems(
+                    categoryName = "cortometrajes",
+                    options = filterOptions,
+                    offset = currentPage * pageSize,
+                    limit = pageSize
+                ).filterIsInstance<com.johang.audiocinemateca.data.model.ShortFilm>()
 
-                    val newCortometrajes = finalFilteredItems.drop(currentPage * pageSize).take(pageSize)
-
-                    if (newCortometrajes.isEmpty()) {
-                        isLastPage = true
-                    } else {
-                        _cortometrajes.value = (_cortometrajes.value) + newCortometrajes
-                        currentPage++
-                    }
+                if (newCortometrajes.isEmpty()) {
+                    isLastPage = true
+                } else {
+                    _cortometrajes.value = (_cortometrajes.value) + newCortometrajes
+                    currentPage++
                 }
             } catch (e: Exception) {
                 _errorMessage.value = e.message

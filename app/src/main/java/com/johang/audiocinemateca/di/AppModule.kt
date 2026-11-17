@@ -138,6 +138,21 @@ object AppModule {
             }
         }
 
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("CREATE TABLE IF NOT EXISTS `catalog_items` (`id` TEXT NOT NULL, `category` TEXT NOT NULL, `title` TEXT NOT NULL, `titleNorm` TEXT NOT NULL, `anio` TEXT NOT NULL, `genero` TEXT NOT NULL, `pais` TEXT NOT NULL, `director` TEXT NOT NULL, `guion` TEXT NOT NULL, `musica` TEXT NOT NULL, `fotografia` TEXT NOT NULL, `reparto` TEXT NOT NULL, `productora` TEXT NOT NULL, `narracion` TEXT NOT NULL, `duracion` TEXT NOT NULL, `idioma` TEXT NOT NULL, `partes` TEXT NOT NULL, `filmaffinity` TEXT NOT NULL, `sinopsis` TEXT NOT NULL, `mediaJson` TEXT NOT NULL, `searchTextNorm` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`category`, `id`))")
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_catalog_items_category` ON `catalog_items` (`category`)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_catalog_items_id` ON `catalog_items` (`id`)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_catalog_items_category_titleNorm` ON `catalog_items` (`category`, `titleNorm`)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS `index_catalog_items_category_sortOrder` ON `catalog_items` (`category`, `sortOrder`)")
+                database.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS `catalog_items_fts` USING FTS4(`titleNorm` TEXT NOT NULL, `searchTextNorm` TEXT NOT NULL, content=`catalog_items`)")
+                database.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_catalog_items_fts_BEFORE_UPDATE BEFORE UPDATE ON `catalog_items` BEGIN DELETE FROM `catalog_items_fts` WHERE `docid`=OLD.`rowid`; END")
+                database.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_catalog_items_fts_BEFORE_DELETE BEFORE DELETE ON `catalog_items` BEGIN DELETE FROM `catalog_items_fts` WHERE `docid`=OLD.`rowid`; END")
+                database.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_catalog_items_fts_AFTER_UPDATE AFTER UPDATE ON `catalog_items` BEGIN INSERT INTO `catalog_items_fts`(`docid`, `titleNorm`, `searchTextNorm`) VALUES (NEW.`rowid`, NEW.`titleNorm`, NEW.`searchTextNorm`); END")
+                database.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_catalog_items_fts_AFTER_INSERT AFTER INSERT ON `catalog_items` BEGIN INSERT INTO `catalog_items_fts`(`docid`, `titleNorm`, `searchTextNorm`) VALUES (NEW.`rowid`, NEW.`titleNorm`, NEW.`searchTextNorm`); END")
+            }
+        }
+
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
@@ -145,7 +160,8 @@ object AppModule {
         ).addMigrations(
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, 
             MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, 
-            MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15
+            MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15,
+            MIGRATION_15_16
         )
         .fallbackToDestructiveMigration()
         .build()
@@ -195,8 +211,12 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideCatalogRepository(catalogDao: CatalogDao, @ApplicationContext context: Context): CatalogRepository {
-        return CatalogRepository(catalogDao, context)
+    fun provideCatalogRepository(
+        appDatabase: AppDatabase,
+        catalogDao: CatalogDao,
+        @ApplicationContext context: Context
+    ): CatalogRepository {
+        return CatalogRepository(appDatabase, catalogDao, context)
     }
 
     @Provides

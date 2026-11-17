@@ -8,6 +8,8 @@ import com.johang.audiocinemateca.data.local.dao.PlaybackProgressDao
 import com.johang.audiocinemateca.data.local.dao.SearchHistoryDao
 import com.johang.audiocinemateca.data.local.dao.DownloadDao
 import com.johang.audiocinemateca.data.local.entities.CatalogDataEntity
+import com.johang.audiocinemateca.data.local.entities.CatalogItemEntity
+import com.johang.audiocinemateca.data.local.entities.CatalogItemFtsEntity
 import com.johang.audiocinemateca.data.local.entities.CatalogVersionEntity
 import com.johang.audiocinemateca.data.local.entities.DownloadEntity
 import com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity
@@ -21,8 +23,18 @@ import com.johang.audiocinemateca.data.local.dao.NotificationDao
 import com.johang.audiocinemateca.data.local.entities.NotificationEntity
 
 @Database(
-    entities = [CatalogVersionEntity::class, CatalogDataEntity::class, PlaybackProgressEntity::class, SearchHistoryEntity::class, DownloadEntity::class, FavoriteEntity::class, NotificationEntity::class],
-    version = 15,
+    entities = [
+        CatalogVersionEntity::class,
+        CatalogDataEntity::class,
+        CatalogItemEntity::class,
+        CatalogItemFtsEntity::class,
+        PlaybackProgressEntity::class,
+        SearchHistoryEntity::class,
+        DownloadEntity::class,
+        FavoriteEntity::class,
+        NotificationEntity::class
+    ],
+    version = 16,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 4, to = 5, spec = Migration4To5::class)

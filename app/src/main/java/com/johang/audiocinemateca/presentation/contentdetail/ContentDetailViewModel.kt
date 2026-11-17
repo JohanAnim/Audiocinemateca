@@ -286,7 +286,6 @@ class ContentDetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val cleanId = itemId.trim()
-                val catalog = catalogRepository.getCatalog()
                 val pluralItemType = when (itemType.lowercase().trim()) {
                     "movie", "movies", "pelicula", "peliculas" -> "peliculas"
                     "serie", "series" -> "series"
@@ -294,18 +293,8 @@ class ContentDetailViewModel @Inject constructor(
                     "shortfilm", "shortfilms", "short", "cortometraje", "cortometrajes" -> "cortometrajes"
                     else -> itemType.trim()
                 }
-                var item: CatalogItem? = when (pluralItemType) {
-                    "peliculas" -> catalog?.movies?.find { it.id.equals(cleanId, ignoreCase = true) }
-                    "series" -> catalog?.series?.find { it.id.equals(cleanId, ignoreCase = true) }
-                    "cortometrajes" -> catalog?.shortFilms?.find { it.id.equals(cleanId, ignoreCase = true) }
-                    "documentales" -> catalog?.documentaries?.find { it.id.equals(cleanId, ignoreCase = true) }
-                    else -> null
-                } ?: catalog?.let { cat ->
-                    cat.movies?.find { it.id.equals(cleanId, ignoreCase = true) }
-                        ?: cat.series?.find { it.id.equals(cleanId, ignoreCase = true) }
-                        ?: cat.documentaries?.find { it.id.equals(cleanId, ignoreCase = true) }
-                        ?: cat.shortFilms?.find { it.id.equals(cleanId, ignoreCase = true) }
-                }
+                var item: CatalogItem? = catalogRepository.findItemByIdAndCategory(cleanId, pluralItemType)
+                    ?: catalogRepository.findItemById(cleanId, isSeriesHint = pluralItemType == "series")
 
                 if (item == null) {
                     val downloadedEntities = downloadRepository.getDownloadsForContent(cleanId).firstOrNull()
@@ -313,13 +302,9 @@ class ContentDetailViewModel @Inject constructor(
                         val first = downloadedEntities.first()
                         val seriesCleanTitle = first.title.substringBefore(" - ").substringBefore(":E").ifBlank { first.title }
 
-                        // Si el catálogo está disponible pero el ID en descargas difería ligeramente, buscar por título
-                        val itemFromCatalogByTitle = catalog?.let { cat ->
-                            cat.movies?.find { it.title.equals(first.title, ignoreCase = true) }
-                                ?: cat.series?.find { it.title.equals(seriesCleanTitle, ignoreCase = true) }
-                                ?: cat.documentaries?.find { it.title.equals(first.title, ignoreCase = true) }
-                                ?: cat.shortFilms?.find { it.title.equals(first.title, ignoreCase = true) }
-                        }
+                        // Si el catálogo está disponible pero el ID en descargas difería ligeramente, buscar por título en SQLite
+                        val itemFromCatalogByTitle = catalogRepository.findItemByTitle(first.title)
+                            ?: catalogRepository.findItemByTitle(seriesCleanTitle)
 
                         item = itemFromCatalogByTitle ?: when (first.contentType.lowercase().trim()) {
                             "movie", "pelicula", "peliculas" -> Movie(id = first.contentId, title = first.title, enlaces = listOf(first.filePath ?: ""))

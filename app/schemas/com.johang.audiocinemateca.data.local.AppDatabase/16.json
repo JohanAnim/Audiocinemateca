@@ -1,0 +1,542 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 16,
+    "identityHash": "bde649128c3d053ae82953e833e31074",
+    "entities": [
+      {
+        "tableName": "catalog_version",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `versionDate` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "versionDate",
+            "columnName": "versionDate",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "catalog_data",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `data` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "data",
+            "columnName": "data",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "catalog_items",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `category` TEXT NOT NULL, `title` TEXT NOT NULL, `titleNorm` TEXT NOT NULL, `anio` TEXT NOT NULL, `genero` TEXT NOT NULL, `pais` TEXT NOT NULL, `director` TEXT NOT NULL, `guion` TEXT NOT NULL, `musica` TEXT NOT NULL, `fotografia` TEXT NOT NULL, `reparto` TEXT NOT NULL, `productora` TEXT NOT NULL, `narracion` TEXT NOT NULL, `duracion` TEXT NOT NULL, `idioma` TEXT NOT NULL, `partes` TEXT NOT NULL, `filmaffinity` TEXT NOT NULL, `sinopsis` TEXT NOT NULL, `mediaJson` TEXT NOT NULL, `searchTextNorm` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, PRIMARY KEY(`category`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "titleNorm",
+            "columnName": "titleNorm",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "anio",
+            "columnName": "anio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "genero",
+            "columnName": "genero",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pais",
+            "columnName": "pais",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "director",
+            "columnName": "director",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "guion",
+            "columnName": "guion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "musica",
+            "columnName": "musica",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fotografia",
+            "columnName": "fotografia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reparto",
+            "columnName": "reparto",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productora",
+            "columnName": "productora",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "narracion",
+            "columnName": "narracion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "duracion",
+            "columnName": "duracion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idioma",
+            "columnName": "idioma",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partes",
+            "columnName": "partes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "filmaffinity",
+            "columnName": "filmaffinity",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sinopsis",
+            "columnName": "sinopsis",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaJson",
+            "columnName": "mediaJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "searchTextNorm",
+            "columnName": "searchTextNorm",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "category",
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_catalog_items_category",
+            "unique": false,
+            "columnNames": [
+              "category"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_catalog_items_category` ON `${TABLE_NAME}` (`category`)"
+          },
+          {
+            "name": "index_catalog_items_id",
+            "unique": false,
+            "columnNames": [
+              "id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_catalog_items_id` ON `${TABLE_NAME}` (`id`)"
+          },
+          {
+            "name": "index_catalog_items_category_titleNorm",
+            "unique": false,
+            "columnNames": [
+              "category",
+              "titleNorm"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_catalog_items_category_titleNorm` ON `${TABLE_NAME}` (`category`, `titleNorm`)"
+          },
+          {
+            "name": "index_catalog_items_category_sortOrder",
+            "unique": false,
+            "columnNames": [
+              "category",
+              "sortOrder"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_catalog_items_category_sortOrder` ON `${TABLE_NAME}` (`category`, `sortOrder`)"
+          }
+        ]
+      },
+      {
+        "tableName": "catalog_items_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`titleNorm` TEXT NOT NULL, `searchTextNorm` TEXT NOT NULL, content=`catalog_items`)",
+        "fields": [
+          {
+            "fieldPath": "titleNorm",
+            "columnName": "titleNorm",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "searchTextNorm",
+            "columnName": "searchTextNorm",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": []
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "simple",
+          "tokenizerArgs": [],
+          "contentTable": "catalog_items",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_catalog_items_fts_BEFORE_UPDATE BEFORE UPDATE ON `catalog_items` BEGIN DELETE FROM `catalog_items_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_catalog_items_fts_BEFORE_DELETE BEFORE DELETE ON `catalog_items` BEGIN DELETE FROM `catalog_items_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_catalog_items_fts_AFTER_UPDATE AFTER UPDATE ON `catalog_items` BEGIN INSERT INTO `catalog_items_fts`(`docid`, `titleNorm`, `searchTextNorm`) VALUES (NEW.`rowid`, NEW.`titleNorm`, NEW.`searchTextNorm`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_catalog_items_fts_AFTER_INSERT AFTER INSERT ON `catalog_items` BEGIN INSERT INTO `catalog_items_fts`(`docid`, `titleNorm`, `searchTextNorm`) VALUES (NEW.`rowid`, NEW.`titleNorm`, NEW.`searchTextNorm`); END"
+        ]
+      },
+      {
+        "tableName": "playback_progress",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`contentId` TEXT NOT NULL, `contentType` TEXT NOT NULL, `currentPositionMs` INTEGER NOT NULL, `totalDurationMs` INTEGER NOT NULL, `partIndex` INTEGER NOT NULL, `episodeIndex` INTEGER NOT NULL, `lastPlayedTimestamp` INTEGER NOT NULL, `isFinished` INTEGER NOT NULL, PRIMARY KEY(`contentId`, `partIndex`, `episodeIndex`))",
+        "fields": [
+          {
+            "fieldPath": "contentId",
+            "columnName": "contentId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentType",
+            "columnName": "contentType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currentPositionMs",
+            "columnName": "currentPositionMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalDurationMs",
+            "columnName": "totalDurationMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partIndex",
+            "columnName": "partIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "episodeIndex",
+            "columnName": "episodeIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastPlayedTimestamp",
+            "columnName": "lastPlayedTimestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isFinished",
+            "columnName": "isFinished",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "contentId",
+            "partIndex",
+            "episodeIndex"
+          ]
+        }
+      },
+      {
+        "tableName": "search_history",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`query` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`query`))",
+        "fields": [
+          {
+            "fieldPath": "query",
+            "columnName": "query",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "query"
+          ]
+        }
+      },
+      {
+        "tableName": "downloads",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`contentId` TEXT NOT NULL, `contentType` TEXT NOT NULL, `title` TEXT NOT NULL, `partIndex` INTEGER NOT NULL, `episodeIndex` INTEGER NOT NULL, `downloadStatus` TEXT NOT NULL, `filePath` TEXT, `downloadedAt` INTEGER NOT NULL, `totalSizeMb` REAL NOT NULL, `durationMs` INTEGER NOT NULL, `errorMessage` TEXT, PRIMARY KEY(`contentId`, `partIndex`, `episodeIndex`))",
+        "fields": [
+          {
+            "fieldPath": "contentId",
+            "columnName": "contentId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentType",
+            "columnName": "contentType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partIndex",
+            "columnName": "partIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "episodeIndex",
+            "columnName": "episodeIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "downloadStatus",
+            "columnName": "downloadStatus",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "filePath",
+            "columnName": "filePath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "downloadedAt",
+            "columnName": "downloadedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalSizeMb",
+            "columnName": "totalSizeMb",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "durationMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "errorMessage",
+            "columnName": "errorMessage",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "contentId",
+            "partIndex",
+            "episodeIndex"
+          ]
+        }
+      },
+      {
+        "tableName": "favorites",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`contentId` TEXT NOT NULL, `title` TEXT NOT NULL, `contentType` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, PRIMARY KEY(`contentId`))",
+        "fields": [
+          {
+            "fieldPath": "contentId",
+            "columnName": "contentId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentType",
+            "columnName": "contentType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "addedAt",
+            "columnName": "addedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "contentId"
+          ]
+        }
+      },
+      {
+        "tableName": "notifications",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `remoteId` TEXT, `title` TEXT NOT NULL, `body` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `isRead` INTEGER NOT NULL, `linkUrl` TEXT, `destination` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteId",
+            "columnName": "remoteId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "body",
+            "columnName": "body",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isRead",
+            "columnName": "isRead",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "linkUrl",
+            "columnName": "linkUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "destination",
+            "columnName": "destination",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bde649128c3d053ae82953e833e31074')"
+    ]
+  }
+}
