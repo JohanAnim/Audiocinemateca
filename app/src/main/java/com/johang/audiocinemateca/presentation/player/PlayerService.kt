@@ -34,14 +34,20 @@ import androidx.media3.session.MediaStyleNotificationHelper
 import com.johang.audiocinemateca.MainActivity
 import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.util.AudioProxyUtil
+import com.johang.audiocinemateca.util.AuraVoicePlayer
+import com.johang.audiocinemateca.util.TtsManager
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.data.local.entities.PlaybackProgressEntity
 import com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -62,6 +68,15 @@ class PlayerService : MediaSessionService() {
     @Inject
     @Named("AudiocinematecaClient")
     lateinit var okHttpClient: OkHttpClient
+
+    @Inject
+    lateinit var auraVoicePlayer: AuraVoicePlayer
+
+    @Inject
+    lateinit var ttsManager: TtsManager
+
+    private var sidechainFadeJob: Job? = null
+    private var currentSidechainVolume: Float = 1.0f
 
     private var mediaSession: MediaSession? = null
     private var castPlayer: CastPlayer? = null
@@ -543,6 +558,7 @@ class PlayerService : MediaSessionService() {
             .setMediaSourceFactory(mediaSourceFactory)
             .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ false)
             .build()
+        localExoPlayer.volume = currentSidechainVolume
         exoPlayer = localExoPlayer
 
         if (localExoPlayer.audioSessionId > 0) {
@@ -756,6 +772,45 @@ class PlayerService : MediaSessionService() {
             registerReceiver(becomingNoisyReceiver, noisyFilter)
         } catch (e: Exception) {
             Log.e("PlayerService", "Error registrando becomingNoisyReceiver: ${e.message}")
+        }
+        startSidechainVoiceDuckingObserver()
+    }
+
+    private fun startSidechainVoiceDuckingObserver() {
+        serviceScope.launch {
+            combine(
+                auraVoicePlayer.isSpeakingExpressive,
+                ttsManager.isSpeaking
+            ) { isExpressiveSpeaking, isDeviceTtsSpeaking ->
+                isExpressiveSpeaking || isDeviceTtsSpeaking
+            }
+                .distinctUntilChanged()
+                .collect { shouldDuck ->
+                    rampSidechainVolume(shouldDuck)
+                }
+        }
+    }
+
+    private fun rampSidechainVolume(shouldDuck: Boolean) {
+        sidechainFadeJob?.cancel()
+        val targetVolume = if (shouldDuck) 0.20f else 1.0f
+        sidechainFadeJob = serviceScope.launch {
+            if (!shouldDuck) {
+                // Pequeña cola antes de subir el volumen para evitar cortes abruptos al terminar la frase
+                delay(120L)
+            }
+            val startVolume = currentSidechainVolume
+            val steps = if (shouldDuck) 9 else 18
+            val stepDelayMs = 20L
+            for (step in 1..steps) {
+                val fraction = step.toFloat() / steps.toFloat()
+                val nextVol = (startVolume + (targetVolume - startVolume) * fraction).coerceIn(0f, 1f)
+                currentSidechainVolume = nextVol
+                runCatching { exoPlayer?.volume = nextVol }
+                delay(stepDelayMs)
+            }
+            currentSidechainVolume = targetVolume
+            runCatching { exoPlayer?.volume = targetVolume }
         }
     }
 

@@ -8,6 +8,9 @@ import android.speech.tts.Voice
 import android.util.Log
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 import java.util.Locale
@@ -20,10 +23,20 @@ class TtsManager @Inject constructor(
     private var tts: TextToSpeech? = null
     private var isInitialized = false
     private val prefs: SharedPreferences = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+
+    @Volatile
+    private var activeUtteranceId: String? = null
+
+    private val _isSpeaking = MutableStateFlow(false)
+    val isSpeaking: StateFlow<Boolean> = _isSpeaking.asStateFlow()
     
-    // Listeners para la UI
+    // Listeners para la UI y coordinación con voces externas
     var onInitializedListener: (() -> Unit)? = null
+    var onSpeechStarted: ((String?) -> Unit)? = null
     var onSpeechFinished: ((String?) -> Unit)? = null
+    var onSpeechError: ((String?) -> Unit)? = null
+    @Volatile
+    var onExternalStopRequested: (() -> Unit)? = null
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == null) return@OnSharedPreferenceChangeListener
@@ -47,6 +60,8 @@ class TtsManager @Inject constructor(
 
     private fun recreateTts() {
         val engine = getSelectedEngine()
+        activeUtteranceId = null
+        _isSpeaking.value = false
         if (tts != null) {
             try {
                 tts?.stop()
@@ -76,18 +91,42 @@ class TtsManager @Inject constructor(
         tts?.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {
                 Log.d("TtsManager", "Speech started: $utteranceId")
+                activeUtteranceId = utteranceId
+                _isSpeaking.value = true
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    onSpeechStarted?.invoke(utteranceId)
+                }
             }
 
             override fun onDone(utteranceId: String?) {
                 Log.d("TtsManager", "Speech finished: $utteranceId")
+                if (utteranceId == null || utteranceId == activeUtteranceId) {
+                    activeUtteranceId = null
+                    _isSpeaking.value = false
+                }
                 // Usamos post para que se ejecute en el hilo principal por seguridad
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     onSpeechFinished?.invoke(utteranceId)
                 }
             }
 
+            override fun onStop(utteranceId: String?, interrupted: Boolean) {
+                if (utteranceId == null || utteranceId == activeUtteranceId) {
+                    activeUtteranceId = null
+                    _isSpeaking.value = false
+                }
+            }
+
+            @Deprecated("Deprecated in Java")
             override fun onError(utteranceId: String?) {
                 Log.e("TtsManager", "Speech error: $utteranceId")
+                if (utteranceId == null || utteranceId == activeUtteranceId) {
+                    activeUtteranceId = null
+                    _isSpeaking.value = false
+                }
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    onSpeechError?.invoke(utteranceId)
+                }
             }
         })
     }
@@ -157,6 +196,7 @@ class TtsManager @Inject constructor(
         }
         
         if (interrupt) {
+            onExternalStopRequested?.invoke()
             try {
                 tts?.stop()
             } catch (e: Exception) {
@@ -171,10 +211,16 @@ class TtsManager @Inject constructor(
         params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, android.media.AudioManager.STREAM_MUSIC)
         
         val finalUtteranceId = utteranceId ?: "TTS_REQUEST_${System.currentTimeMillis()}"
+        activeUtteranceId = finalUtteranceId
         tts?.speak(cleanText, queueMode, params, finalUtteranceId)
     }
 
-    fun stop() {
+    fun stop(notifyExternal: Boolean = true) {
+        if (notifyExternal) {
+            onExternalStopRequested?.invoke()
+        }
+        activeUtteranceId = null
+        _isSpeaking.value = false
         if (isInitialized) {
             tts?.stop()
         }
@@ -195,6 +241,8 @@ class TtsManager @Inject constructor(
 
     fun shutdown() {
         prefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
+        activeUtteranceId = null
+        _isSpeaking.value = false
         if (tts != null) {
             tts?.stop()
             tts?.shutdown()

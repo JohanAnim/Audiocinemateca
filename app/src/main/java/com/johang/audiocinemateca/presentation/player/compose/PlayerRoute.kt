@@ -70,6 +70,7 @@ fun PlayerRoute(
     onBackClick: () -> Unit,
     onNavigateToDetail: (String, String) -> Unit,
     onNavigateToPlaybackSettings: () -> Unit,
+    onNavigateToHelp: () -> Unit = {},
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -94,6 +95,9 @@ fun PlayerRoute(
     var forwardSec by remember {
         mutableIntStateOf(sharedPreferencesManager.getString("forward_interval", "15")?.toIntOrNull() ?: 15)
     }
+    var playerLayoutMode by remember {
+        mutableStateOf(sharedPreferencesManager.getString("player_fullscreen_layout", "default") ?: "default")
+    }
     var timerText by remember { mutableStateOf<String?>(null) }
     var hasPrev by remember { mutableStateOf(false) }
     var hasNext by remember { mutableStateOf(false) }
@@ -112,6 +116,7 @@ fun PlayerRoute(
     fun reloadIntervalSettings() {
         rewindSec = sharedPreferencesManager.getString("rewind_interval", "5")?.toIntOrNull() ?: 5
         forwardSec = sharedPreferencesManager.getString("forward_interval", "15")?.toIntOrNull() ?: 15
+        playerLayoutMode = sharedPreferencesManager.getString("player_fullscreen_layout", "default") ?: "default"
     }
 
     fun cancelSleepTimer(updatePreference: Boolean) {
@@ -177,8 +182,10 @@ fun PlayerRoute(
         }
 
         val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (key == "rewind_interval" || key == "forward_interval") {
+            if (key == "rewind_interval" || key == "forward_interval" || key == "player_fullscreen_layout") {
                 reloadIntervalSettings()
+            } else if (key == "ai_content_rating_enabled") {
+                viewModel.refreshContentRatingSetting()
             }
         }
         sharedPreferencesManager.getPrefs().registerOnSharedPreferenceChangeListener(prefListener)
@@ -353,8 +360,15 @@ fun PlayerRoute(
         }
     }
 
+    val contentRating by viewModel.contentRating.collectAsState()
+    val baseSubtitleText by viewModel.primarySubtitle.collectAsState()
     val titleText = currentContentItem?.title ?: "Reproduciendo"
-    val subtitleText = viewModel.getDetailedTitle()
+    val subtitleText = remember(baseSubtitleText, contentRating) {
+        listOfNotNull(
+            baseSubtitleText.takeIf { it.isNotBlank() },
+            contentRating?.takeIf { it.isNotBlank() }
+        ).joinToString(" • ")
+    }
 
     val doPlayPause: () -> Unit = {
         val controller = mediaController
@@ -484,7 +498,7 @@ fun PlayerRoute(
 
     PlayerScreen(
         title = titleText,
-        subtitle = if (subtitleText != titleText) subtitleText else "",
+        subtitle = subtitleText,
         isPlaying = isPlaying,
         currentPositionMs = currentPos,
         totalDurationMs = totalDur,
@@ -495,6 +509,7 @@ fun PlayerRoute(
         isAutoPlayEnabled = isAutoPlayEnabled,
         hasPrevious = hasPrev,
         hasNext = hasNext,
+        fullscreenLayoutMode = playerLayoutMode,
         viewModel = viewModel,
         onBackClick = onBackClick,
         onPlayPauseClick = doPlayPause,
@@ -535,6 +550,12 @@ fun PlayerRoute(
             }
         },
         onNavigateToPlaybackSettings = onNavigateToPlaybackSettings,
+        onNavigateToHelp = onNavigateToHelp,
+        onToggleFullscreenLayout = {
+            val nextMode = if (playerLayoutMode == "youtube_top") "default" else "youtube_top"
+            sharedPreferencesManager.saveString("player_fullscreen_layout", nextMode)
+            playerLayoutMode = nextMode
+        },
         onAnnounceStatus = { text ->
             ttsManager.speak(text, interrupt = true)
         }

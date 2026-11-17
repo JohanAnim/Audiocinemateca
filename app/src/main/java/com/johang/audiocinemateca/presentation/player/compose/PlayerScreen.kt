@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -72,6 +73,7 @@ fun PlayerScreen(
     isAutoPlayEnabled: Boolean,
     hasPrevious: Boolean,
     hasNext: Boolean,
+    fullscreenLayoutMode: String = "default",
     viewModel: PlayerViewModel,
     onBackClick: () -> Unit,
     onPlayPauseClick: () -> Unit,
@@ -91,6 +93,8 @@ fun PlayerScreen(
     onShareClick: () -> Unit,
     onTitleClick: () -> Unit,
     onNavigateToPlaybackSettings: () -> Unit,
+    onNavigateToHelp: () -> Unit = {},
+    onToggleFullscreenLayout: () -> Unit = {},
     onAnnounceStatus: (String) -> Unit = {}
 ) {
     val voteStats by viewModel.voteStats.collectAsState()
@@ -105,6 +109,7 @@ fun PlayerScreen(
     var showRewindIntervalDialog by remember { mutableStateOf(false) }
     var showForwardIntervalDialog by remember { mutableStateOf(false) }
     var showSleepTimerDialog by remember { mutableStateOf(false) }
+    var showHelpDialog by remember { mutableStateOf(false) }
 
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPositionMs by remember { mutableLongStateOf(0L) }
@@ -119,139 +124,191 @@ fun PlayerScreen(
             isTraversalGroup = true
         },
         topBar = {
-            TopAppBar(
-                modifier = Modifier.semantics {
-                    isTraversalGroup = true
-                    traversalIndex = 1f
-                },
-                title = {
-                    Column(
+            Surface(
+                color = Color(0xFF0F172A),
+                contentColor = Color.White,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        isTraversalGroup = true
+                        traversalIndex = 1f
+                    }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                ) {
+                    Row(
                         modifier = Modifier
-                            .clickable(onClick = onTitleClick)
-                            .clearAndSetSemantics {
-                                contentDescription = "$title. $subtitle"
-                                role = Role.Button
-                                onClick(label = "Ver ficha del contenido") {
-                                    onTitleClick()
-                                    true
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        IconButton(
+                            onClick = onBackClick,
+                            modifier = Modifier.audiocinematecaAccessibility(
+                                label = "Cerrar reproductor",
+                                role = Role.Button,
+                                onClickAction = onBackClick
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Widget Nativo de Transmitir (Chromecast)
+                            AndroidView(
+                                factory = { ctx ->
+                                    MediaRouteButton(ctx).apply {
+                                        try {
+                                            CastButtonFactory.setUpMediaRouteButton(ctx, this)
+                                        } catch (_: Exception) {}
+                                    }
+                                },
+                                modifier = Modifier
+                                    .padding(horizontal = 4.dp)
+                                    .audiocinematecaAccessibility(
+                                        label = "Transmitir audio por Chromecast o dispositivo inteligente",
+                                        role = Role.Button
+                                    )
+                            )
+
+                            // Menú de Más opciones
+                            Box {
+                                IconButton(
+                                    onClick = { showPlayerMenu = true },
+                                    modifier = Modifier.clearAndSetSemantics {
+                                        contentDescription = "Más opciones"
+                                        role = Role.Button
+                                        onClick(label = "Más opciones") {
+                                            showPlayerMenu = true
+                                            true
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = null,
+                                        tint = Color.White
+                                    )
+                                }
+
+                                DropdownMenu(
+                                    expanded = showPlayerMenu,
+                                    onDismissRequest = { showPlayerMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                if (fullscreenLayoutMode == "youtube_top") {
+                                                    "Diseño: Estilo YouTube"
+                                                } else {
+                                                    "Diseño: Predeterminado"
+                                                }
+                                            )
+                                        },
+                                        leadingIcon = { Icon(Icons.Default.SwapVert, contentDescription = null) },
+                                        onClick = {
+                                            showPlayerMenu = false
+                                            onToggleFullscreenLayout()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Retroceso: ${formatIntervalSpoken(rewindIntervalSec)}") },
+                                        leadingIcon = { Icon(rewindIconForInterval(rewindIntervalSec), contentDescription = null) },
+                                        onClick = {
+                                            showPlayerMenu = false
+                                            showRewindIntervalDialog = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Avance: ${formatIntervalSpoken(forwardIntervalSec)}") },
+                                        leadingIcon = { Icon(forwardIconForInterval(forwardIntervalSec), contentDescription = null) },
+                                        onClick = {
+                                            showPlayerMenu = false
+                                            showForwardIntervalDialog = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Ver ficha de la obra") },
+                                        leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
+                                        onClick = {
+                                            showPlayerMenu = false
+                                            onTitleClick()
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Ayuda del reproductor") },
+                                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Help, contentDescription = null) },
+                                        onClick = {
+                                            showPlayerMenu = false
+                                            showHelpDialog = true
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Ajustes de reproducción") },
+                                        leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                                        onClick = {
+                                            showPlayerMenu = false
+                                            onNavigateToPlaybackSettings()
+                                        }
+                                    )
                                 }
                             }
+                        }
+                    }
+
+                    // Título y Subtítulo centrados a ancho completo sin cortes ni Role.Button
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                            .padding(bottom = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
                             text = title,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            fontSize = 19.sp,
+                            lineHeight = 24.sp,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = onTitleClick)
+                                .clearAndSetSemantics {
+                                    contentDescription = title
+                                    onClick(label = "Ver ficha del contenido") {
+                                        onTitleClick()
+                                        true
+                                    }
+                                }
                         )
                         if (subtitle.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = subtitle,
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF38BDF8),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clearAndSetSemantics {
+                                        contentDescription = subtitle
+                                    }
                             )
                         }
                     }
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onBackClick,
-                        modifier = Modifier.audiocinematecaAccessibility(
-                            label = "Cerrar reproductor",
-                            role = Role.Button,
-                            onClickAction = onBackClick
-                        )
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                    }
-                },
-                actions = {
-                    // Widget Nativo de Transmitir (Chromecast)
-                    AndroidView(
-                        factory = { ctx ->
-                            MediaRouteButton(ctx).apply {
-                                try {
-                                    CastButtonFactory.setUpMediaRouteButton(ctx, this)
-                                } catch (_: Exception) {}
-                            }
-                        },
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .audiocinematecaAccessibility(
-                                label = "Transmitir audio por Chromecast o dispositivo inteligente",
-                                role = Role.Button
-                            )
-                    )
-
-                    // Menú de Más Opciones
-                    Box {
-                        IconButton(
-                            onClick = { showPlayerMenu = true },
-                            modifier = Modifier.audiocinematecaAccessibility(
-                                label = "Más opciones de reproducción",
-                                role = Role.Button,
-                                onClickAction = { showPlayerMenu = true }
-                            )
-                        ) {
-                            Icon(Icons.Default.MoreVert, contentDescription = null)
-                        }
-
-                        DropdownMenu(
-                            expanded = showPlayerMenu,
-                            onDismissRequest = { showPlayerMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Velocidad: ${playbackSpeed}x") },
-                                leadingIcon = { Icon(Icons.Default.Speed, contentDescription = null) },
-                                onClick = {
-                                    showPlayerMenu = false
-                                    showSpeedDialog = true
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(sleepTimerText ?: "Temporizador de apagado") },
-                                leadingIcon = { Icon(if (!sleepTimerText.isNullOrBlank()) Icons.Default.Timer else Icons.Default.Bedtime, contentDescription = null) },
-                                onClick = {
-                                    showPlayerMenu = false
-                                    showSleepTimerDialog = true
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Ecualizador de audio") },
-                                leadingIcon = { Icon(Icons.Default.Equalizer, contentDescription = null) },
-                                onClick = {
-                                    showPlayerMenu = false
-                                    onEqualizerClick()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Autoreproducción: ${if (isAutoPlayEnabled) "Activada" else "Desactivada"}") },
-                                leadingIcon = { Icon(Icons.Default.Autorenew, contentDescription = null) },
-                                onClick = {
-                                    showPlayerMenu = false
-                                    onAutoPlayToggle()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Ajustes de reproducción") },
-                                leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                                onClick = {
-                                    showPlayerMenu = false
-                                    onNavigateToPlaybackSettings()
-                                }
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0F172A),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                )
-            )
+                }
+            }
         }
     ) { paddingValues ->
         val context = LocalContext.current
@@ -272,11 +329,11 @@ fun PlayerScreen(
                     onAnnounceStatus(currentStatusSpeech)
                     true
                 },
-                CustomAccessibilityAction("Adelantar $forwardIntervalSec segundos") {
+                CustomAccessibilityAction("Adelantar ${formatIntervalSpoken(forwardIntervalSec)}") {
                     onForwardClick()
                     true
                 },
-                CustomAccessibilityAction("Retroceder $rewindIntervalSec segundos") {
+                CustomAccessibilityAction("Retroceder ${formatIntervalSpoken(rewindIntervalSec)}") {
                     onRewindClick()
                     true
                 }
@@ -349,532 +406,143 @@ fun PlayerScreen(
                     customActions = gestureCustomActions
                 }
         ) {
+            val isYoutubeTopLayout = fullscreenLayoutMode == "youtube_top"
+            val activeContentItem by viewModel.contentItem.collectAsState()
+            val synopsisToDisplay = remember(activeContentItem, chapterSynopsisState) {
+                when (chapterSynopsisState) {
+                    is ChapterSynopsisState.Success -> (chapterSynopsisState as ChapterSynopsisState.Success).synopsis
+                    else -> activeContentItem?.sinopsis ?: ""
+                }
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Contenido Central Desplazable (Obra, Sinopsis, Comentarios)
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .semantics {
-                            isTraversalGroup = true
-                            traversalIndex = 2f
-                        },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Tarjeta de la Obra Activa
-                    Card(
+                if (isYoutubeTopLayout) {
+                    // Diseño alternativo (estilo YouTube): Controles arriba y paneles sociales/info abajo
+                    Surface(
                         shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                        color = Color(0xFF162032),
+                        border = BorderStroke(1.dp, Color(0xFF334155)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(18.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.size(64.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.GraphicEq,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                }
-                            }
-
-                            if (subtitle.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(
-                                    text = subtitle,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF38BDF8),
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-
-                            // Votos y Botones de Interacción
-                            if (viewModel.isUserLoggedIn) {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // Like Toggle
-                                    val isLiked = voteStats.userVote == 1
-                                    val likeLabel = remember(voteStats.likeCount, isLiked) {
-                                        "Me gusta, ${voteStats.likeCount} votos${if (isLiked) ", seleccionado" else ""}"
-                                    }
-
-                                    OutlinedButton(
-                                        onClick = { viewModel.onLikeClicked() },
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            containerColor = if (isLiked) Color(0xFF22C55E).copy(alpha = 0.25f) else Color.Transparent,
-                                            contentColor = if (isLiked) Color(0xFF22C55E) else Color.White
-                                        ),
-                                        border = BorderStroke(1.dp, if (isLiked) Color(0xFF22C55E) else Color.White.copy(alpha = 0.4f)),
-                                        modifier = Modifier.clearAndSetSemantics {
-                                            contentDescription = likeLabel
-                                            role = Role.Checkbox
-                                            selected = isLiked
-                                            onClick(label = if (isLiked) "Quitar Me gusta" else "Dar Me gusta") {
-                                                viewModel.onLikeClicked()
-                                                true
-                                            }
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isLiked) Icons.Default.ThumbUp else Icons.Default.ThumbUpOffAlt,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("${voteStats.likeCount}", fontWeight = if (isLiked) FontWeight.Bold else FontWeight.Normal)
-                                    }
-
-                                    // Dislike Toggle
-                                    val isDisliked = voteStats.userVote == -1
-                                    val dislikeLabel = remember(voteStats.dislikeCount, isDisliked) {
-                                        "No me gusta, ${voteStats.dislikeCount} votos${if (isDisliked) ", seleccionado" else ""}"
-                                    }
-
-                                    OutlinedButton(
-                                        onClick = { viewModel.onDislikeClicked() },
-                                        colors = ButtonDefaults.outlinedButtonColors(
-                                            containerColor = if (isDisliked) Color(0xFFEF4444).copy(alpha = 0.25f) else Color.Transparent,
-                                            contentColor = if (isDisliked) Color(0xFFEF4444) else Color.White
-                                        ),
-                                        border = BorderStroke(1.dp, if (isDisliked) Color(0xFFEF4444) else Color.White.copy(alpha = 0.4f)),
-                                        modifier = Modifier.clearAndSetSemantics {
-                                            contentDescription = dislikeLabel
-                                            role = Role.Checkbox
-                                            selected = isDisliked
-                                            onClick(label = if (isDisliked) "Quitar No me gusta" else "Dar No me gusta") {
-                                                viewModel.onDislikeClicked()
-                                                true
-                                            }
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isDisliked) Icons.Default.ThumbDown else Icons.Default.ThumbDownOffAlt,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("${voteStats.dislikeCount}", fontWeight = if (isDisliked) FontWeight.Bold else FontWeight.Normal)
-                                    }
-
-                                    // Compartir
-                                    OutlinedButton(
-                                        onClick = onShareClick,
-                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                                        modifier = Modifier.clearAndSetSemantics {
-                                            contentDescription = "Compartir esta obra"
-                                            role = Role.Button
-                                            onClick(label = "Compartir obra") {
-                                                onShareClick()
-                                                true
-                                            }
-                                        }
-                                    ) {
-                                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                // Sinopsis Inteligente (Muestra la sinopsis disponible o la genera con IA)
-                val activeContentItem by viewModel.contentItem.collectAsState()
-                val synopsisToDisplay = remember(activeContentItem, chapterSynopsisState) {
-                    when (chapterSynopsisState) {
-                        is ChapterSynopsisState.Success -> (chapterSynopsisState as ChapterSynopsisState.Success).synopsis
-                        else -> activeContentItem?.sinopsis ?: ""
-                    }
-                }
-
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { viewModel.toggleSynopsis() }
-                                .clearAndSetSemantics {
-                                    contentDescription = "Sinopsis"
-                                    stateDescription = if (isSynopsisExpanded) "Expandido" else "Contraído"
-                                    role = Role.Button
-                                    onClick(label = if (isSynopsisExpanded) "Contraer sinopsis" else "Desplegar sinopsis") {
-                                        viewModel.toggleSynopsis()
-                                        true
-                                    }
+                        Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
+                            PlayerMediaControlsPanel(
+                                isPlaying = isPlaying,
+                                activePositionMs = activePositionMs,
+                                totalDurationMs = totalDurationMs,
+                                progressFraction = progressFraction,
+                                playbackSpeed = playbackSpeed,
+                                sleepTimerText = sleepTimerText,
+                                isAutoPlayEnabled = isAutoPlayEnabled,
+                                rewindIntervalSec = rewindIntervalSec,
+                                forwardIntervalSec = forwardIntervalSec,
+                                hasPrevious = hasPrevious,
+                                hasNext = hasNext,
+                                onPlayPauseClick = onPlayPauseClick,
+                                onRewindClick = onRewindClick,
+                                onForwardClick = onForwardClick,
+                                onPreviousClick = onPreviousClick,
+                                onNextClick = onNextClick,
+                                onSeekTo = { pos ->
+                                    isScrubbing = false
+                                    scrubPositionMs = pos
+                                    onSeekTo(pos)
                                 },
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Sinopsis", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-                            }
-                            Icon(
-                                imageVector = if (isSynopsisExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                contentDescription = null,
-                                tint = Color.White
+                                onScrubFraction = { fraction ->
+                                    isScrubbing = true
+                                    scrubPositionMs = (fraction * totalDurationMs).toLong()
+                                },
+                                onScrubFinished = {
+                                    isScrubbing = false
+                                    onSeekTo(scrubPositionMs)
+                                },
+                                onOpenRewindDialog = { showRewindIntervalDialog = true },
+                                onOpenForwardDialog = { showForwardIntervalDialog = true },
+                                onOpenSpeedDialog = { showSpeedDialog = true },
+                                onOpenSleepTimerDialog = { showSleepTimerDialog = true },
+                                onEqualizerClick = onEqualizerClick,
+                                onAutoPlayToggle = onAutoPlayToggle
                             )
                         }
-
-                        if (isSynopsisExpanded) {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            if (chapterSynopsisState is ChapterSynopsisState.Loading) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(8.dp)
-                                ) {
-                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color(0xFF38BDF8))
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Text("Cargando sinopsis con IA...", fontSize = 13.sp, color = Color(0xFF94A3B8))
-                                }
-                            } else {
-                                Text(
-                                    text = synopsisToDisplay.ifBlank { "Sin sinopsis disponible para este contenido." },
-                                    fontSize = 13.sp,
-                                    color = Color(0xFFE2E8F0),
-                                    lineHeight = 20.sp,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
-                            }
-                        }
                     }
-                }
 
-                // Vista Previa de Comentarios de la Comunidad
-                if (viewModel.isUserLoggedIn) {
-                    val previewDesc = remember(commentPreview.first, commentPreview.second) {
-                        val countStr = if (commentPreview.first == 1L) "1 comentario" else "${commentPreview.first} comentarios"
-                        val latestStr = commentPreview.second?.let { ". Último de ${it.userName}: ${it.commentText}" } ?: ""
-                        "Comentarios de la comunidad, $countStr$latestStr"
-                    }
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                    PlayerSocialAndInfoSection(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onOpenCommentsClick(false) }
-                            .clearAndSetSemantics {
-                                testTag = "player_comments_preview_card"
-                                role = Role.Button
-                                contentDescription = previewDesc
-                                onClick(label = "Abrir comentarios") {
-                                    onOpenCommentsClick(false)
-                                    true
-                                }
-                            }
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Comentarios (${commentPreview.first})", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-                                }
-                                Text("Ver todos", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8))
-                            }
-
-                            commentPreview.second?.let { latest ->
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "${latest.userName}: ${latest.commentText}",
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF94A3B8),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // ==========================================
-            // BARRA DE CONTROLES DE REPRODUCCIÓN
-            // ==========================================
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics {
-                        isTraversalGroup = true
-                        traversalIndex = -1f
-                    },
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Slider de Tiempo / Barra de Progreso con modelo de tiempo accesible
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            isTraversalGroup = true
-                            traversalIndex = 1f
-                        }
-                ) {
-                    val timeStateText = remember(activePositionMs, totalDurationMs) {
-                        "${TimeFormatUtils.formatDuration(activePositionMs)} de ${TimeFormatUtils.formatDuration(totalDurationMs)}"
-                    }
-
-                    val haptic = LocalHapticFeedback.current
-
-                    // Bloquea toques/arrastres táctiles directos sobre el Slider para evitar que los gestos
-                    // del reproductor muevan accidentalmente el tiempo de la obra, manteniendo intacto el
-                    // control accesible (`setProgress`) cuando se enfoca con Jieshuo o TalkBack.
-                    Box(
+                            .weight(1f),
+                        isUserLoggedIn = viewModel.isUserLoggedIn,
+                        voteStats = voteStats,
+                        commentPreview = commentPreview,
+                        synopsisToDisplay = synopsisToDisplay,
+                        chapterSynopsisState = chapterSynopsisState,
+                        isSynopsisExpanded = isSynopsisExpanded,
+                        onLikeClicked = { viewModel.onLikeClicked() },
+                        onDislikeClicked = { viewModel.onDislikeClicked() },
+                        onShareClick = onShareClick,
+                        onToggleSynopsis = { viewModel.toggleSynopsis() },
+                        onOpenCommentsClick = { onOpenCommentsClick(false) }
+                    )
+                } else {
+                    // Diseño predeterminado: Paneles sociales y de obra arriba, controles de reproducción abajo
+                    PlayerSocialAndInfoSection(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .pointerInput(Unit) {
-                                awaitPointerEventScope {
-                                    while (true) {
-                                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                                        event.changes.forEach { it.consume() }
-                                    }
-                                }
-                            }
-                    ) {
-                        Slider(
-                            value = progressFraction,
-                            onValueChange = { fraction ->
-                                isScrubbing = true
-                                scrubPositionMs = (fraction * totalDurationMs).toLong()
-                            },
-                            onValueChangeFinished = {
-                                isScrubbing = false
-                                onSeekTo(scrubPositionMs)
-                            },
-                            colors = SliderDefaults.colors(
-                                thumbColor = Color(0xFF38BDF8),
-                                activeTrackColor = Color(0xFF38BDF8),
-                                inactiveTrackColor = Color(0xFF334155)
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .semantics(mergeDescendants = true) {
-                                    contentDescription = "Progreso de reproducción"
-                                    stateDescription = timeStateText
-                                    setProgress { targetValue ->
-                                        val clamped = targetValue.coerceIn(0f, 1f)
-                                        val targetMs = (clamped * totalDurationMs).toLong()
-                                        isScrubbing = false
-                                        scrubPositionMs = targetMs
-                                        onSeekTo(targetMs)
-                                        true
-                                    }
-                                }
-                        )
-                    }
+                            .weight(1f),
+                        isUserLoggedIn = viewModel.isUserLoggedIn,
+                        voteStats = voteStats,
+                        commentPreview = commentPreview,
+                        synopsisToDisplay = synopsisToDisplay,
+                        chapterSynopsisState = chapterSynopsisState,
+                        isSynopsisExpanded = isSynopsisExpanded,
+                        onLikeClicked = { viewModel.onLikeClicked() },
+                        onDislikeClicked = { viewModel.onDislikeClicked() },
+                        onShareClick = onShareClick,
+                        onToggleSynopsis = { viewModel.toggleSynopsis() },
+                        onOpenCommentsClick = { onOpenCommentsClick(false) }
+                    )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = formatDigitalTime(activePositionMs),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF94A3B8)
-                        )
-                        Text(
-                            text = formatDigitalTime(totalDurationMs),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF94A3B8)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Fila Principal de Botones de Control
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            isTraversalGroup = true
-                            traversalIndex = -1f
+                    PlayerMediaControlsPanel(
+                        isPlaying = isPlaying,
+                        activePositionMs = activePositionMs,
+                        totalDurationMs = totalDurationMs,
+                        progressFraction = progressFraction,
+                        playbackSpeed = playbackSpeed,
+                        sleepTimerText = sleepTimerText,
+                        isAutoPlayEnabled = isAutoPlayEnabled,
+                        rewindIntervalSec = rewindIntervalSec,
+                        forwardIntervalSec = forwardIntervalSec,
+                        hasPrevious = hasPrevious,
+                        hasNext = hasNext,
+                        onPlayPauseClick = onPlayPauseClick,
+                        onRewindClick = onRewindClick,
+                        onForwardClick = onForwardClick,
+                        onPreviousClick = onPreviousClick,
+                        onNextClick = onNextClick,
+                        onSeekTo = { pos ->
+                            isScrubbing = false
+                            scrubPositionMs = pos
+                            onSeekTo(pos)
                         },
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Episodio / Capítulo Anterior
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onPreviousClick()
+                        onScrubFraction = { fraction ->
+                            isScrubbing = true
+                            scrubPositionMs = (fraction * totalDurationMs).toLong()
                         },
-                        enabled = hasPrevious,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .audiocinematecaAccessibility(
-                                label = "Anterior",
-                                role = Role.Button,
-                                onClickAction = if (hasPrevious) onPreviousClick else null
-                            )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipPrevious,
-                            contentDescription = null,
-                            tint = if (hasPrevious) Color.White else Color(0xFF475569),
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-
-                    // Retroceder N segundos
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFF1E293B),
-                        modifier = Modifier
-                            .combinedClickable(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onRewindClick()
-                                },
-                                onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    showRewindIntervalDialog = true
-                                }
-                            )
-                            .clearAndSetSemantics {
-                                contentDescription = "Retroceder $rewindIntervalSec segundos"
-                                onClick(label = "Retroceder $rewindIntervalSec segundos") {
-                                    onRewindClick()
-                                    true
-                                }
-                            }
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.size(52.dp)
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Replay, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
-                                Text("${rewindIntervalSec}s", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8))
-                            }
-                        }
-                    }
-
-                    // Botón Principal Play / Pause ("Pausar" / "Reproducir" con efecto de vibración)
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(68.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF0EA5E9))
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onPlayPauseClick()
-                            }
-                            .clearAndSetSemantics {
-                                testTag = "player_play_pause_button"
-                                contentDescription = if (isPlaying) "Pausar" else "Reproducir"
-                                role = Role.Button
-                                traversalIndex = -1f
-                                onClick(label = if (isPlaying) "Pausar" else "Reproducir") {
-                                    onPlayPauseClick()
-                                    true
-                                }
-                            }
-                            .initialAccessibilityFocus(
-                                tag = "player_play_pause_button"
-                            )
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(38.dp)
-                        )
-                    }
-
-                    // Adelantar N segundos
-                    Surface(
-                        shape = CircleShape,
-                        color = Color(0xFF1E293B),
-                        modifier = Modifier
-                            .combinedClickable(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onForwardClick()
-                                },
-                                onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    showForwardIntervalDialog = true
-                                }
-                            )
-                            .clearAndSetSemantics {
-                                contentDescription = "Adelantar $forwardIntervalSec segundos"
-                                onClick(label = "Adelantar $forwardIntervalSec segundos") {
-                                    onForwardClick()
-                                    true
-                                }
-                            }
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.size(52.dp)
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Forward10, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
-                                Text("${forwardIntervalSec}s", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8))
-                            }
-                        }
-                    }
-
-                    // Episodio / Capítulo Siguiente
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onNextClick()
+                        onScrubFinished = {
+                            isScrubbing = false
+                            onSeekTo(scrubPositionMs)
                         },
-                        enabled = hasNext,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .audiocinematecaAccessibility(
-                                label = "Siguiente",
-                                role = Role.Button,
-                                onClickAction = if (hasNext) onNextClick else null
-                            )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SkipNext,
-                            contentDescription = null,
-                            tint = if (hasNext) Color.White else Color(0xFF475569),
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                        onOpenRewindDialog = { showRewindIntervalDialog = true },
+                        onOpenForwardDialog = { showForwardIntervalDialog = true },
+                        onOpenSpeedDialog = { showSpeedDialog = true },
+                        onOpenSleepTimerDialog = { showSleepTimerDialog = true },
+                        onEqualizerClick = onEqualizerClick,
+                        onAutoPlayToggle = onAutoPlayToggle
+                    )
                 }
             }
         }
@@ -915,73 +583,27 @@ fun PlayerScreen(
         )
     }
 
-    // Diálogo de Intervalo de Retroceso
     if (showRewindIntervalDialog) {
-        val intervals = listOf(5, 10, 15, 30, 60)
-        AlertDialog(
-            onDismissRequest = { showRewindIntervalDialog = false },
-            title = { Text("Intervalo de retroceso", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    intervals.forEach { sec ->
-                        val isSelected = rewindIntervalSec == sec
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .selectable(
-                                    selected = isSelected,
-                                    onClick = {
-                                        onRewindIntervalChange(sec)
-                                        showRewindIntervalDialog = false
-                                    },
-                                    role = Role.RadioButton
-                                )
-                                .padding(vertical = 10.dp, horizontal = 8.dp)
-                        ) {
-                            RadioButton(selected = isSelected, onClick = null)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("$sec segundos", fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
-                        }
-                    }
-                }
+        SeekIntervalDialog(
+            title = "Intervalo de retroceso",
+            selectedSec = rewindIntervalSec,
+            onSelect = { sec ->
+                onRewindIntervalChange(sec)
+                showRewindIntervalDialog = false
             },
-            confirmButton = { TextButton(onClick = { showRewindIntervalDialog = false }) { Text("Cancelar") } }
+            onDismiss = { showRewindIntervalDialog = false }
         )
     }
 
-    // Diálogo de Intervalo de Avance
     if (showForwardIntervalDialog) {
-        val intervals = listOf(5, 10, 15, 30, 60)
-        AlertDialog(
-            onDismissRequest = { showForwardIntervalDialog = false },
-            title = { Text("Intervalo de avance", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    intervals.forEach { sec ->
-                        val isSelected = forwardIntervalSec == sec
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .selectable(
-                                    selected = isSelected,
-                                    onClick = {
-                                        onForwardIntervalChange(sec)
-                                        showForwardIntervalDialog = false
-                                    },
-                                    role = Role.RadioButton
-                                )
-                                .padding(vertical = 10.dp, horizontal = 8.dp)
-                        ) {
-                            RadioButton(selected = isSelected, onClick = null)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("$sec segundos", fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
-                        }
-                    }
-                }
+        SeekIntervalDialog(
+            title = "Intervalo de avance",
+            selectedSec = forwardIntervalSec,
+            onSelect = { sec ->
+                onForwardIntervalChange(sec)
+                showForwardIntervalDialog = false
             },
-            confirmButton = { TextButton(onClick = { showForwardIntervalDialog = false }) { Text("Cancelar") } }
+            onDismiss = { showForwardIntervalDialog = false }
         )
     }
 
@@ -1020,7 +642,787 @@ fun PlayerScreen(
             confirmButton = { TextButton(onClick = { showSleepTimerDialog = false }) { Text("Cancelar") } }
         )
     }
+
+    // Diálogo de Ayuda del Reproductor
+    if (showHelpDialog) {
+        AlertDialog(
+            onDismissRequest = { showHelpDialog = false },
+            title = { Text("Ayuda del reproductor", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = "Gestos táctiles rápidos (si están activados en Ajustes):",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text("• Deslizar a la derecha: Adelantar ${formatIntervalSpoken(forwardIntervalSec)}.")
+                    Text("• Deslizar a la izquierda: Retroceder ${formatIntervalSpoken(rewindIntervalSec)}.")
+                    Text("• Deslizar hacia arriba: Reproducir o pausar.")
+                    Text("• Deslizar hacia abajo: Consultar por voz el tiempo y estado actual.")
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Atajos de botones:",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text("• Mantén pulsado Retroceder o Adelantar para cambiar su intervalo (desde 5 segundos hasta 1 minuto).")
+                    Text("• En la tira inferior de controles tienes acceso directo a Velocidad, Temporizador, Ecualizador y Autoreproducción.")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showHelpDialog = false
+                        onNavigateToHelp()
+                    }
+                ) {
+                    Text("Abrir guía completa")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showHelpDialog = false }) {
+                    Text("Cerrar")
+                }
+            }
+        )
+    }
 }
+
+@Composable
+private fun PlayerSocialAndInfoSection(
+    modifier: Modifier,
+    isUserLoggedIn: Boolean,
+    voteStats: com.johang.audiocinemateca.data.repository.VoteStats,
+    commentPreview: Pair<Long, com.johang.audiocinemateca.data.model.Comment?>,
+    synopsisToDisplay: String,
+    chapterSynopsisState: ChapterSynopsisState,
+    isSynopsisExpanded: Boolean,
+    onLikeClicked: () -> Unit,
+    onDislikeClicked: () -> Unit,
+    onShareClick: () -> Unit,
+    onToggleSynopsis: () -> Unit,
+    onOpenCommentsClick: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .semantics {
+                isTraversalGroup = true
+                traversalIndex = 2f
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Tarjeta de la Obra Activa y Botones Sociales
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0xFF0EA5E9).copy(alpha = 0.18f),
+                    border = BorderStroke(1.5.dp, Color(0xFF38BDF8).copy(alpha = 0.55f)),
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.GraphicEq,
+                            contentDescription = null,
+                            tint = Color(0xFF38BDF8),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+
+                if (isUserLoggedIn) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val isLiked = voteStats.userVote == 1
+                        val likeLabel = remember(voteStats.likeCount, isLiked) {
+                            "Me gusta, ${voteStats.likeCount} votos${if (isLiked) ", seleccionado" else ""}"
+                        }
+
+                        OutlinedButton(
+                            onClick = onLikeClicked,
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (isLiked) Color(0xFF22C55E).copy(alpha = 0.25f) else Color.Transparent,
+                                contentColor = if (isLiked) Color(0xFF22C55E) else Color.White
+                            ),
+                            border = BorderStroke(1.dp, if (isLiked) Color(0xFF22C55E) else Color.White.copy(alpha = 0.4f)),
+                            modifier = Modifier.clearAndSetSemantics {
+                                contentDescription = likeLabel
+                                role = Role.Checkbox
+                                selected = isLiked
+                                onClick(label = if (isLiked) "Quitar Me gusta" else "Dar Me gusta") {
+                                    onLikeClicked()
+                                    true
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (isLiked) Icons.Default.ThumbUp else Icons.Default.ThumbUpOffAlt,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("${voteStats.likeCount}", fontWeight = if (isLiked) FontWeight.Bold else FontWeight.Normal)
+                        }
+
+                        val isDisliked = voteStats.userVote == -1
+                        val dislikeLabel = remember(voteStats.dislikeCount, isDisliked) {
+                            "No me gusta, ${voteStats.dislikeCount} votos${if (isDisliked) ", seleccionado" else ""}"
+                        }
+
+                        OutlinedButton(
+                            onClick = onDislikeClicked,
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (isDisliked) Color(0xFFEF4444).copy(alpha = 0.25f) else Color.Transparent,
+                                contentColor = if (isDisliked) Color(0xFFEF4444) else Color.White
+                            ),
+                            border = BorderStroke(1.dp, if (isDisliked) Color(0xFFEF4444) else Color.White.copy(alpha = 0.4f)),
+                            modifier = Modifier.clearAndSetSemantics {
+                                contentDescription = dislikeLabel
+                                role = Role.Checkbox
+                                selected = isDisliked
+                                onClick(label = if (isDisliked) "Quitar No me gusta" else "Dar No me gusta") {
+                                    onDislikeClicked()
+                                    true
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (isDisliked) Icons.Default.ThumbDown else Icons.Default.ThumbDownOffAlt,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("${voteStats.dislikeCount}", fontWeight = if (isDisliked) FontWeight.Bold else FontWeight.Normal)
+                        }
+
+                        OutlinedButton(
+                            onClick = onShareClick,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+                            modifier = Modifier.clearAndSetSemantics {
+                                contentDescription = "Compartir esta obra"
+                                role = Role.Button
+                                onClick(label = "Compartir obra") {
+                                    onShareClick()
+                                    true
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Compartir", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sinopsis Expandible
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onToggleSynopsis)
+                        .clearAndSetSemantics {
+                            contentDescription = "Sinopsis"
+                            stateDescription = if (isSynopsisExpanded) "Expandido" else "Contraído"
+                            role = Role.Button
+                            onClick(label = if (isSynopsisExpanded) "Contraer sinopsis" else "Desplegar sinopsis") {
+                                onToggleSynopsis()
+                                true
+                            }
+                        },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sinopsis", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                    }
+                    Icon(
+                        imageVector = if (isSynopsisExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = Color.White
+                    )
+                }
+
+                if (isSynopsisExpanded) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    if (chapterSynopsisState is ChapterSynopsisState.Loading) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color(0xFF38BDF8))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("Cargando sinopsis con IA...", fontSize = 13.sp, color = Color(0xFF94A3B8))
+                        }
+                    } else {
+                        Text(
+                            text = synopsisToDisplay.ifBlank { "Sin sinopsis disponible para este contenido." },
+                            fontSize = 13.sp,
+                            color = Color(0xFFE2E8F0),
+                            lineHeight = 20.sp,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Vista Previa de Comentarios
+        if (isUserLoggedIn) {
+            val previewDesc = remember(commentPreview.first, commentPreview.second) {
+                val countStr = if (commentPreview.first == 1L) "1 comentario" else "${commentPreview.first} comentarios"
+                val latestStr = commentPreview.second?.let { ". Último de ${it.userName}: ${it.commentText}" } ?: ""
+                "Comentarios de la comunidad, $countStr$latestStr"
+            }
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenCommentsClick)
+                    .clearAndSetSemantics {
+                        testTag = "player_comments_preview_card"
+                        role = Role.Button
+                        contentDescription = previewDesc
+                        onClick(label = "Abrir comentarios") {
+                            onOpenCommentsClick()
+                            true
+                        }
+                    }
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Comentarios (${commentPreview.first})", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                        }
+                        Text("Ver todos", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8))
+                    }
+
+                    commentPreview.second?.let { latest ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "${latest.userName}: ${latest.commentText}",
+                            fontSize = 13.sp,
+                            color = Color(0xFF94A3B8),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PlayerMediaControlsPanel(
+    isPlaying: Boolean,
+    activePositionMs: Long,
+    totalDurationMs: Long,
+    progressFraction: Float,
+    playbackSpeed: Float,
+    sleepTimerText: String?,
+    isAutoPlayEnabled: Boolean,
+    rewindIntervalSec: Int,
+    forwardIntervalSec: Int,
+    hasPrevious: Boolean,
+    hasNext: Boolean,
+    onPlayPauseClick: () -> Unit,
+    onRewindClick: () -> Unit,
+    onForwardClick: () -> Unit,
+    onPreviousClick: () -> Unit,
+    onNextClick: () -> Unit,
+    onSeekTo: (Long) -> Unit,
+    onScrubFraction: (Float) -> Unit,
+    onScrubFinished: () -> Unit,
+    onOpenRewindDialog: () -> Unit,
+    onOpenForwardDialog: () -> Unit,
+    onOpenSpeedDialog: () -> Unit,
+    onOpenSleepTimerDialog: () -> Unit,
+    onEqualizerClick: () -> Unit,
+    onAutoPlayToggle: () -> Unit
+) {
+    val haptic = LocalHapticFeedback.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                isTraversalGroup = true
+                traversalIndex = -1f
+            },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Slider de Tiempo / Barra de Progreso
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics {
+                    isTraversalGroup = true
+                    traversalIndex = 1f
+                }
+        ) {
+            val timeStateText = remember(activePositionMs, totalDurationMs) {
+                "${TimeFormatUtils.formatDuration(activePositionMs)} de ${TimeFormatUtils.formatDuration(totalDurationMs)}"
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                                event.changes.forEach { it.consume() }
+                            }
+                        }
+                    }
+            ) {
+                Slider(
+                    value = progressFraction,
+                    onValueChange = onScrubFraction,
+                    onValueChangeFinished = onScrubFinished,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color(0xFF38BDF8),
+                        activeTrackColor = Color(0xFF38BDF8),
+                        inactiveTrackColor = Color(0xFF334155)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = "Progreso de reproducción"
+                            stateDescription = timeStateText
+                            setProgress { targetValue ->
+                                val clamped = targetValue.coerceIn(0f, 1f)
+                                val targetMs = (clamped * totalDurationMs).toLong()
+                                onSeekTo(targetMs)
+                                true
+                            }
+                        }
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = formatDigitalTime(activePositionMs),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF94A3B8)
+                )
+                Text(
+                    text = formatDigitalTime(totalDurationMs),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF94A3B8)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Fila Principal de Botones de Transporte con sus logotipos claros
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics {
+                    isTraversalGroup = true
+                    traversalIndex = -1f
+                },
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Anterior
+            Surface(
+                shape = CircleShape,
+                color = if (hasPrevious) Color(0xFF1E293B) else Color(0xFF1E293B).copy(alpha = 0.45f),
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .clickable(enabled = hasPrevious) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onPreviousClick()
+                    }
+                    .clearAndSetSemantics {
+                        contentDescription = "Anterior"
+                        role = Role.Button
+                        if (hasPrevious) {
+                            onClick(label = "Anterior") {
+                                onPreviousClick()
+                                true
+                            }
+                        }
+                    }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.SkipPrevious,
+                        contentDescription = null,
+                        tint = if (hasPrevious) Color.White else Color(0xFF475569),
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+
+            // Retroceder N segundos / 1 minuto
+            val rewindSpoken = remember(rewindIntervalSec) { "Retroceder ${formatIntervalSpoken(rewindIntervalSec)}" }
+            Surface(
+                shape = CircleShape,
+                color = Color(0xFF1E293B),
+                border = BorderStroke(1.dp, Color(0xFF334155)),
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .combinedClickable(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onRewindClick()
+                        },
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onOpenRewindDialog()
+                        }
+                    )
+                    .clearAndSetSemantics {
+                        contentDescription = rewindSpoken
+                        role = Role.Button
+                        onClick(label = rewindSpoken) {
+                            onRewindClick()
+                            true
+                        }
+                        customActions = listOf(
+                            CustomAccessibilityAction("Cambiar tiempo de retroceso") {
+                                onOpenRewindDialog()
+                                true
+                            }
+                        )
+                    }
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(54.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = rewindIconForInterval(rewindIntervalSec),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            text = formatIntervalShort(rewindIntervalSec),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF38BDF8)
+                        )
+                    }
+                }
+            }
+
+            // Botón Principal Play / Pause
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(68.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF0EA5E9))
+                    .clickable {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onPlayPauseClick()
+                    }
+                    .clearAndSetSemantics {
+                        testTag = "player_play_pause_button"
+                        contentDescription = if (isPlaying) "Pausar" else "Reproducir"
+                        role = Role.Button
+                        traversalIndex = -1f
+                        onClick(label = if (isPlaying) "Pausar" else "Reproducir") {
+                            onPlayPauseClick()
+                            true
+                        }
+                    }
+                    .initialAccessibilityFocus(tag = "player_play_pause_button")
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(38.dp)
+                )
+            }
+
+            // Adelantar N segundos / 1 minuto
+            val forwardSpoken = remember(forwardIntervalSec) { "Adelantar ${formatIntervalSpoken(forwardIntervalSec)}" }
+            Surface(
+                shape = CircleShape,
+                color = Color(0xFF1E293B),
+                border = BorderStroke(1.dp, Color(0xFF334155)),
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .combinedClickable(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onForwardClick()
+                        },
+                        onLongClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onOpenForwardDialog()
+                        }
+                    )
+                    .clearAndSetSemantics {
+                        contentDescription = forwardSpoken
+                        role = Role.Button
+                        onClick(label = forwardSpoken) {
+                            onForwardClick()
+                            true
+                        }
+                        customActions = listOf(
+                            CustomAccessibilityAction("Cambiar tiempo de avance") {
+                                onOpenForwardDialog()
+                                true
+                            }
+                        )
+                    }
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(54.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = forwardIconForInterval(forwardIntervalSec),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            text = formatIntervalShort(forwardIntervalSec),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF38BDF8)
+                        )
+                    }
+                }
+            }
+
+            // Siguiente
+            Surface(
+                shape = CircleShape,
+                color = if (hasNext) Color(0xFF1E293B) else Color(0xFF1E293B).copy(alpha = 0.45f),
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .clickable(enabled = hasNext) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onNextClick()
+                    }
+                    .clearAndSetSemantics {
+                        contentDescription = "Siguiente"
+                        role = Role.Button
+                        if (hasNext) {
+                            onClick(label = "Siguiente") {
+                                onNextClick()
+                                true
+                            }
+                        }
+                    }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.SkipNext,
+                        contentDescription = null,
+                        tint = if (hasNext) Color.White else Color(0xFF475569),
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Tira rápida de controles con sus propios logotipos visuales
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            PlayerQuickControlPill(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Speed,
+                label = "${playbackSpeed}x",
+                accessibilityLabel = "Velocidad de reproducción: ${playbackSpeed}x",
+                isActive = playbackSpeed != 1.0f,
+                onClick = onOpenSpeedDialog
+            )
+            PlayerQuickControlPill(
+                modifier = Modifier.weight(1f),
+                icon = if (!sleepTimerText.isNullOrBlank()) Icons.Default.Timer else Icons.Default.Bedtime,
+                label = sleepTimerText?.substringAfter(": ")?.ifBlank { "Temporizador" } ?: "Apagado",
+                accessibilityLabel = sleepTimerText ?: "Temporizador de apagado: desactivado",
+                isActive = !sleepTimerText.isNullOrBlank(),
+                onClick = onOpenSleepTimerDialog
+            )
+            PlayerQuickControlPill(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Equalizer,
+                label = "Audio",
+                accessibilityLabel = "Ecualizador de audio",
+                isActive = false,
+                onClick = onEqualizerClick
+            )
+            PlayerQuickControlPill(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Autorenew,
+                label = "Auto",
+                accessibilityLabel = "Autoreproducción: ${if (isAutoPlayEnabled) "Activada" else "Desactivada"}",
+                isActive = isAutoPlayEnabled,
+                onClick = onAutoPlayToggle
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerQuickControlPill(
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    accessibilityLabel: String,
+    isActive: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = if (isActive) Color(0xFF0EA5E9).copy(alpha = 0.22f) else Color(0xFF1E293B),
+        border = BorderStroke(
+            1.dp,
+            if (isActive) Color(0xFF38BDF8) else Color(0xFF334155)
+        ),
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .clearAndSetSemantics {
+                contentDescription = accessibilityLabel
+                role = Role.Button
+                onClick(label = accessibilityLabel) {
+                    onClick()
+                    true
+                }
+            }
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isActive) Color(0xFF38BDF8) else Color.White,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                color = if (isActive) Color(0xFF38BDF8) else Color(0xFFCBD5E1),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun SeekIntervalDialog(
+    title: String,
+    selectedSec: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val intervals = listOf(5, 10, 15, 30, 60)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                intervals.forEach { sec ->
+                    val isSelected = selectedSec == sec
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = isSelected,
+                                onClick = { onSelect(sec) },
+                                role = Role.RadioButton
+                            )
+                            .padding(vertical = 10.dp, horizontal = 8.dp)
+                    ) {
+                        RadioButton(selected = isSelected, onClick = null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = formatIntervalSpoken(sec),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
+
+private fun formatIntervalShort(sec: Int): String = if (sec >= 60) "${sec / 60}m" else "${sec}s"
+
+private fun formatIntervalSpoken(sec: Int): String = if (sec == 60) "1 minuto" else "$sec segundos"
+
+private fun rewindIconForInterval(sec: Int): androidx.compose.ui.graphics.vector.ImageVector = when (sec) {
+    5 -> Icons.Default.Replay5
+    10 -> Icons.Default.Replay10
+    30 -> Icons.Default.Replay30
+    else -> Icons.Default.Replay
+}
+
+private fun forwardIconForInterval(sec: Int): androidx.compose.ui.graphics.vector.ImageVector = when (sec) {
+    5 -> Icons.Default.Forward5
+    10 -> Icons.Default.Forward10
+    30 -> Icons.Default.Forward30
+    else -> Icons.Default.FastForward
 }
 
 private fun formatDigitalTime(ms: Long): String {

@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.data.model.Comment
 import com.johang.audiocinemateca.data.model.Movie
 import com.johang.audiocinemateca.data.model.Serie
@@ -44,11 +45,21 @@ class PlayerViewModel @Inject constructor(
     private val commentRepository: CommentRepository,
     private val addCommentUseCase: AddCommentUseCase,
     private val geminiRepository: GeminiRepository,
+    private val sharedPreferencesManager: SharedPreferencesManager,
     private val auth: FirebaseAuth
 ) : ViewModel() {
 
     private val _contentItem = MutableStateFlow<CatalogItem?>(null)
     val contentItem: StateFlow<CatalogItem?> = _contentItem
+
+    private val _primarySubtitle = MutableStateFlow("")
+    val primarySubtitle: StateFlow<String> = _primarySubtitle.asStateFlow()
+
+    private val _contentRating = MutableStateFlow<String?>(null)
+    val contentRating: StateFlow<String?> = _contentRating.asStateFlow()
+
+    private val ratingCache = mutableMapOf<String, String>()
+    private var ratingJob: Job? = null
 
     private val _chapterSynopsisState = MutableStateFlow<ChapterSynopsisState>(ChapterSynopsisState.Initial)
     val chapterSynopsisState: StateFlow<ChapterSynopsisState> = _chapterSynopsisState.asStateFlow()
@@ -162,6 +173,7 @@ class PlayerViewModel @Inject constructor(
     fun updateCurrentEpisode(partIndex: Int, episodeIndex: Int) {
         currentPartIndex = partIndex
         currentEpisodeIndex = episodeIndex
+        _primarySubtitle.value = getPlayerPrimarySubtitle()
         _contentItem.value?.let { 
             if (isUserLoggedIn) {
                 loadVoteStats(it.id)
@@ -366,6 +378,7 @@ class PlayerViewModel @Inject constructor(
         _contentItem.value = item
         currentPartIndex = partIndex
         currentEpisodeIndex = episodeIndex
+        _primarySubtitle.value = getPlayerPrimarySubtitle()
         if (isUserLoggedIn) {
             loadVoteStats(item.id)
             loadCommentsPreview(item.id)
@@ -380,6 +393,87 @@ class PlayerViewModel @Inject constructor(
                 loadChapterSynopsis()
             }
         }
+        loadContentRatingForItem(item)
+    }
+
+    fun refreshContentRatingSetting() {
+        val item = _contentItem.value ?: return
+        loadContentRatingForItem(item)
+    }
+
+    private fun loadContentRatingForItem(item: CatalogItem) {
+        val enabled = sharedPreferencesManager.getBoolean("ai_content_rating_enabled", true)
+        if (!enabled) {
+            ratingJob?.cancel()
+            _contentRating.value = null
+            return
+        }
+
+        val memCached = ratingCache[item.id]
+        if (!memCached.isNullOrBlank()) {
+            _contentRating.value = memCached
+            return
+        }
+
+        val prefKey = "ai_rating_v3_${item.id}"
+        val diskCached = sharedPreferencesManager.getString(prefKey, "")?.trim().orEmpty()
+        if (diskCached.isNotBlank()) {
+            ratingCache[item.id] = diskCached
+            _contentRating.value = diskCached
+            return
+        }
+
+        _contentRating.value = null
+        ratingJob?.cancel()
+        ratingJob = viewModelScope.launch {
+            val categoryLabel = when (item) {
+                is Serie -> "Serie"
+                is Documentary -> "Documental"
+                is ShortFilm -> "Cortometraje"
+                else -> "Película"
+            }
+            val generated = geminiRepository.generateContentRating(
+                title = item.title,
+                description = item.sinopsis,
+                category = categoryLabel,
+                genre = item.genero,
+                anio = item.anio
+            )
+            if (!generated.isNullOrBlank() && _contentItem.value?.id == item.id) {
+                ratingCache[item.id] = generated
+                sharedPreferencesManager.saveString(prefKey, generated)
+                _contentRating.value = generated
+            }
+        }
+    }
+
+    /**
+     * Subtítulo principal debajo del título en el reproductor:
+     * - Para series: "T1:E1 - Título del episodio"
+     * - Para películas, documentales y cortometrajes: Año de estreno (y Parte si tiene varias)
+     */
+    fun getPlayerPrimarySubtitle(): String {
+        val item = _contentItem.value ?: return ""
+        if (currentEpisodeIndex != -1 && item is Serie) {
+            val seasons = item.capitulos.keys.sorted()
+            val seasonKey = seasons.getOrNull(currentPartIndex)
+            val episode = item.capitulos[seasonKey]?.getOrNull(currentEpisodeIndex)
+            if (episode != null) {
+                val epTitle = episode.titulo.trim()
+                return if (epTitle.isNotBlank()) {
+                    "T${currentPartIndex + 1}:E${episode.capitulo} - $epTitle"
+                } else {
+                    "T${currentPartIndex + 1}:E${episode.capitulo}"
+                }
+            }
+        }
+        val year = item.anio.trim()
+        val partLabel = if (item is Movie && item.enlaces.size > 1 && currentPartIndex >= 0) {
+            "Parte ${currentPartIndex + 1}"
+        } else {
+            ""
+        }
+        return listOf(year, partLabel).filter { it.isNotBlank() }.joinToString(" • ")
     }
 
     fun getDetailedTitle(): String {

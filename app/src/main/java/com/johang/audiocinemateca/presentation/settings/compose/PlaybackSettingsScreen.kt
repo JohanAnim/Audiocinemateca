@@ -10,6 +10,20 @@ fun PlaybackSettingsScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val layoutEntries = remember {
+        listOf(
+            "Controles abajo y paneles arriba (Predeterminado)",
+            "Estilo YouTube (controles arriba y paneles abajo)"
+        )
+    }
+    val layoutValues = remember { listOf("default", "youtube_top") }
+    var currentFullscreenLayout by remember {
+        mutableStateOf(
+            viewModel.getString("player_fullscreen_layout", "default")
+                .let { if (it in layoutValues) it else "default" }
+        )
+    }
+
     val autoplay by viewModel.autoplay.collectAsState()
     val sleepTimerEnabled by viewModel.sleepTimerEnabled.collectAsState()
     
@@ -17,23 +31,35 @@ fun PlaybackSettingsScreen(
     val sleepDurationValues = remember { listOf("30", "60", "120") }
     var currentSleepDuration by remember { mutableStateOf(viewModel.getString("sleep_timer_duration", "60")) }
 
-    val rewindEntries = remember { listOf("5 segundos", "10 segundos", "15 segundos", "30 segundos") }
-    val rewindValues = remember { listOf("5", "10", "15", "30") }
+    val rewindEntries = remember { listOf("5 segundos", "10 segundos", "15 segundos", "30 segundos", "1 minuto") }
+    val rewindValues = remember { listOf("5", "10", "15", "30", "60") }
     var currentRewind by remember { mutableStateOf(viewModel.getString("rewind_interval", "5")) }
 
-    val forwardEntries = remember { listOf("5 segundos", "10 segundos", "15 segundos", "30 segundos") }
-    val forwardValues = remember { listOf("5", "10", "15", "30") }
+    val forwardEntries = remember { listOf("5 segundos", "10 segundos", "15 segundos", "30 segundos", "1 minuto") }
+    val forwardValues = remember { listOf("5", "10", "15", "30", "60") }
     var currentForward by remember { mutableStateOf(viewModel.getString("forward_interval", "15")) }
 
     CategorySettingsScreen(
         title = "Ajustes de Reproducción",
         onBack = onBack
     ) {
+        SettingsListItem(
+            title = "Diseño del reproductor en pantalla completa",
+            summary = layoutEntries[layoutValues.indexOf(currentFullscreenLayout).coerceAtLeast(0)],
+            entries = layoutEntries,
+            entryValues = layoutValues,
+            currentValue = currentFullscreenLayout,
+            isInitialFocus = true,
+            onValueChange = {
+                currentFullscreenLayout = it
+                viewModel.updateString("player_fullscreen_layout", it)
+            }
+        )
+
         SettingsSwitchItem(
             title = "Reproducción automática",
             summary = "Reproducir la siguiente parte o episodio automáticamente.",
             checked = autoplay,
-            isInitialFocus = true,
             onCheckedChange = { viewModel.updateBoolean("autoplay", it) }
         )
 
