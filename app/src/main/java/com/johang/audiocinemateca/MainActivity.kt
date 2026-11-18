@@ -29,6 +29,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -61,13 +62,18 @@ import com.johang.audiocinemateca.data.repository.GeminiRepository
 import com.johang.audiocinemateca.data.repository.GlobalChatRepository
 import com.johang.audiocinemateca.data.repository.PlaybackProgressRepository
 import com.johang.audiocinemateca.data.repository.SearchRepository
+import com.johang.audiocinemateca.data.repository.ServerMigrationManager
 import com.johang.audiocinemateca.domain.DownloadManager
+import com.johang.audiocinemateca.domain.model.UpdateChannels
 import com.johang.audiocinemateca.domain.usecase.UpdateCheckResult
 import com.johang.audiocinemateca.presentation.DonationDialog
 import com.johang.audiocinemateca.presentation.WhatsNewDialog
 import com.johang.audiocinemateca.presentation.account.AccountViewModel
+import com.johang.audiocinemateca.presentation.account.UpdateProgressDialog
 import com.johang.audiocinemateca.presentation.cast.CastSessionListener
+import com.johang.audiocinemateca.presentation.components.MigrationNoticeDialog
 import com.johang.audiocinemateca.presentation.components.MiniPlayerBar
+import com.johang.audiocinemateca.presentation.components.NavigationDrawerHeader
 import com.johang.audiocinemateca.presentation.navigation.AudiocinematecaBottomNavigation
 import com.johang.audiocinemateca.presentation.navigation.AudiocinematecaNavHost
 import com.johang.audiocinemateca.presentation.navigation.NavRoutes
@@ -104,6 +110,7 @@ class MainActivity : AppCompatActivity() {
     @Inject lateinit var ttsManager: TtsManager
     @Inject lateinit var geminiRepository: GeminiRepository
     @Inject lateinit var castSessionListener: CastSessionListener
+    @Inject lateinit var serverMigrationManager: com.johang.audiocinemateca.data.repository.ServerMigrationManager
 
     private val accountViewModel: AccountViewModel by viewModels()
     private val requestMultiplePermissionsLauncher = registerForActivityResult(
@@ -119,8 +126,7 @@ class MainActivity : AppCompatActivity() {
     private val miniPlayerSubtitleState = MutableStateFlow("")
     private val miniPlayerIsPlayingState = MutableStateFlow(false)
 
-    private val headerUsernameState = MutableStateFlow("Audiocinemateca")
-    private val headerEmailState = MutableStateFlow("Versión Accesible")
+    private val headerUsernameState = MutableStateFlow("")
     private val appVersionState = MutableStateFlow("3.3.2")
     private val isCommunityVisibleState = MutableStateFlow(false)
     private val isHomeVisibleState = MutableStateFlow(true)
@@ -176,7 +182,6 @@ class MainActivity : AppCompatActivity() {
         setTheme(R.style.Theme_Audiocinemateca)
         super.onCreate(null)
         supportActionBar?.hide()
-        castSessionListener.startListening(this)
 
         val hideHomeFeed = sharedPreferencesManager.getBoolean("hide_home_feed", false)
         isHomeVisibleState.value = !hideHomeFeed
@@ -199,40 +204,61 @@ class MainActivity : AppCompatActivity() {
             else -> if (hideHomeFeed) NavRoutes.CATALOG else NavRoutes.HOME
         }
 
+        // Diferir servicios pesados (Cast, Firestore watchers, WorkManager y comprobación remota)
+        // hasta después de pintar el primer frame para que el arranque se sienta ligero e instantáneo.
+        window.decorView.post {
+            castSessionListener.startListening(applicationContext)
+            serverMigrationManager.startMonitoringConfig()
+        }
+
         FirebaseAuth.getInstance().addAuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
             isCommunityVisibleState.value = (user != null)
-            headerUsernameState.value = user?.displayName ?: "Audiocinemateca"
-            headerEmailState.value = user?.email ?: "Versión Accesible"
-            try {
-                val pInfo = packageManager.getPackageInfo(packageName, 0)
-                val currentVersionName = pInfo.versionName ?: "3.3.2"
-                appVersionState.value = currentVersionName
+            headerUsernameState.value = user?.displayName?.takeIf { it.isNotBlank() }
+                ?: sharedPreferencesManager.getString(SharedPreferencesManager.STORED_USERNAME_KEY, null)?.takeIf { it.isNotBlank() }
+                ?: user?.email?.substringBefore("@")?.takeIf { it.isNotBlank() }
+                ?: ""
 
-                val lastSeenVersionName = sharedPreferencesManager.getString("last_seen_version_name", "") ?: ""
-                if (currentVersionName != lastSeenVersionName && lastSeenVersionName.isNotEmpty()) {
-                    lifecycleScope.launch {
+            lifecycleScope.launch {
+                // Ceder al primer render y escalonar trabajo de red / I/O fuera del hilo crítico
+                kotlinx.coroutines.delay(350L)
+                try {
+                    val pInfo = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        packageManager.getPackageInfo(packageName, 0)
+                    }
+                    val currentVersionName = pInfo.versionName ?: "3.3.2"
+                    appVersionState.value = currentVersionName
+
+                    val lastSeenVersionName = sharedPreferencesManager.getString("last_seen_version_name", "") ?: ""
+                    if (currentVersionName != lastSeenVersionName && lastSeenVersionName.isNotEmpty()) {
                         val result = accountViewModel.manualCheckForUpdates(currentVersionName)
                         if (result is UpdateCheckResult.NoUpdateAvailable) {
                             whatsNewChangelogState.value = result.updateInfo.changelog
                             sharedPreferencesManager.saveString("last_seen_version_name", currentVersionName)
                         }
+                    } else {
+                        if (lastSeenVersionName.isEmpty()) {
+                            sharedPreferencesManager.saveString("last_seen_version_name", currentVersionName)
+                        }
+                        kotlinx.coroutines.delay(900L)
+                        checkAppUpdateAutomatically(currentVersionName)
                     }
-                } else {
-                    if (lastSeenVersionName.isEmpty()) {
-                        sharedPreferencesManager.saveString("last_seen_version_name", currentVersionName)
-                    }
-                    checkAppUpdateAutomatically(currentVersionName)
+                } catch (e: Exception) {
+                    appVersionState.value = "3.3.2"
                 }
-            } catch (e: Exception) {
-                appVersionState.value = "3.3.2"
             }
 
             if (user != null) {
-                startRealtimeSync()
-                startAnnouncementsWatcher()
-                checkCatalogUpdateAutomatically()
-                runCatching { androidx.work.WorkManager.getInstance(applicationContext).cancelUniqueWork("CatalogUpdateWorker") }
+                lifecycleScope.launch {
+                    kotlinx.coroutines.delay(250L)
+                    startRealtimeSync()
+                    startAnnouncementsWatcher()
+                    kotlinx.coroutines.delay(900L)
+                    checkCatalogUpdateAutomatically()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        runCatching { androidx.work.WorkManager.getInstance(applicationContext).cancelUniqueWork("CatalogUpdateWorker") }
+                    }
+                }
             } else {
                 stopRealtimeSync()
                 stopAnnouncementsWatcher()
@@ -263,13 +289,101 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 val username by headerUsernameState.collectAsState()
-                val userEmail by headerEmailState.collectAsState()
                 val appVersion by appVersionState.collectAsState()
                 val isCommunityVisible by isCommunityVisibleState.collectAsState()
                 val isHomeVisible by isHomeVisibleState.collectAsState()
+                var updateChannel by remember {
+                    mutableStateOf(
+                        UpdateChannels.normalize(
+                            sharedPreferencesManager.getString("update_channel", UpdateChannels.STABLE)
+                        )
+                    )
+                }
+                var isAuraConfigured by remember {
+                    mutableStateOf(
+                        !sharedPreferencesManager.getString("groq_api_key", "").isNullOrBlank() ||
+                            !sharedPreferencesManager.getString("gemini_api_key", "").isNullOrBlank()
+                    )
+                }
+                DisposableEffect(sharedPreferencesManager) {
+                    val prefs = sharedPreferencesManager.getPrefs()
+                    val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                        when (key) {
+                            "update_channel" -> {
+                                updateChannel = UpdateChannels.normalize(
+                                    sharedPreferencesManager.getString("update_channel", UpdateChannels.STABLE)
+                                )
+                            }
+                            "groq_api_key", "gemini_api_key" -> {
+                                isAuraConfigured =
+                                    !sharedPreferencesManager.getString("groq_api_key", "").isNullOrBlank() ||
+                                        !sharedPreferencesManager.getString("gemini_api_key", "").isNullOrBlank()
+                            }
+                        }
+                    }
+                    prefs.registerOnSharedPreferenceChangeListener(listener)
+                    onDispose {
+                        prefs.unregisterOnSharedPreferenceChangeListener(listener)
+                    }
+                }
                 val whatsNewChangelog by whatsNewChangelogState.collectAsState()
                 val showGlobalDonation by showGlobalDonationDialogState.collectAsState()
                 val pendingRoute by pendingNavigationRouteState.collectAsState()
+                val migrationStatus by serverMigrationManager.status.collectAsState()
+
+                var showMigrationDialog by remember { mutableStateOf(false) }
+                var isCheckingMigrationUpdate by remember { mutableStateOf(false) }
+                var showGlobalUpdateProgress by remember { mutableStateOf(false) }
+                var updateFeedbackMessage by remember { mutableStateOf<String?>(null) }
+
+                LaunchedEffect(
+                    migrationStatus.isMigrationRequired,
+                    migrationStatus.isWarningActive,
+                    whatsNewChangelog
+                ) {
+                    if (whatsNewChangelog == null && serverMigrationManager.shouldAutoPresentDialog()) {
+                        showMigrationDialog = true
+                    }
+                }
+
+                val handleRequestAppUpdate: () -> Unit = {
+                    val knownUpdate = migrationStatus.latestUpdateInfo
+                    if (knownUpdate != null && serverMigrationManager.isVersionBelowRequired(
+                            minVersion = knownUpdate.version,
+                            installedVersion = appVersion
+                        )
+                    ) {
+                        showMigrationDialog = false
+                        showGlobalUpdateProgress = true
+                        accountViewModel.downloadUpdate(knownUpdate)
+                    } else if (!isCheckingMigrationUpdate) {
+                        isCheckingMigrationUpdate = true
+                        coroutineScope.launch {
+                            try {
+                                when (val res = accountViewModel.manualCheckForUpdates(appVersion)) {
+                                    is UpdateCheckResult.UpdateAvailable -> {
+                                        showMigrationDialog = false
+                                        showGlobalUpdateProgress = true
+                                        accountViewModel.downloadUpdate(res.updateInfo)
+                                    }
+                                    is UpdateCheckResult.NoUpdateAvailable -> {
+                                        updateFeedbackMessage = if (migrationStatus.isMigrationRequired) {
+                                            "Todavía no aparece una compilación ${migrationStatus.minOnlineVersion}+ en el canal de actualizaciones actual. Intenta nuevamente más tarde o cambia de canal en Cuenta."
+                                        } else {
+                                            "Ya tienes la versión más reciente disponible ($appVersion). En cuanto la versión ${migrationStatus.minOnlineVersion} esté publicada te notificaremos."
+                                        }
+                                    }
+                                    is UpdateCheckResult.Error -> {
+                                        updateFeedbackMessage = "No se pudo comprobar actualizaciones: ${res.message}"
+                                    }
+                                    else -> Unit
+                                }
+                            } finally {
+                                isCheckingMigrationUpdate = false
+                            }
+                        }
+                    }
+                }
 
                 LaunchedEffect(pendingRoute, navController) {
                     val route = pendingRoute ?: return@LaunchedEffect
@@ -289,8 +403,9 @@ class MainActivity : AppCompatActivity() {
                     startDestination = initialStartDestination,
                     drawerState = drawerState,
                     username = username,
-                    userEmail = userEmail,
                     appVersion = appVersion,
+                    updateChannel = updateChannel,
+                    isAuraConfigured = isAuraConfigured,
                     isCommunityVisible = isCommunityVisible,
                     isHomeVisible = isHomeVisible,
                     accountViewModel = accountViewModel,
@@ -327,8 +442,43 @@ class MainActivity : AppCompatActivity() {
                     },
                     onRegisterOpenDrawer = { callback ->
                         openDrawerCallback = callback
-                    }
+                    },
+                    onRequestAppUpdate = handleRequestAppUpdate
                 )
+
+                if (showMigrationDialog && migrationStatus.shouldShowBanner) {
+                    MigrationNoticeDialog(
+                        status = migrationStatus,
+                        isCheckingUpdate = isCheckingMigrationUpdate,
+                        onUpdateClick = handleRequestAppUpdate,
+                        onDismiss = {
+                            serverMigrationManager.markDialogDismissed(
+                                isWarningOnly = !migrationStatus.isMigrationRequired
+                            )
+                            showMigrationDialog = false
+                        }
+                    )
+                }
+
+                if (showGlobalUpdateProgress) {
+                    UpdateProgressDialog(
+                        viewModel = accountViewModel,
+                        onDismiss = { showGlobalUpdateProgress = false }
+                    )
+                }
+
+                updateFeedbackMessage?.let { feedback ->
+                    AlertDialog(
+                        onDismissRequest = { updateFeedbackMessage = null },
+                        title = { Text("Estado de actualización") },
+                        text = { Text(feedback) },
+                        confirmButton = {
+                            TextButton(onClick = { updateFeedbackMessage = null }) {
+                                Text("Entendido")
+                            }
+                        }
+                    )
+                }
 
                 whatsNewChangelog?.let { changelog ->
                     WhatsNewDialog(
@@ -472,6 +622,7 @@ class MainActivity : AppCompatActivity() {
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("MainActivity", "Error en anuncios: ${error.message}")
+                    serverMigrationManager.reportFirestoreError(error)
                     return@addSnapshotListener
                 }
                 if (isFirstLoad) {
@@ -510,6 +661,7 @@ class MainActivity : AppCompatActivity() {
                 cloudRepository.syncUserProfile()
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error en sync inicial: ${e.message}")
+                serverMigrationManager.reportFirestoreError(e)
             }
         }
     }
@@ -682,8 +834,9 @@ private fun MainAppScreen(
     startDestination: String,
     drawerState: DrawerState,
     username: String,
-    userEmail: String,
     appVersion: String,
+    updateChannel: String,
+    isAuraConfigured: Boolean,
     isCommunityVisible: Boolean,
     isHomeVisible: Boolean,
     accountViewModel: AccountViewModel,
@@ -703,7 +856,8 @@ private fun MainAppScreen(
     miniPlayerSubtitleState: StateFlow<String>,
     miniPlayerIsPlayingState: StateFlow<Boolean>,
     onMiniPlayerBarClick: () -> Unit,
-    onRegisterOpenDrawer: ((() -> Unit)?) -> Unit
+    onRegisterOpenDrawer: ((() -> Unit)?) -> Unit,
+    onRequestAppUpdate: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val view = androidx.compose.ui.platform.LocalView.current
@@ -807,66 +961,25 @@ private fun MainAppScreen(
     val isDrawerGestureEnabled = drawerState.isOpen ||
         (baseRoute != "player" && baseRoute != "content_detail" && baseRoute != "settings" && baseRoute != "category_settings")
 
-    ModalNavigationDrawer(
+    val isDrawerBlockingBackground = drawerState.isOpen || drawerState.targetValue == DrawerValue.Open
+
+    CompositionLocalProvider(
+        com.johang.audiocinemateca.presentation.cast.LocalDrawerOpenForAccessibility provides isDrawerBlockingBackground
+    ) {
+        ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = isDrawerGestureEnabled,
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier.semantics { isTraversalGroup = true }
             ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics {
-                            isTraversalGroup = true
-                            traversalIndex = 1f
-                        }
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Movie,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Text(
-                            text = username.ifBlank { "Audiocinemateca" },
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-
-                        Text(
-                            text = userEmail.ifBlank { "Versión Accesible" },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "Versión $appVersion",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f)
-                        )
-                    }
-                }
+                NavigationDrawerHeader(
+                    username = username,
+                    appVersion = appVersion,
+                    updateChannel = updateChannel,
+                    isAuraConfigured = isAuraConfigured,
+                    isDrawerOpen = drawerState.isOpen
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -950,7 +1063,16 @@ private fun MainAppScreen(
                     val isAiTarget = targetDrawerTag == "drawer_item_ai_chat"
                     NavigationDrawerItem(
                         label = { Text("Asistente IA") },
-                        icon = { Icon(Icons.Default.AutoAwesome, contentDescription = null) },
+                        icon = {
+                            androidx.compose.foundation.Image(
+                                painter = androidx.compose.ui.res.painterResource(id = R.drawable.aura_avatar),
+                                contentDescription = null,
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(CircleShape)
+                            )
+                        },
                         selected = isAiSelected,
                         onClick = { navigateFromDrawer(NavRoutes.AI_CHAT) },
                         modifier = Modifier
@@ -1058,10 +1180,12 @@ private fun MainAppScreen(
                 onOpenDrawer = {
                     openDrawerSavingFocus()
                 },
+                onRequestAppUpdate = onRequestAppUpdate,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
             )
+        }
         }
     }
 }
