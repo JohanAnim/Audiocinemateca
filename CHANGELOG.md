@@ -3,6 +3,18 @@
 Todos los cambios notables de **Audiocinemateca** se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones siguen [Semantic Versioning](https://semver.org/).
 
+## [3.4.0-beta.2]
+
+¡Hola a todos! Aquí tienen la **Beta 2 de Audiocinemateca 3.4.0 (`3.4.0-beta.2`)**, una actualización rápida pero clave basada en los primeros reportes de la comunidad, además de permitirles probar el nuevo **actualizador e instalador integrado** directamente desde `3.4.0-beta.1`.
+
+### 🛠️ Correcciones y mejoras en esta Beta 2
+* **Descarga y guardado del catálogo blindados:** Corregimos el error `Parameter specified as non-null is null (parameter partes)` que impedía descargar o guardar el catálogo en algunos dispositivos cuando una obra del servidor llegaba con `partes` u otros metadatos vacíos/nulos. Ahora todos los campos se normalizan de forma segura en SQLite.
+* **Prueba en vivo del actualizador automático:** Quienes ya instalaron `3.4.0-beta.1` pueden actualizar directo desde el diálogo automático al iniciar la app o desde **Cuenta → Buscar actualizaciones**, verificando también el nuevo diálogo de *Novedades de la versión* con formato limpio.
+
+---
+
+> Incluye todas las mejoras masivas de **Jetpack Compose**, **Aura 2.0**, el **nuevo logotipo**, el **menú lateral animado** y el **arranque optimizado** estrenados en `3.4.0-beta.1`.
+
 ## [3.4.0-beta.1]
 
 ¡Hola a toda la familia de **Audiocinemateca**! Hoy es un día muy especial: les presento la **Beta pública de Audiocinemateca 3.4.0 (`3.4.0-beta.1`)**, **una de las versiones más masivas e importantes que ha recibido Audiocinemateca desde que se creó para Android**.

@@ -1,6 +1,6 @@
-# Novedades de esta versión (3.4.0-beta.1)
+# Novedades de esta versión (3.4.0-beta.2)
 
-¡Bienvenido al registro completo de novedades de **Audiocinemateca 3.4.0 Beta 1**! Esta es una de las actualizaciones más grandes, modernas, lindas y técnicamente sólidas que ha recibido la aplicación en Android. Aquí tienes desglosado todo lo que cambia para ti:
+¡Bienvenido al registro completo de novedades de **Audiocinemateca 3.4.0 Beta 2**! Esta actualización corrige el manejo de campos nulos al descargar o guardar el catálogo en SQLite (`partes`, `temporadas`, `enlace` y metadatos opcionales) e incluye todas las mejoras de la gran serie 3.4.0:
 
 ---
 
