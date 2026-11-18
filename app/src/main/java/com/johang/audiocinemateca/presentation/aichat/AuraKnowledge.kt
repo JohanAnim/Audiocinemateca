@@ -15,25 +15,25 @@ ESTRUCTURA REAL Y ACTUAL DE AUDIOCINEMATECA:
      * Historial: Muestra todo lo que el usuario ha reproducido con fecha y progreso exacto.
      * Favoritos: Cuadrícula con las obras guardadas por el usuario y su fecha de agregado.
      * Descargas: Contenido descargado para escuchar sin conexión (con grupos expandibles por temporada/serie).
-   - "Cuenta": Incluye "Mi cuenta (Audiocinemateca.com)", "Documentación y Guía de Uso" (guías abiertas en vista web accesible con lectura en voz alta), "Acerca de", "Apoyar el proyecto", "Novedades de la App", "Historial de Versiones", "Grupo de Telegram", "Buscar actualizaciones", "Configuración" y "Perfil en la Nube".
+   - "Cuenta": Incluye "Mi cuenta (Audiocinemateca.com)", "Documentación y Guía de Uso" (guías abiertas en vista web accesible con lectura en voz alta y Preguntas frecuentes), "Acerca de", "Apoyar el proyecto", "Novedades de la App", "Historial de Versiones", "Grupo de Telegram", "Buscar actualizaciones", "Configuración" (con canales Estable y Beta en General) y "Perfil en la Nube".
 
 2. Menú lateral (Cajón de navegación):
    - Accesible desde el botón de menú en la barra superior (o deslizando desde el borde izquierdo).
    - Da acceso directo a: "Hablar con Aura" (Asistente IA), "Comunidad" (Chat global, Anuncios oficiales y Comentarios del catálogo), "Notificaciones" y "Búsqueda".
 
 3. Reproductor Nativo y MiniReproductor:
-   - Reproductor de audio diseñado para personas ciegas y con baja visión: botones grandes de reproducir/pausar, retroceder y adelantar (intervalo configurable), selector de partes o episodios, velocidad de reproducción, temporizador de apagado, descarga y envío a Chromecast o Android Auto.
+   - Reproductor de audio diseñado para personas ciegas y con baja visión: dos diseños configurables en pantalla completa (predeterminado con controles abajo o estilo YouTube arriba), botones con iconos de reproducir/pausar, retroceder y adelantar (5, 10, 15, 30s o 1 minuto), selector de partes o episodios (`T1:E1`), velocidad, temporizador, ecualizador, descarga, transmisión a Chromecast/Android Auto y atenuación automática (sidechain) cuando habla Aura o el TTS.
    - Soporte háptico para mando PlayStation 5 DualSense (vibración contextual y navegación).
    - MiniReproductor persistente en la parte inferior para controlar la reproducción sin salir de otras pantallas.
 
 4. Accesibilidad Avanzada (TalkBack y Jieshuo):
    - Enfoque automático inteligente al abrir pantallas o regresar de detalles y ajustes.
-   - Múltiples motores de voz configurables independientemente (motor, idioma, voz, tono y velocidad).
+   - Múltiples motores de voz configurables independientemente (motor, idioma, voz, tono y velocidad), y voz expresiva opcional con Gemini 3.8 TTS que se conserva al cambiar de modelo de texto o proveedor.
    - Gesto rápido hacia abajo (o botón de detener) para callar la lectura en voz alta de inmediato.
    - Consejos contextuales de interacción activables o desactivables en Ajustes > General.
 
 5. Documentación, Ayuda y Biblioteca Personal:
-   - Si el usuario pregunta cómo hacer algo en la app, cómo configurar proveedores o claves API de IA (Groq o Google Gemini) o qué hay de nuevo, usa la herramienta `read_app_docs` (con 'configurar_ia', 'primeros_pasos', 'reproductor_dualsense', 'listas_descargas', 'aura_comunidad', 'accesibilidad_ajustes', 'novedades_proyecto' o 'indice').
+   - Si el usuario pregunta cómo hacer algo en la app, cómo configurar proveedores o claves API de IA (Groq o Google Gemini), dudas frecuentes sobre el proyecto o qué hay de nuevo, usa la herramienta `read_app_docs` (con 'configurar_ia', 'primeros_pasos', 'reproductor_dualsense', 'listas_descargas', 'aura_comunidad', 'accesibilidad_ajustes', 'novedades_proyecto', 'preguntas_frecuentes' o 'indice').
    - Si el usuario pregunta por su historial, qué fue lo último que vio/escuchó, sus favoritos o sus descargas, usa la herramienta `get_user_library`.
 """
 }

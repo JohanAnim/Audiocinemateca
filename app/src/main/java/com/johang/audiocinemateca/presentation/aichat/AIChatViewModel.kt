@@ -355,7 +355,7 @@ class AIChatViewModel @Inject constructor(
                - Si el usuario pregunta por su historial, qué fue lo último que vio o escuchó, cuánto le falta, sus favoritos o sus descargas (incluyendo cuánto pesan en total, cuántas obras descargadas tiene, descargas en curso o estadísticas), llama a 'get_user_library' ('history', 'favorites', 'downloads' o 'all').
                - Aprovecha todos los datos completos que te devuelve la herramienta (título, parte o episodio, progreso, peso total de descargas en MB/GB, totales de favoritos/historial y obras terminadas o en progreso) para dar respuestas muy precisas, útiles y completas.
             3. Documentación Oficial de la App ('read_app_docs'):
-               - Si el usuario pregunta cómo funciona cualquier parte de Audiocinemateca, cómo configurar proveedores o crear una Clave API (Groq o Google Gemini), cómo usar el reproductor, Chromecast, DualSense, listas, descargas, TalkBack/Jieshuo, voces de lectura, ajustes o qué novedades recientes tiene el proyecto, llama a 'read_app_docs' con el tema adecuado ('indice', 'primeros_pasos', 'reproductor_dualsense', 'listas_descargas', 'aura_comunidad', 'configurar_ia', 'accesibilidad_ajustes', 'novedades_proyecto').
+               - Si el usuario pregunta cómo funciona cualquier parte de Audiocinemateca, cómo configurar proveedores o crear una Clave API (Groq o Google Gemini), dudas frecuentes sobre el proyecto o las cuentas, cómo usar el reproductor, Chromecast, DualSense, listas, descargas, TalkBack/Jieshuo, voces de lectura, ajustes, canales Estable/Beta o qué novedades recientes tiene el proyecto, llama a 'read_app_docs' con el tema adecuado ('indice', 'primeros_pasos', 'reproductor_dualsense', 'listas_descargas', 'aura_comunidad', 'configurar_ia', 'accesibilidad_ajustes', 'novedades_proyecto', 'preguntas_frecuentes').
             4. Reproducción Directa ('play_content'):
                - NUNCA reproduzcas una obra de inmediato si el usuario solo pregunta por ella, busca un título o pide recomendaciones. En ese caso, háblale de la obra con naturalidad (escribiendo siempre los títulos reales entre dobles corchetes [[Título]]) y pregúntale si quiere que se la pongas ahora o prefiere ver sus detalles.
                - Usa 'play_content' ÚNICAMENTE cuando el usuario te pida de forma explícita e inequívoca reproducirla ahora mismo (ej: "reprodúcela", "dale play", "sí, ponla", "quiero escucharla ya").
@@ -1093,7 +1093,8 @@ class AIChatViewModel @Inject constructor(
                     "aura_comunidad" to "04_aura_y_comunidad.md",
                     "configurar_ia" to "05_configurar_ia_y_api_keys.md",
                     "accesibilidad_ajustes" to "06_accesibilidad_y_ajustes.md",
-                    "novedades_proyecto" to "07_novedades_proyecto.md"
+                    "novedades_proyecto" to "07_novedades_proyecto.md",
+                    "preguntas_frecuentes" to "08_preguntas_frecuentes.md"
                 )
                 withContext(Dispatchers.IO) {
                     val fileName = docMap[topic]
@@ -1102,12 +1103,13 @@ class AIChatViewModel @Inject constructor(
                             "tema" to "indice",
                             "guias_disponibles" to listOf(
                                 "primeros_pasos: Inicio y cómo comenzar: registro en audiocinemateca.com, primer acceso, pestañas y búsqueda",
-                                "reproductor_dualsense: Reproductor, Chromecast, Android Auto y DualSense",
+                                "reproductor_dualsense: Reproductor, diseños en pantalla completa, sidechain, Chromecast, Android Auto y DualSense",
                                 "listas_descargas: Historial, Favoritos y Descargas sin conexión",
-                                "aura_comunidad: Hablar con Aura, Chat Global, Anuncios y Comentarios",
-                                "configurar_ia: Cómo activar la IA y crear tu Clave API gratis en Groq o Google Gemini",
-                                "accesibilidad_ajustes: TalkBack, Jieshuo, voces de lectura, gestos y ajustes",
-                                "novedades_proyecto: Novedades recientes de la aplicación"
+                                "aura_comunidad: Hablar con Aura, voz expresiva, Chat Global, Anuncios y Comentarios",
+                                "configurar_ia: Cómo activar la IA, crear tu Clave API gratis en Groq o Google Gemini y conservar tu voz",
+                                "accesibilidad_ajustes: TalkBack, Jieshuo, voces de lectura, gestos, canales Estable/Beta y ajustes",
+                                "novedades_proyecto: Novedades recientes de la aplicación",
+                                "preguntas_frecuentes: Preguntas frecuentes sobre Audiocinemateca, cuentas, Aura, descargas, canales y soporte"
                             )
                         )
                     } else {

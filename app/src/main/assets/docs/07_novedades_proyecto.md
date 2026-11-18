@@ -1,26 +1,23 @@
 # Novedades de esta versión
 
-Estas son las mejoras más recientes que hemos preparado para que disfrutes todavía más de cada película y serie:
+Estas son las mejoras más recientes que hemos preparado para que disfrutes todavía más de cada película, serie y conversación con Aura:
 
 ---
 
-## 1. Catálogo y buscador ultrarrápido sin esperas
-* Toda la información del catálogo está organizada ahora de una forma mucho más ágil y eficiente dentro de tu teléfono.
-* Abrir pestañas, filtrar por género, país o idioma, y escribir en el buscador funciona de manera instantánea, ordenando además las sagas cronológicamente para que encuentres cada entrega en orden.
+## 1. Reproductor más flexible y cómodo
+* **Dos diseños en pantalla completa:** Elige en Ajustes de Reproducción entre el diseño predeterminado (controles abajo y acciones arriba) o el alternativo estilo YouTube (controles arriba y utilidades debajo).
+* **Salto de hasta 1 minuto:** Nuevo intervalo de **1 minuto (60 segundos)** además de 5, 10, 15 y 30 segundos, con iconos renovados en controles y pestañas.
+* **Sidechain automático:** Cuando Aura o el TTS hablan durante la reproducción, el volumen de la película o serie baja suavemente y se recupera al instante al terminar.
+* **Encabezado mejorado y clasificación profesional:** Subtítulos claros en series (`T1:E1 - Título del capítulo`) y clasificación orientativa profesional antes o durante la reproducción.
 
-## 2. Interfaz completamente renovada y más fluida
-* Cada pantalla de la app —Explorar, Fichas de obras, Mis Listas, Comunidad, Ajustes, Reproductor y Documentación— fue reconstruida con un diseño moderno, claro y muchísimo más receptivo.
-* En la ficha de cada obra disfrutas de botones claros, información ordenada, selector cómodo de temporadas y sinopsis lista para leer en voz alta con un solo toque.
+## 2. Aura más expresiva, memoriosa y precisa
+* **Voz expresiva con Gemini 3.8 TTS:** Respuestas con matices emocionales naturales y controles en cada mensaje para reproducir, pausar, escuchar desde el inicio, copiar, compartir o regenerar, conservando tu voz y modelo TTS intactos aunque cambies de proveedor o modelo de texto.
+* **Memoria completa del chat activo:** Aura recuerda toda la conversación aprovechando el almacenamiento en caché de las APIs y ajustando inteligentemente el presupuesto de tokens en modelos de Groq con tope por minuto.
+* **Búsquedas por géneros combinados y biblioteca real:** Consultas exactas en SQL para peticiones como *"mangas de romance"* y reporte preciso del peso total de tus descargas en `MB`/`GB`, obras completadas, pendientes y favoritos.
+* **Compatibilidad nativa con Gemma 4:** Soporte completo para `gemma-4-26b-a4b-it` y `gemma-4-31b-it` sin reintentos fallidos.
 
-## 3. Sensaciones de cine con mando PS5 DualSense
-* Cuando conectas un mando de PlayStation 5 (o en teléfonos con vibración de alta definición), puedes activar la vibración avanzada para sentir el pulso de las escenas de acción, la música y los efectos directamente en tus manos.
-* También puedes moverte por toda la app y controlar el reproductor completo desde los botones del mando con avisos de voz.
+## 3. Canales de actualización Estable y Beta
+* Ahora puedes elegir en **Ajustes -> General -> Canal de actualizaciones** entre **Estable (Recomendado)** y **Beta (Acceso anticipado)**, con comparación SemVer completa de pre-releases.
 
-## 4. Una Aura mucho más cercana y poderosa
-* **Aura** ahora es compatible tanto con **Groq** como con **Google Gemini**, guarda el historial de todas tus conversaciones por separado y te permite dictarle mensajes cómodamente con el micrófono.
-* Ahora puede consultar tu historial reciente para contarte qué fue lo último que escuchaste, revisar tus favoritos o descargas, responder dudas sobre cómo usar la app y ayudarte a configurar todo paso a paso.
-
-## 5. Accesibilidad cuidada al detalle
-* Mayor precisión al enfocar elementos y al volver atrás en listas, menús y ajustes con **TalkBack** y **Jieshuo**.
-* Barra de progreso del reproductor protegida frente a toques accidentales, pausa automática ante llamadas o desconexión de auriculares y transmisión a **Google Cast** mucho más estable.
-* Nueva sección oficial de **Documentación y Guía de Uso** en Cuenta, pensada para leer o escuchar en cualquier momento.
+## 4. Catálogo ultrarrápido, DualSense y Documentación ampliada
+* Catálogo indexado localmente en **SQLite (Room + FTS4)**, interfaz nativa en **Jetpack Compose**, vibración háptica avanzada para teléfonos y mando **PS5 DualSense**, mejoras de accesibilidad en Chat Global/Aura y nueva sección de **Preguntas frecuentes** en Documentación.

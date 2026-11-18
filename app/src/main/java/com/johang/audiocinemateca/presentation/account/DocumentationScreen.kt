@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -127,6 +128,13 @@ private val APP_DOC_TOPICS = listOf(
         title = "Novedades de esta versión",
         summary = "Descubre las mejoras más recientes incorporadas en la aplicación.",
         icon = Icons.Default.NewReleases
+    ),
+    DocTopic(
+        id = "preguntas_frecuentes",
+        fileName = "08_preguntas_frecuentes.md",
+        title = "Preguntas frecuentes",
+        summary = "Respuestas claras sobre cuentas, Audiocinemateca, Aura, claves API, descargas, canales y soporte.",
+        icon = Icons.AutoMirrored.Filled.HelpOutline
     )
 )
 

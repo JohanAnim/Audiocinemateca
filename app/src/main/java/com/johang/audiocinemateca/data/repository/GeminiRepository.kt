@@ -277,14 +277,20 @@ class GeminiRepository @Inject constructor(
     }
 
     fun pickPreferredTtsModelId(liveModels: List<Pair<String, String>>, currentModel: String?): String {
-        val ids = liveModels.map { it.first }
-        if (ids.isEmpty()) return currentModel?.takeIf { it.isNotBlank() } ?: DEFAULT_GEMINI_TTS_MODEL
         val prefs = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
         val userChosen = prefs.getBoolean("gemini_tts_model_user_chosen", false)
-        if (!userChosen && DEFAULT_GEMINI_TTS_MODEL in ids) {
+        val cleanCurrent = currentModel?.trim()?.removePrefix("models/")?.takeIf { it.isNotBlank() }
+        // Si el usuario eligió explícitamente un modelo TTS, respetarlo siempre aunque cambie de modelo de texto,
+        // de proveedor o aunque la lista en vivo omita temporalmente un modelo preview.
+        if (userChosen && cleanCurrent != null) {
+            return cleanCurrent
+        }
+        val ids = liveModels.map { it.first }
+        if (ids.isEmpty()) return cleanCurrent ?: DEFAULT_GEMINI_TTS_MODEL
+        if (DEFAULT_GEMINI_TTS_MODEL in ids) {
             return DEFAULT_GEMINI_TTS_MODEL
         }
-        if (!currentModel.isNullOrBlank() && currentModel in ids) return currentModel
+        if (cleanCurrent != null && cleanCurrent in ids) return cleanCurrent
         return GEMINI_TTS_PRIORITY_ORDER.firstOrNull { it in ids } ?: ids.first()
     }
 
@@ -411,7 +417,7 @@ class GeminiRepository @Inject constructor(
                     properties = mapOf(
                         "topic" to Property(
                             "string",
-                            "Tema a consultar: 'primeros_pasos', 'reproductor_dualsense', 'listas_descargas', 'aura_comunidad', 'configurar_ia', 'accesibilidad_ajustes', 'novedades_proyecto' o 'indice'."
+                            "Tema a consultar: 'primeros_pasos', 'reproductor_dualsense', 'listas_descargas', 'aura_comunidad', 'configurar_ia', 'accesibilidad_ajustes', 'novedades_proyecto', 'preguntas_frecuentes' o 'indice'."
                         )
                     ),
                     required = listOf("topic")

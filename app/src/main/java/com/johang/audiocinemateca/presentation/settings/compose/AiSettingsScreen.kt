@@ -492,26 +492,25 @@ fun AiSettingsScreen(
         )
 
         if (effectiveVoiceMode == GeminiRepository.AURA_VOICE_MODE_GEMINI) {
-            val ttsModelEntries = if (liveTtsModels.isNotEmpty()) {
-                liveTtsModels.map { it.second }
+            val baseTtsOptions = if (liveTtsModels.isNotEmpty()) {
+                liveTtsModels
             } else {
                 listOf(
-                    "Gemini 3.8 Flash TTS (${GeminiRepository.DEFAULT_GEMINI_TTS_MODEL})",
-                    "Gemini 3.8 Flash-Lite TTS (gemini-3.8-flash-lite-tts)",
-                    "Gemini 2.5 Flash Preview TTS (gemini-2.5-flash-preview-tts)",
-                    "Gemini 2.5 Pro Preview TTS (gemini-2.5-pro-preview-tts)"
+                    GeminiRepository.DEFAULT_GEMINI_TTS_MODEL to "Gemini 3.8 Flash TTS (${GeminiRepository.DEFAULT_GEMINI_TTS_MODEL})",
+                    "gemini-3.8-flash-lite-tts" to "Gemini 3.8 Flash-Lite TTS (gemini-3.8-flash-lite-tts)",
+                    "gemini-2.5-flash-preview-tts" to "Gemini 2.5 Flash Preview TTS (gemini-2.5-flash-preview-tts)",
+                    "gemini-2.5-pro-preview-tts" to "Gemini 2.5 Pro Preview TTS (gemini-2.5-pro-preview-tts)"
                 )
             }
-            val ttsModelValues = if (liveTtsModels.isNotEmpty()) {
-                liveTtsModels.map { it.first }
-            } else {
-                listOf(
-                    GeminiRepository.DEFAULT_GEMINI_TTS_MODEL,
-                    "gemini-3.8-flash-lite-tts",
-                    "gemini-2.5-flash-preview-tts",
-                    "gemini-2.5-pro-preview-tts"
-                )
+            val mergedTtsOptions = remember(baseTtsOptions, geminiTtsModel) {
+                if (geminiTtsModel.isNotBlank() && baseTtsOptions.none { it.first == geminiTtsModel }) {
+                    listOf(geminiTtsModel to "$geminiTtsModel (Seleccionado)") + baseTtsOptions
+                } else {
+                    baseTtsOptions
+                }
             }
+            val ttsModelEntries = mergedTtsOptions.map { it.second }
+            val ttsModelValues = mergedTtsOptions.map { it.first }
             val ttsModelIdx = ttsModelValues.indexOf(geminiTtsModel).coerceAtLeast(0)
             val ttsModelSummary = when {
                 isSyncingModels && liveTtsModels.isEmpty() -> "Consultando modelos TTS disponibles..."
