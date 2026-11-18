@@ -33,7 +33,11 @@ class AnnouncementRepository @Inject constructor(
 
     fun getAnnouncements(): Flow<List<Announcement>> = callbackFlow {
         val listener = collection.orderBy("timestamp", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, _ ->
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
                 val ads = snapshot?.documents?.mapNotNull { doc ->
                     doc.toObject(Announcement::class.java)?.copy(id = doc.id)
                 } ?: emptyList()

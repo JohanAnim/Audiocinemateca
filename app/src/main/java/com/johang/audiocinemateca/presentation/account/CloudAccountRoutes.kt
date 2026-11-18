@@ -41,7 +41,8 @@ fun ProfileRoute(
     playbackProgressDao: PlaybackProgressDao,
     onBackClick: () -> Unit,
     onNavigateToLogin: () -> Unit,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    onRequestAppUpdate: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -85,6 +86,7 @@ fun ProfileRoute(
                         sharedPreferencesManager.saveBoolean(syncKey, true)
                     }
                 } catch (e: Exception) {
+                    cloudRepository.reportCloudError(e)
                     Log.e("SyncCheck", "Error al comprobar datos en la nube")
                 }
             }
@@ -104,6 +106,7 @@ fun ProfileRoute(
         favoritesDao = favoritesDao,
         playbackProgressDao = playbackProgressDao,
         onBackClick = onBackClick,
+        onRequestAppUpdate = onRequestAppUpdate,
         onSignInWithGoogle = {
             val rawNonce = UUID.randomUUID().toString()
             val bytes = rawNonce.toByteArray()
@@ -645,8 +648,9 @@ private fun smartSyncLocalDataToCloud(
             val summary = "Sincronizado: +$favsUploaded subidos, +$favsDownloaded bajados."
             Toast.makeText(context, summary, Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
+            cloudRepository.reportCloudError(e)
             Log.e("SyncError", "Error en la sincronización", e)
-            Toast.makeText(context, "Fallo en la sincronización: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, cloudRepository.getFriendlyErrorMessage(e), Toast.LENGTH_LONG).show()
         }
     }
 }

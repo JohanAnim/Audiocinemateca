@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.johang.audiocinemateca.data.model.Comment
 import com.johang.audiocinemateca.data.repository.CommentRepository
 import com.johang.audiocinemateca.data.repository.SearchRepository
+import com.johang.audiocinemateca.data.repository.ServerMigrationManager
 import com.johang.audiocinemateca.domain.model.CatalogItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,7 +30,8 @@ import com.google.firebase.firestore.DocumentSnapshot
 @HiltViewModel
 class CommunityViewModel @Inject constructor(
     private val commentRepository: CommentRepository,
-    private val searchRepository: SearchRepository
+    private val searchRepository: SearchRepository,
+    private val serverMigrationManager: ServerMigrationManager
 ) : ViewModel() {
 
     private val _comments = MutableStateFlow<List<Comment>>(emptyList())
@@ -36,6 +39,9 @@ class CommunityViewModel @Inject constructor(
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _connectionError = MutableStateFlow<String?>(null)
+    val connectionError: StateFlow<String?> = _connectionError.asStateFlow()
 
     private val _indexErrorUrl = MutableSharedFlow<String>()
     val indexErrorUrl = _indexErrorUrl.asSharedFlow()
@@ -52,6 +58,10 @@ class CommunityViewModel @Inject constructor(
 
     fun setFilter(filter: String) {
         _currentFilter.value = filter
+        loadComments(isNextPage = false)
+    }
+
+    fun retryLoad() {
         loadComments(isNextPage = false)
     }
 
@@ -72,10 +82,15 @@ class CommunityViewModel @Inject constructor(
                 .catch { e ->
                     if (e is IndexMissingException) {
                         _indexErrorUrl.emit(e.url)
+                    } else {
+                        serverMigrationManager.reportFirestoreError(e)
+                        _connectionError.value = serverMigrationManager.getFriendlyFirestoreErrorMessage(e)
                     }
                     _isLoading.value = false
                 }
                 .collectLatest { result ->
+                    serverMigrationManager.clearTransientErrors()
+                    _connectionError.value = null
                     if (isNextPage) {
                         _comments.value = _comments.value + result.comments
                     } else {

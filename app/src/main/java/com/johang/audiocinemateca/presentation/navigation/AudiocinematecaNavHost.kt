@@ -94,6 +94,7 @@ fun AudiocinematecaNavHost(
     downloadRepository: DownloadRepository,
     ttsManager: TtsManager,
     onOpenDrawer: () -> Unit,
+    onRequestAppUpdate: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -417,7 +418,8 @@ fun AudiocinematecaNavHost(
                 playbackProgressDao = playbackProgressDao,
                 onBackClick = { navController.navigateUp() },
                 onNavigateToLogin = { navController.navigate(NavRoutes.LOGIN_CLOUD) },
-                onNavigateToRegister = { navController.navigate(NavRoutes.REGISTER_CLOUD) }
+                onNavigateToRegister = { navController.navigate(NavRoutes.REGISTER_CLOUD) },
+                onRequestAppUpdate = onRequestAppUpdate
             )
         }
 
@@ -589,7 +591,8 @@ fun AudiocinematecaNavHost(
                 },
                 onNavigateToCommunitySettings = {
                     navController.navigate(NavRoutes.categorySettings("community"))
-                }
+                },
+                onRequestAppUpdate = onRequestAppUpdate
             )
         }
 

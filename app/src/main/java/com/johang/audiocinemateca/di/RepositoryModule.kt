@@ -99,8 +99,14 @@ object RepositoryModule {
     fun provideCloudRepository(
         firestore: com.google.firebase.firestore.FirebaseFirestore,
         auth: com.google.firebase.auth.FirebaseAuth,
-        authCatalogRepository: AuthCatalogRepository
+        authCatalogRepository: AuthCatalogRepository,
+        serverMigrationManager: com.johang.audiocinemateca.data.repository.ServerMigrationManager
     ): com.johang.audiocinemateca.data.repository.CloudRepository {
-        return com.johang.audiocinemateca.data.repository.CloudRepository(firestore, auth, authCatalogRepository)
+        return com.johang.audiocinemateca.data.repository.CloudRepository(
+            firestore = firestore,
+            auth = auth,
+            catalogRepository = authCatalogRepository,
+            serverMigrationManager = serverMigrationManager
+        )
     }
 }

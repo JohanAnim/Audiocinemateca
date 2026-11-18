@@ -2,6 +2,7 @@ package com.johang.audiocinemateca.domain.usecase
 
 import android.util.Log
 import com.johang.audiocinemateca.data.local.SharedPreferencesManager
+import com.johang.audiocinemateca.data.repository.ServerMigrationManager
 import com.johang.audiocinemateca.domain.model.SemVer
 import com.johang.audiocinemateca.domain.model.UpdateChannels
 import com.johang.audiocinemateca.domain.model.UpdateInfo
@@ -11,7 +12,8 @@ import javax.inject.Inject
 
 class CheckForUpdateUseCase @Inject constructor(
     private val updateRepository: UpdateRepository,
-    private val sharedPreferencesManager: SharedPreferencesManager
+    private val sharedPreferencesManager: SharedPreferencesManager,
+    private val serverMigrationManager: ServerMigrationManager
 ) {
 
     suspend operator fun invoke(
@@ -24,6 +26,7 @@ class CheckForUpdateUseCase @Inject constructor(
         return when (val resource = updateRepository.getLatestRelease(activeChannel)) {
             is Resource.Success -> {
                 val updateInfo = resource.data!!
+                serverMigrationManager.onRemoteReleaseChecked(updateInfo)
                 val remoteVersion = updateInfo.version.removePrefix("v").removePrefix("V")
                 Log.d(
                     "CheckForUpdateUseCase",

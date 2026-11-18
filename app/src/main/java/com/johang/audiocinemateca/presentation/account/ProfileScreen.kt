@@ -33,6 +33,8 @@ import com.johang.audiocinemateca.data.AuthCatalogRepository
 import com.johang.audiocinemateca.data.local.dao.FavoritesDao
 import com.johang.audiocinemateca.data.local.dao.PlaybackProgressDao
 import com.johang.audiocinemateca.data.repository.CloudRepository
+import com.johang.audiocinemateca.data.repository.ServerMigrationStatus
+import com.johang.audiocinemateca.presentation.components.MigrationOrConnectionCard
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -54,12 +56,15 @@ fun ProfileScreen(
     onNavigateToRegister: () -> Unit,
     onSyncStarted: () -> Unit,
     onSyncFinished: (String) -> Unit,
-    onSyncError: (String) -> Unit
+    onSyncError: (String) -> Unit,
+    onRequestAppUpdate: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val firebaseAuth = remember { FirebaseAuth.getInstance() }
     var currentUser by remember { mutableStateOf(firebaseAuth.currentUser) }
+    val migrationStatus = cloudRepository.migrationStatus?.collectAsState()?.value ?: ServerMigrationStatus()
+    var cloudErrorMsg by remember { mutableStateOf<String?>(null) }
 
     // Listen to Firebase Auth state changes
     DisposableEffect(firebaseAuth) {
@@ -146,6 +151,14 @@ fun ProfileScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (migrationStatus.shouldShowBanner || !cloudErrorMsg.isNullOrBlank()) {
+                MigrationOrConnectionCard(
+                    status = migrationStatus,
+                    errorMessage = cloudErrorMsg,
+                    onUpdateClick = onRequestAppUpdate
+                )
+            }
+
             // Bienvenido/a Section
             Text(
                 text = "¡Te damos la bienvenida!",
@@ -301,6 +314,7 @@ fun ProfileScreen(
 
                 // Smart manual sync action
                 val onSyncClick: () -> Unit = {
+                    cloudErrorMsg = null
                     onSyncStarted()
                     scope.launch {
                         try {
@@ -383,7 +397,10 @@ fun ProfileScreen(
                             val summary = "Sincronizado: +$favsUploaded subidos, +$favsDownloaded bajados."
                             onSyncFinished(summary)
                         } catch (e: Exception) {
-                            onSyncError(e.localizedMessage ?: "Error en la sincronización")
+                            cloudRepository.reportCloudError(e)
+                            val friendly = cloudRepository.getFriendlyErrorMessage(e)
+                            cloudErrorMsg = friendly
+                            onSyncError(friendly)
                         }
                     }
                 }

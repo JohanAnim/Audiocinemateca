@@ -30,6 +30,7 @@ import com.johang.audiocinemateca.domain.model.CatalogItem
 import com.johang.audiocinemateca.presentation.community.AnnouncementsViewModel
 import com.johang.audiocinemateca.presentation.community.CommunityViewModel
 import com.johang.audiocinemateca.presentation.community.GlobalChatViewModel
+import com.johang.audiocinemateca.presentation.components.MigrationOrConnectionCard
 
 @Composable
 fun CommunityScreen(
@@ -40,8 +41,14 @@ fun CommunityScreen(
     onVoiceClick: () -> Unit = {},
     onNavigateToPlayer: (CatalogItem, Int, Int) -> Unit = { _, _, _ -> },
     onNavigateToContentDetail: (String, String) -> Unit = { _, _ -> },
-    onNavigateToCommunitySettings: () -> Unit = {}
+    onNavigateToCommunitySettings: () -> Unit = {},
+    onRequestAppUpdate: () -> Unit = {}
 ) {
+    val migrationStatus by globalChatViewModel.migrationStatus.collectAsState()
+    val globalChatError by globalChatViewModel.connectionError.collectAsState()
+    val announcementsError by announcementsViewModel.connectionError.collectAsState()
+    val commentsError by communityViewModel.connectionError.collectAsState()
+
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(initialTabIndex.coerceIn(0, 2)) }
     LaunchedEffect(initialTabIndex) {
         selectedTabIndex = initialTabIndex.coerceIn(0, 2)
@@ -111,6 +118,29 @@ fun CommunityScreen(
                     }
                 )
             }
+        }
+
+        val activeTabError = when (selectedTabIndex) {
+            0 -> globalChatError
+            1 -> announcementsError
+            2 -> commentsError
+            else -> null
+        }
+
+        if (migrationStatus.shouldShowBanner || !activeTabError.isNullOrBlank()) {
+            MigrationOrConnectionCard(
+                status = migrationStatus,
+                errorMessage = activeTabError,
+                onUpdateClick = onRequestAppUpdate,
+                onRetryClick = {
+                    when (selectedTabIndex) {
+                        0 -> globalChatViewModel.retryConnection()
+                        1 -> announcementsViewModel.retryLoad()
+                        2 -> communityViewModel.retryLoad()
+                    }
+                },
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            )
         }
 
         // Tab Contents

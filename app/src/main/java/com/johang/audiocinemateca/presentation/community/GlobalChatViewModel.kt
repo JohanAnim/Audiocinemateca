@@ -9,10 +9,13 @@ import com.johang.audiocinemateca.data.model.ChatMessage
 import com.johang.audiocinemateca.data.model.OnlineUser
 import com.johang.audiocinemateca.data.repository.GlobalChatRepository
 import com.johang.audiocinemateca.data.repository.SearchRepository
+import com.johang.audiocinemateca.data.repository.ServerMigrationManager
+import com.johang.audiocinemateca.data.repository.ServerMigrationStatus
 import com.johang.audiocinemateca.util.RelativeTimeUtils
 import com.johang.audiocinemateca.util.SoundEffectsManager
 import com.johang.audiocinemateca.util.TtsManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -31,10 +34,19 @@ class GlobalChatViewModel @Inject constructor(
     private val searchRepository: SearchRepository,
     private val sharedPreferencesManager: com.johang.audiocinemateca.data.local.SharedPreferencesManager,
     private val soundEffectsManager: SoundEffectsManager,
-    private val ttsManager: TtsManager
+    private val ttsManager: TtsManager,
+    private val serverMigrationManager: ServerMigrationManager
 ) : AndroidViewModel(application) {
 
     private val adminEmail = "gutierrezjohanantonio@gmail.com"
+
+    val migrationStatus: StateFlow<ServerMigrationStatus> = serverMigrationManager.status
+
+    private val _connectionError = MutableStateFlow<String?>(null)
+    val connectionError = _connectionError.asStateFlow()
+
+    private var messagesStreamJob: Job? = null
+    private var chatStatusStreamJob: Job? = null
 
     private val _chatItems = MutableStateFlow<List<ChatListItem>>(emptyList())
     val chatItems = _chatItems.asStateFlow()
@@ -63,6 +75,10 @@ class GlobalChatViewModel @Inject constructor(
         get() = auth.currentUser?.email?.equals(adminEmail, ignoreCase = true) == true
 
     val onlineUsers: StateFlow<List<OnlineUser>> = repository.getOnlineUsersFlow()
+        .catch { e ->
+            serverMigrationManager.reportFirestoreError(e)
+            emit(emptyList())
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val onlineCount: StateFlow<Int> = onlineUsers
@@ -71,23 +87,36 @@ class GlobalChatViewModel @Inject constructor(
 
     init {
         startPresenceHeartbeat()
+        observeGlobalChatStreams()
+    }
 
-        repository.getMessages()
-            .onEach { newList -> 
+    fun retryConnection() {
+        _connectionError.value = null
+        observeGlobalChatStreams()
+    }
+
+    private fun observeGlobalChatStreams() {
+        messagesStreamJob?.cancel()
+        chatStatusStreamJob?.cancel()
+
+        messagesStreamJob = repository.getMessages()
+            .onEach { newList ->
+                serverMigrationManager.clearTransientErrors()
+                _connectionError.value = null
                 val currentUserId = auth.currentUser?.uid
                 val oldList = _messages.value
-                
+
                 if (newList.isNotEmpty()) {
                     val lastMsg = newList.last()
                     val isNew = oldList.none { it.id == lastMsg.id }
-                    
+
                     if (isNew) {
                         if (lastMsg.senderId != currentUserId) {
                             soundEffectsManager.playSound("aura_receive")
                         }
                     }
                 }
-                
+
                 viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                     val processedList = newList.map { msg ->
                         if (msg.linkedItems.isEmpty() && msg.text.contains("audiocinemateca.com", ignoreCase = true)) {
@@ -100,9 +129,18 @@ class GlobalChatViewModel @Inject constructor(
                     _chatItems.value = groupMessagesByDate(processedList)
                 }
             }
+            .catch { e ->
+                serverMigrationManager.reportFirestoreError(e)
+                _connectionError.value = serverMigrationManager.getFriendlyFirestoreErrorMessage(e)
+            }
             .launchIn(viewModelScope)
 
-        repository.getChatStatus().onEach { _isOpen.value = it }.launchIn(viewModelScope)
+        chatStatusStreamJob = repository.getChatStatus()
+            .onEach { _isOpen.value = it }
+            .catch { e ->
+                serverMigrationManager.reportFirestoreError(e)
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun startPresenceHeartbeat() {
@@ -238,7 +276,11 @@ class GlobalChatViewModel @Inject constructor(
             try {
                 repository.updateMessageReactions(message.id, currentReactions)
                 soundEffectsManager.playSound("aura_send")
-            } catch (e: Exception) { soundEffectsManager.playSound("aura_error") }
+            } catch (e: Exception) {
+                soundEffectsManager.playSound("aura_error")
+                serverMigrationManager.reportFirestoreError(e)
+                _connectionError.value = serverMigrationManager.getFriendlyFirestoreErrorMessage(e)
+            }
         }
     }
 
@@ -247,7 +289,11 @@ class GlobalChatViewModel @Inject constructor(
             try {
                 repository.deleteMessage(message.id, isByAdmin = isAdmin)
                 soundEffectsManager.playSound("aura_send")
-            } catch (e: Exception) { soundEffectsManager.playSound("aura_error") }
+            } catch (e: Exception) {
+                soundEffectsManager.playSound("aura_error")
+                serverMigrationManager.reportFirestoreError(e)
+                _connectionError.value = serverMigrationManager.getFriendlyFirestoreErrorMessage(e)
+            }
         }
     }
 
@@ -255,6 +301,10 @@ class GlobalChatViewModel @Inject constructor(
     val banStatusMessage = _banStatusMessage.asStateFlow()
 
     val bannedUsers: StateFlow<List<com.johang.audiocinemateca.data.model.BannedUser>> = repository.getBannedUsersFlow()
+        .catch { e ->
+            serverMigrationManager.reportFirestoreError(e)
+            emit(emptyList())
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val hasSeenChatRules: Boolean
@@ -348,7 +398,11 @@ class GlobalChatViewModel @Inject constructor(
                     _replyingTo.value = null
                 }
                 soundEffectsManager.playSound("aura_send")
-            } catch (e: Exception) { soundEffectsManager.playSound("aura_error") }
+            } catch (e: Exception) {
+                soundEffectsManager.playSound("aura_error")
+                serverMigrationManager.reportFirestoreError(e)
+                _connectionError.value = serverMigrationManager.getFriendlyFirestoreErrorMessage(e)
+            }
         }
         if (_editingMessage.value == null) lastMessageTimestamp = now
         return true

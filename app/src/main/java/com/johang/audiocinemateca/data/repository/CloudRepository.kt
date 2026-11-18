@@ -22,8 +22,21 @@ import javax.inject.Singleton
 class CloudRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
-    private val catalogRepository: com.johang.audiocinemateca.data.AuthCatalogRepository
+    private val catalogRepository: com.johang.audiocinemateca.data.AuthCatalogRepository,
+    private val serverMigrationManager: ServerMigrationManager? = null
 ) {
+
+    val migrationStatus: kotlinx.coroutines.flow.StateFlow<ServerMigrationStatus>?
+        get() = serverMigrationManager?.status
+
+    fun reportCloudError(error: Throwable?) {
+        serverMigrationManager?.reportFirestoreError(error)
+    }
+
+    fun getFriendlyErrorMessage(error: Throwable?): String {
+        return serverMigrationManager?.getFriendlyFirestoreErrorMessage(error)
+            ?: (error?.localizedMessage ?: "Error al conectar con la nube.")
+    }
 
     private fun getUserDoc() = auth.currentUser?.uid?.let { uid ->
         firestore.collection("users").document(uid)
@@ -32,8 +45,10 @@ class CloudRepository @Inject constructor(
     suspend fun getUserRole(): String {
         return try {
             val doc = getUserDoc()?.get()?.await()
+            serverMigrationManager?.clearTransientErrors()
             doc?.getString("role") ?: "user"
         } catch (e: Exception) {
+            serverMigrationManager?.reportFirestoreError(e)
             "user"
         }
     }
@@ -77,6 +92,7 @@ class CloudRepository @Inject constructor(
                     ), SetOptions.merge()).await()
             }
         } catch (e: Exception) {
+            serverMigrationManager?.reportFirestoreError(e)
             android.util.Log.e("CloudRepo", "Error syncing profile: ${e.message}")
         }
     }
@@ -93,6 +109,7 @@ class CloudRepository @Inject constructor(
 
         val subscription = userDoc.collection("favorites").addSnapshotListener { snapshot, error ->
             if (error != null) {
+                serverMigrationManager?.reportFirestoreError(error)
                 android.util.Log.e("CloudRepo", "Error en listener de favoritos: ${error.message}")
                 return@addSnapshotListener
             }
@@ -148,6 +165,7 @@ class CloudRepository @Inject constructor(
 
         val subscription = userDoc.collection("history").addSnapshotListener { snapshot, error ->
             if (error != null) {
+                serverMigrationManager?.reportFirestoreError(error)
                 android.util.Log.e("CloudRepo", "Error en listener de historial: ${error.message}")
                 return@addSnapshotListener
             }
@@ -234,6 +252,7 @@ class CloudRepository @Inject constructor(
             }
             list
         } catch (e: Exception) {
+            serverMigrationManager?.reportFirestoreError(e)
             android.util.Log.e("CloudRepo", "Error obteniendo favoritos: ${e.message}")
             emptyList()
         }
@@ -332,6 +351,7 @@ class CloudRepository @Inject constructor(
             }
             list
         } catch (e: Exception) {
+            serverMigrationManager?.reportFirestoreError(e)
             android.util.Log.e("CloudRepo", "Error obteniendo historial: ${e.message}")
             emptyList()
         }
