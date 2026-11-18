@@ -6,6 +6,11 @@ import android.media.SoundPool
 import android.media.audiofx.HapticGenerator
 import android.os.Build
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,46 +18,53 @@ import javax.inject.Singleton
 class SoundEffectsManager @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
 ) {
-    private var soundPool: SoundPool
-    private val soundsMap = mutableMapOf<String, Int>()
+    @Volatile
+    private var soundPool: SoundPool? = null
+    private val soundsMap = ConcurrentHashMap<String, Int>()
     private var hapticGenerator: HapticGenerator? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
-        val audioAttributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .build()
+        // Cargar SoundPool y archivos .ogg en segundo plano para no bloquear el arranque de MainActivity
+        scope.launch {
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
 
-        soundPool = SoundPool.Builder()
-            .setMaxStreams(10)
-            .setAudioAttributes(audioAttributes)
-            .build()
+            val pool = SoundPool.Builder()
+                .setMaxStreams(10)
+                .setAudioAttributes(audioAttributes)
+                .build()
+            soundPool = pool
 
-        // Cargar sonidos de Aura (ahora estándar de la app)
-        loadSound("aura_send", "sonidos/efectos/aura/enviar_mensaje.ogg")
-        loadSound("aura_receive", "sonidos/efectos/aura/resivir_mensaje.ogg")
-        loadSound("aura_wait", "sonidos/efectos/aura/esperar.ogg")
-        loadSound("aura_error", "sonidos/efectos/aura/alerta_error.ogg")
-        loadSound("aura_voice_start", "sonidos/efectos/aura/voz_start.ogg")
-        loadSound("aura_voice_end", "sonidos/efectos/aura/voz_end.ogg")
+            loadSound(pool, "aura_send", "sonidos/efectos/aura/enviar_mensaje.ogg")
+            loadSound(pool, "aura_receive", "sonidos/efectos/aura/resivir_mensaje.ogg")
+            loadSound(pool, "aura_wait", "sonidos/efectos/aura/esperar.ogg")
+            loadSound(pool, "aura_error", "sonidos/efectos/aura/alerta_error.ogg")
+            loadSound(pool, "aura_voice_start", "sonidos/efectos/aura/voz_start.ogg")
+            loadSound(pool, "aura_voice_end", "sonidos/efectos/aura/voz_end.ogg")
+        }
     }
 
-    private fun loadSound(key: String, assetPath: String) {
+    private fun loadSound(pool: SoundPool, key: String, assetPath: String) {
         try {
-            val assetFileDescriptor = context.assets.openFd(assetPath)
-            val soundId = soundPool.load(assetFileDescriptor, 1)
-            soundsMap[key] = soundId
-            Log.d("SoundEffectsManager", "Intentando cargar: $assetPath")
+            context.assets.openFd(assetPath).use { afd ->
+                val soundId = pool.load(afd, 1)
+                soundsMap[key] = soundId
+                Log.d("SoundEffectsManager", "Cargando en segundo plano: $assetPath")
+            }
         } catch (e: Exception) {
             Log.e("SoundEffectsManager", "Error abriendo asset: $assetPath. ¿Existe el archivo?", e)
         }
     }
 
     fun playSound(key: String) {
+        val pool = soundPool ?: return
         val soundId = soundsMap[key]
         if (soundId != null) {
             Log.d("SoundEffectsManager", "Reproduciendo sonido: $key")
-            soundPool.play(soundId, 1.0f, 1.0f, 1, 0, 1.0f)
+            pool.play(soundId, 1.0f, 1.0f, 1, 0, 1.0f)
         } else {
             Log.w("SoundEffectsManager", "Sonido no encontrado en el mapa: $key")
         }
@@ -60,7 +72,8 @@ class SoundEffectsManager @Inject constructor(
 
     fun release() {
         hapticGenerator?.release()
-        soundPool.release()
+        soundPool?.release()
+        soundPool = null
         soundsMap.clear()
     }
 }

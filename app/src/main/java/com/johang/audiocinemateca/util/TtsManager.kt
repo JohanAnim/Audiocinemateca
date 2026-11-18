@@ -22,6 +22,9 @@ class TtsManager @Inject constructor(
 
     private var tts: TextToSpeech? = null
     private var isInitialized = false
+    private var isInitializing = false
+    private var pendingSpeech: Triple<String, Boolean, String?>? = null
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val prefs: SharedPreferences = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
 
     @Volatile
@@ -55,7 +58,12 @@ class TtsManager @Inject constructor(
 
     init {
         prefs.registerOnSharedPreferenceChangeListener(prefsListener)
-        recreateTts()
+        // Diferir el enlace Binder con el servicio TTS hasta después del primer frame
+        mainHandler.post {
+            if (!isInitialized && !isInitializing && tts == null) {
+                recreateTts()
+            }
+        }
     }
 
     private fun recreateTts() {
@@ -71,6 +79,7 @@ class TtsManager @Inject constructor(
             }
         }
         isInitialized = false
+        isInitializing = true
         Log.d("TtsManager", "Initializing TTS with engine: $engine")
         
         tts = if (engine.isNullOrBlank() || engine == "system_default") {
@@ -132,6 +141,7 @@ class TtsManager @Inject constructor(
     }
 
     override fun onInit(status: Int) {
+        isInitializing = false
         if (status == TextToSpeech.SUCCESS) {
             isInitialized = true
             Log.d("TtsManager", "TTS initialization SUCCESS")
@@ -141,7 +151,14 @@ class TtsManager @Inject constructor(
             
             applySettings()
             onInitializedListener?.invoke()
+
+            val queued = pendingSpeech
+            if (queued != null) {
+                pendingSpeech = null
+                speak(queued.first, queued.second, queued.third)
+            }
         } else {
+            pendingSpeech = null
             Log.e("TtsManager", "TTS initialization FAILED")
         }
     }
@@ -190,8 +207,11 @@ class TtsManager @Inject constructor(
 
     fun speak(text: String, interrupt: Boolean = true, utteranceId: String? = null) {
         if (!isInitialized || tts == null) {
-            Log.w("TtsManager", "Cannot speak, TTS not initialized yet. Re-initializing...")
-            recreateTts()
+            pendingSpeech = Triple(text, interrupt, utteranceId)
+            if (!isInitializing) {
+                Log.w("TtsManager", "TTS not initialized yet. Starting initialization and queueing speech...")
+                recreateTts()
+            }
             return
         }
         

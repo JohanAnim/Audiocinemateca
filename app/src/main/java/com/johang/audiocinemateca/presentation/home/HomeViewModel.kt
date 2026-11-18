@@ -70,11 +70,19 @@ class HomeViewModel @Inject constructor(
     private val getRatingUseCase: GetRatingUseCase
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HomeUiState())
+    private val _uiState = MutableStateFlow(
+        firebaseAuth.currentUser.let { user ->
+            HomeUiState(
+                isLoggedIn = user != null,
+                userName = user?.displayName ?: user?.email?.substringBefore("@"),
+                userEmail = user?.email,
+                isLoading = false
+            )
+        }
+    )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        checkAuthState()
         observeFeaturedBanner()
         loadRecommendations()
         observeWeeklyTop10()

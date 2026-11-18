@@ -7,6 +7,7 @@ import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
 import com.johang.audiocinemateca.util.TtsManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.util.concurrent.Executors
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -16,17 +17,32 @@ class CastSessionListener @Inject constructor(
     private val ttsManager: TtsManager
 ) : SessionManagerListener<CastSession> {
 
+    @Volatile
     private var isListening = false
+    @Volatile
+    private var isInitializingCast = false
     private var lastCapturedPosition: Long = -1L
+    private val castExecutor = Executors.newSingleThreadExecutor()
 
     fun startListening(context: Context) {
-        if (isListening) return
+        if (isListening || isInitializingCast) return
+        isInitializingCast = true
         try {
-            val castContext = CastContext.getSharedInstance(context)
-            castContext.sessionManager.addSessionManagerListener(this, CastSession::class.java)
-            isListening = true
-            Log.d("CastSessionListener", "Escuchando eventos de sesión de Google Cast.")
+            CastContext.getSharedInstance(context.applicationContext, castExecutor)
+                .addOnSuccessListener { castContext ->
+                    isInitializingCast = false
+                    if (!isListening) {
+                        castContext.sessionManager.addSessionManagerListener(this, CastSession::class.java)
+                        isListening = true
+                        Log.d("CastSessionListener", "Escuchando eventos de sesión de Google Cast (async).")
+                    }
+                }
+                .addOnFailureListener { e ->
+                    isInitializingCast = false
+                    Log.e("CastSessionListener", "Error al inicializar Google Cast async: ${e.message}")
+                }
         } catch (e: Exception) {
+            isInitializingCast = false
             Log.e("CastSessionListener", "Error al registrar listener de Cast: ${e.message}")
         }
     }

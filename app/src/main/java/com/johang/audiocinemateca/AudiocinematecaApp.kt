@@ -5,12 +5,17 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
-import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.presentation.settings.ThemeManager
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 @HiltAndroidApp
 class AudiocinematecaApp : Application() {
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onCreate() {
         super.onCreate()
 
@@ -18,12 +23,16 @@ class AudiocinematecaApp : Application() {
         com.johang.audiocinemateca.util.CrashLogger(this)
 
         createNotificationChannel()
-        subscribeToGlobalTopic()
 
-        // Apply the saved theme on startup
-        val sharedPreferences = SharedPreferencesManager(this)
-        val theme = sharedPreferences.getString("theme", "system")
+        // Apply the saved theme on startup sin instanciar el gestor completo en el hilo principal
+        val prefs = getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+        val theme = prefs.getString("theme", "system")
         ThemeManager.applyTheme(theme ?: "system")
+
+        // Diferir suscripción FCM fuera del hilo crítico de arranque
+        appScope.launch {
+            subscribeToGlobalTopic()
+        }
     }
 
     private fun subscribeToGlobalTopic() {

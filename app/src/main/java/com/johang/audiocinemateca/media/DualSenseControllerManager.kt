@@ -101,10 +101,12 @@ class DualSenseControllerManager(
     private var lastFocusMoveTimeMs = 0L
 
     init {
-        scanInitialControllers()
-        try {
-            inputManager?.registerInputDeviceListener(this, mainHandler)
-        } catch (_: Exception) {}
+        mainHandler.post {
+            scanInitialControllers()
+            try {
+                inputManager?.registerInputDeviceListener(this, mainHandler)
+            } catch (_: Exception) {}
+        }
     }
 
     private fun scanInitialControllers() {

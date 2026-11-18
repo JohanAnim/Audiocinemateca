@@ -144,12 +144,7 @@ class LoginViewModel @Inject constructor(
         welcomeSoundsJob = viewModelScope.launch {
             soundEffectsPlayer.loadAndPlaySoundAsset("sonidos/efectos/efecto_bienvenida.wav", 0.5f)
             delay(500)
-            voicePlayer.playVoiceAsset("sonidos/voces/voz_bienvenida.mp3") {
-                welcomeSoundsJob = viewModelScope.launch {
-                    delay(1000)
-                    voicePlayer.playVoiceAsset("sonidos/voces/voz_instrucciones_login.mp3")
-                }
-            }
+            voicePlayer.playVoiceAsset("sonidos/voces/voz_bienvenida.mp3")
         }
     }
 
