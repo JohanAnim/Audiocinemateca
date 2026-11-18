@@ -5,52 +5,52 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 
 ## [3.4.0-beta.1]
 
-¡Hola a toda la comunidad! Les presento la primera **Beta pública de Audiocinemateca 3.4.0 (`3.4.0-beta.1`)**, el salto técnico, visual y de accesibilidad más grande que ha recibido la aplicación desde su creación.
+¡Hola a toda la familia de **Audiocinemateca**! Hoy es un día muy especial: les presento la **Beta pública de Audiocinemateca 3.4.0 (`3.4.0-beta.1`)**, **una de las versiones más masivas e importantes que ha recibido Audiocinemateca desde que se creó para Android**.
 
-Esta versión marca la **migración completa a Jetpack Compose 100% nativo**, una base de datos de catálogo muchísimo más rápida en **SQLite (Room + FTS4)**, la llegada del nuevo **logotipo oficial**, el **avatar anime de Aura** y un sinfín de mejoras pensadas de raíz para disfrutarse tanto visualmente como con **TalkBack**, **Jieshuo** y mando **PS5 DualSense**.
+Este lanzamiento marca un **paso gigantesco** hacia nuestra gran meta: ofrecerles una aplicación **más moderna, más linda visualmente, accesible de punta a punta y, por supuesto, la más poderosa técnicamente** que hemos construido hasta hoy.
 
-Aquí tienen todo lo que trae esta Beta:
+Sería imposible mencionar aquí cada mejora, optimización y detalle que trabajamos para esta versión porque la lista sería enorme. Por eso, aquí abajo reuní **por categorías los cambios más importantes y relevantes**. Y si quieres explorar las notas completas con todos los detalles y guías paso a paso, entra dentro de la app al nuevo apartado de **Documentación → Novedades de esta versión**, donde iré dejando todo registrado al detalle.
+
+Aquí tienen lo más destacado de esta Beta:
 
 ---
 
 ### 🎨 1. Nueva Identidad Visual, Menú Lateral Vivo y Avatar de Aura
-* **Logotipo oficial de Audiocinemateca:** Reemplazamos el ícono genérico por un emblema propio de cine audiodescrito (audífonos, ondas sonoras y pantalla de reproducción en tonos índigo y cian), integrado en el launcher adaptativo, ícono monocromático para Android 13+, pantalla de bienvenida, inicio de sesión y notificaciones del sistema.
-* **Avatar estilo anime para Aura:** Nuestra compañera inteligente estrena su propio retrato en el cajón lateral, su pantalla de bienvenida, su barra de estado y cada burbuja del chat.
-* **Menú lateral completamente rediseñado:** Encabezado limpio sin correo visible, título prominente, descripción profesional accesible de la insignia, saludo personal según la hora del día, reloj en tiempo real con tu ciudad y país detectados por zona horaria, y un **cielo animado** que cambia entre **amanecer, mañana, mediodía, tarde, atardecer, noche y madrugada**.
-* **Mensajes sorpresa de Aura en el menú:** Si tienes configurada tu clave de IA, Aura te sorprende cada vez que abres el cajón lateral con uno de **35 mensajes ingeniosos** adaptados al momento exacto del día.
+* **Logotipo oficial de Audiocinemateca:** Despedimos el ícono genérico de Android para estrenar un emblema propio de cine audiodescrito en azul noche, índigo y cian, integrado en el launcher adaptativo, íconos monocromáticos de Android 13+, pantalla de bienvenida, inicio de sesión y notificaciones del sistema.
+* **Avatar estilo anime para Aura:** Nuestra compañera inteligente estrena un **retrato propio amigable y expresivo** que la acompaña en el cajón lateral, su pantalla de bienvenida, la barra de estado y cada burbuja del chat.
+* **Menú lateral completamente rediseñado:** Eliminamos el correo electrónico para lograr una vista más limpia, con el título **Audiocinemateca** en grande, nuestra insignia con descripción accesible profesional, saludo según tu nombre y hora del día, reloj en vivo con tu ciudad y país detectados por zona horaria, versión + canal visible y un **cielo animado** que evoluciona entre amanecer, mañana, mediodía, tarde, atardecer, noche y madrugada.
+* **Sorpresas de Aura al abrir el menú:** Si tienes configurada tu clave de IA, Aura te recibe en cada apertura con una frase ingeniosa y distinta pensada justo para el momento del día.
 
 ---
 
-### ✨ 2. Aura 2.0: Multi-Proveedor, Gemini 3.8 TTS y Memoria Completa
-* **Groq y Google Gemini bajo un mismo techo:** Cambia de proveedor o de modelo directamente desde la barra superior del chat o en Ajustes de IA, con soporte completo para los modelos **Gemma 4** (`gemma-4-26b-a4b-it`, `gemma-4-31b-it`), **GPT-OSS 120B** y gestión inteligente del límite de tokens por minuto en Groq.
-* **Voz expresiva con Gemini 3.8 TTS:** Además de la síntesis de voz nativa del dispositivo (con ajustes independientes por motor, idioma y voz), ahora puedes escuchar a Aura con voces expresivas y naturales, conservando tu configuración de voz intacta incluso al cambiar de modelo o proveedor de texto.
-* **Controles en cada respuesta e historial persistente:** Tus chats se guardan en disco con títulos automáticos generados por IA; puedes reproducir, pausar, repetir desde el inicio, copiar, compartir o regenerar cualquier mensaje, además de usar dictado por voz **pulsar para hablar** (*push-to-talk*).
+### ✨ 2. Aura 2.0: Mucho Más Expresiva, Inteligente y Memoriosa
+* **Groq y Google Gemini bajo un mismo techo:** Cambia libremente de proveedor y modelo desde la barra superior del chat o Ajustes de IA, con compatibilidad total para **Gemma 4** (`gemma-4-26b-a4b-it`, `gemma-4-31b-it`), **GPT-OSS 120B** y optimización automática del límite de tokens por minuto en Groq.
+* **Voz expresiva con Gemini 3.8 TTS:** Escucha a Aura con matices naturales y emotivos además de las voces del teléfono (con configuración independiente por motor, idioma y voz). Tu elección de voz y modelo TTS se mantiene intacta incluso al cambiar de proveedor o modelo de texto.
+* **Memoria completa y control en cada mensaje:** Conversaciones guardadas en disco con títulos inteligentes, controles para reproducir, pausar, escuchar desde el inicio, copiar, compartir o regenerar cada respuesta, dictado por voz **pulsar para hablar**, búsquedas por géneros combinados y estadísticas exactas de tu biblioteca y descargas.
 
 ---
 
-### 🎬 3. Reproductor Renovado, CinemaHaptics y Mando PS5 DualSense
-* **Dos diseños en pantalla completa:** Escoge en Ajustes de Reproducción entre el diseño clásico y el diseño alternativo estilo YouTube.
-* **Comodidad total al escuchar:** Nuevo salto configurable de **60 segundos (1 minuto)**, **sidechain automático** (baja suavemente el volumen del contenido cuando habla Aura o el lector), subtítulos claros de episodios (`T1:E1 - Título`) y ficha de clasificación orientativa.
-* **Motor háptico CinemaHaptics y PS5 DualSense:** Vibración sincronizada en tiempo real con escenas de acción/sonido y navegación 2D completa por paneles y atajos directos usando un mando DualSense o gamepad compatible.
+### 🎧 3. Reproductor Renovado, CinemaHaptics y Mayor Comodidad
+* **Dos diseños en pantalla completa:** Escoge en Ajustes de Reproducción entre el diseño clásico y el diseño alternativo estilo YouTube, con subtítulos claros de capítulo (`T1:E1 - Título`) y ficha de clasificación orientativa profesional.
+* **Escucha sin interrupciones ni sobresaltos:** Nuevo intervalo de salto de **60 segundos (1 minuto)** y **sidechain automático** que baja suavemente el volumen del contenido cuando habla Aura o el lector y lo restaura al terminar.
+* **CinemaHaptics:** Vibración cinematográfica en tiempo real sincronizada con el audio de tus películas y series.
 
 ---
 
-### 🔍 4. Catálogo Ultrarrápido en Room (FTS4), Filtros y Centro de Documentación
-* **Migración completa a SQLite + FTS4:** Búsquedas instantáneas sin congelamientos, ordenamiento cronológico inteligente de sagas y soporte para filtros combinados (incluyendo peticiones complejas desde Aura).
-* **Nuevos filtros y detalles en listas:** Filtros por **Narrador** (ajustados automáticamente al idioma elegido) y **Proveedor/Productora**, junto con la fecha exacta de agregado en **Favoritos**.
-* **Centro de Documentación y Preguntas Frecuentes:** Nueva sección integrada en Cuenta con guías accesibles paso a paso y un apartado completo de **Preguntas frecuentes**.
-* **Ficha técnica estilo Netflix y lectura inmediata:** Sinopsis interactiva con lectura/pausa instantánea por voz y pestañas optimizadas para **TalkBack** y **Jieshuo**.
+### ⚡ 4. 100% Jetpack Compose Nativo, SQLite FTS4 y Accesibilidad de Punta a Punta
+* **Arquitectura moderna de extremo a extremo:** Migramos los módulos clave a **Jetpack Compose nativo** eliminando vistas y layouts XML heredados, con foco inicial instantáneo, restauración exacta de posición al volver atrás y navegación impecable para **TalkBack** y **Jieshuo**.
+* **Catálogo ultrarrápido y nuevos filtros:** Base de datos en **Room (SQLite + FTS4)** con búsqueda instantánea, ordenamiento cronológico de sagas, fecha exacta en **Favoritos** (`se agregó el...`) y nuevos filtros por **Narrador** (adaptado al idioma elegido) y **Proveedor / Productora**.
+* **Ficha Netflix, Centro de Documentación y arranque ligero:** Sinopsis con lectura/pausa inmediata por voz, nueva sección de **Documentación** integrada (con **Preguntas frecuentes**), y optimización profunda del arranque moviendo Cast, TTS, sonidos y comprobaciones de red fuera del hilo principal.
 
 ---
 
-### ⚡ 5. Rendimiento de Arranque, Canales de Actualización y Aviso Rumbo a v3.5.0
-* **Arranque en frío mucho más ligero:** Desbloqueamos el hilo principal al iniciar la app moviendo a segundo plano la inicialización de Google Cast, TTS, efectos `SoundPool`, audio de bienvenida, WorkManager y comprobaciones remotas.
-* **Canales Estable y Beta:** Elige en **Ajustes → General → Canal de actualizaciones** si deseas recibir únicamente lanzamientos oficiales estables o probar anticipadamente las compilaciones Beta (con comparador SemVer completo).
-* **Preparación para nuestro propio servidor (v3.5.0+):** Incorporamos un sistema preventivo de avisos para que, cuando desconectemos el servidor actual en Firebase y migremos a nuestra propia infraestructura en la **v3.5.0**, recibas notificaciones claras y acceso directo a la actualización sin perder nunca tu catálogo local, descargas, reproductor ni a Aura.
+### 🔄 5. Canales de Actualización y Camino al Nuevo Servidor (v3.5.0+)
+* **Canales Estable y Beta:** Elige en **Ajustes → General → Canal de actualizaciones** si prefieres solo lanzamientos estables o acceso anticipado a Betas, con comparador SemVer completo.
+* **Preparación para nuestro servidor propio (`v3.5.0+`):** Dejamos listo un sistema de avisos claro y accesible para informar cuando desconectemos Firebase y estrenemos nuestro propio servidor a partir de la versión **3.5.0**, garantizando que tu catálogo local, descargas, reproductor y Aura sigan funcionando siempre.
 
 ---
 
-> **Nota de esta versión Beta:** Algunas novedades siguen en etapa de prueba y ajuste fino antes del lanzamiento estable. Si notas algún detalle o tienes sugerencias, compártelo en la comunidad para seguir puliendo Audiocinemateca juntos. ¡Muchas gracias por acompañarnos en esta nueva etapa!
+> **Nota sobre esta Beta:** Como versión anticipada previa al lanzamiento estable, es el espacio ideal para probar estas novedades a fondo. Si notas cualquier detalle, cuéntanos en la comunidad para seguir puliendo Audiocinemateca entre todos. ¡Gracias por vivir este momento histórico con nosotros!
 
 ## [3.3.2]
 
