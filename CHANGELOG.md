@@ -3,6 +3,55 @@
 Todos los cambios notables de **Audiocinemateca** se documentan en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones siguen [Semantic Versioning](https://semver.org/).
 
+## [3.4.0-beta.1]
+
+¡Hola a toda la comunidad! Les presento la primera **Beta pública de Audiocinemateca 3.4.0 (`3.4.0-beta.1`)**, el salto técnico, visual y de accesibilidad más grande que ha recibido la aplicación desde su creación.
+
+Esta versión marca la **migración completa a Jetpack Compose 100% nativo**, una base de datos de catálogo muchísimo más rápida en **SQLite (Room + FTS4)**, la llegada del nuevo **logotipo oficial**, el **avatar anime de Aura** y un sinfín de mejoras pensadas de raíz para disfrutarse tanto visualmente como con **TalkBack**, **Jieshuo** y mando **PS5 DualSense**.
+
+Aquí tienen todo lo que trae esta Beta:
+
+---
+
+### 🎨 1. Nueva Identidad Visual, Menú Lateral Vivo y Avatar de Aura
+* **Logotipo oficial de Audiocinemateca:** Reemplazamos el ícono genérico por un emblema propio de cine audiodescrito (audífonos, ondas sonoras y pantalla de reproducción en tonos índigo y cian), integrado en el launcher adaptativo, ícono monocromático para Android 13+, pantalla de bienvenida, inicio de sesión y notificaciones del sistema.
+* **Avatar estilo anime para Aura:** Nuestra compañera inteligente estrena su propio retrato en el cajón lateral, su pantalla de bienvenida, su barra de estado y cada burbuja del chat.
+* **Menú lateral completamente rediseñado:** Encabezado limpio sin correo visible, título prominente, descripción profesional accesible de la insignia, saludo personal según la hora del día, reloj en tiempo real con tu ciudad y país detectados por zona horaria, y un **cielo animado** que cambia entre **amanecer, mañana, mediodía, tarde, atardecer, noche y madrugada**.
+* **Mensajes sorpresa de Aura en el menú:** Si tienes configurada tu clave de IA, Aura te sorprende cada vez que abres el cajón lateral con uno de **35 mensajes ingeniosos** adaptados al momento exacto del día.
+
+---
+
+### ✨ 2. Aura 2.0: Multi-Proveedor, Gemini 3.8 TTS y Memoria Completa
+* **Groq y Google Gemini bajo un mismo techo:** Cambia de proveedor o de modelo directamente desde la barra superior del chat o en Ajustes de IA, con soporte completo para los modelos **Gemma 4** (`gemma-4-26b-a4b-it`, `gemma-4-31b-it`), **GPT-OSS 120B** y gestión inteligente del límite de tokens por minuto en Groq.
+* **Voz expresiva con Gemini 3.8 TTS:** Además de la síntesis de voz nativa del dispositivo (con ajustes independientes por motor, idioma y voz), ahora puedes escuchar a Aura con voces expresivas y naturales, conservando tu configuración de voz intacta incluso al cambiar de modelo o proveedor de texto.
+* **Controles en cada respuesta e historial persistente:** Tus chats se guardan en disco con títulos automáticos generados por IA; puedes reproducir, pausar, repetir desde el inicio, copiar, compartir o regenerar cualquier mensaje, además de usar dictado por voz **pulsar para hablar** (*push-to-talk*).
+
+---
+
+### 🎬 3. Reproductor Renovado, CinemaHaptics y Mando PS5 DualSense
+* **Dos diseños en pantalla completa:** Escoge en Ajustes de Reproducción entre el diseño clásico y el diseño alternativo estilo YouTube.
+* **Comodidad total al escuchar:** Nuevo salto configurable de **60 segundos (1 minuto)**, **sidechain automático** (baja suavemente el volumen del contenido cuando habla Aura o el lector), subtítulos claros de episodios (`T1:E1 - Título`) y ficha de clasificación orientativa.
+* **Motor háptico CinemaHaptics y PS5 DualSense:** Vibración sincronizada en tiempo real con escenas de acción/sonido y navegación 2D completa por paneles y atajos directos usando un mando DualSense o gamepad compatible.
+
+---
+
+### 🔍 4. Catálogo Ultrarrápido en Room (FTS4), Filtros y Centro de Documentación
+* **Migración completa a SQLite + FTS4:** Búsquedas instantáneas sin congelamientos, ordenamiento cronológico inteligente de sagas y soporte para filtros combinados (incluyendo peticiones complejas desde Aura).
+* **Nuevos filtros y detalles en listas:** Filtros por **Narrador** (ajustados automáticamente al idioma elegido) y **Proveedor/Productora**, junto con la fecha exacta de agregado en **Favoritos**.
+* **Centro de Documentación y Preguntas Frecuentes:** Nueva sección integrada en Cuenta con guías accesibles paso a paso y un apartado completo de **Preguntas frecuentes**.
+* **Ficha técnica estilo Netflix y lectura inmediata:** Sinopsis interactiva con lectura/pausa instantánea por voz y pestañas optimizadas para **TalkBack** y **Jieshuo**.
+
+---
+
+### ⚡ 5. Rendimiento de Arranque, Canales de Actualización y Aviso Rumbo a v3.5.0
+* **Arranque en frío mucho más ligero:** Desbloqueamos el hilo principal al iniciar la app moviendo a segundo plano la inicialización de Google Cast, TTS, efectos `SoundPool`, audio de bienvenida, WorkManager y comprobaciones remotas.
+* **Canales Estable y Beta:** Elige en **Ajustes → General → Canal de actualizaciones** si deseas recibir únicamente lanzamientos oficiales estables o probar anticipadamente las compilaciones Beta (con comparador SemVer completo).
+* **Preparación para nuestro propio servidor (v3.5.0+):** Incorporamos un sistema preventivo de avisos para que, cuando desconectemos el servidor actual en Firebase y migremos a nuestra propia infraestructura en la **v3.5.0**, recibas notificaciones claras y acceso directo a la actualización sin perder nunca tu catálogo local, descargas, reproductor ni a Aura.
+
+---
+
+> **Nota de esta versión Beta:** Algunas novedades siguen en etapa de prueba y ajuste fino antes del lanzamiento estable. Si notas algún detalle o tienes sugerencias, compártelo en la comunidad para seguir puliendo Audiocinemateca juntos. ¡Muchas gracias por acompañarnos en esta nueva etapa!
+
 ## [3.3.2]
 
 ¡Hola a todos! Les doy la bienvenida a la **versión 3.3.2** de Audiocinemateca. En esta pequeña actualización me enfoqué en pulir la estabilidad, la comodidad en tu día a día y resolver detalles importantes que me reportaron para que disfrutes de tus películas y series sin ninguna interrupción.
