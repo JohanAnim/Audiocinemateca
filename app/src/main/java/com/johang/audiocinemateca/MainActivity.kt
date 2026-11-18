@@ -231,10 +231,16 @@ class MainActivity : AppCompatActivity() {
 
                     val lastSeenVersionName = sharedPreferencesManager.getString("last_seen_version_name", "") ?: ""
                     if (currentVersionName != lastSeenVersionName && lastSeenVersionName.isNotEmpty()) {
-                        val result = accountViewModel.manualCheckForUpdates(currentVersionName)
+                        val isBetaInstalled = com.johang.audiocinemateca.domain.model.SemVer.parseOrNull(currentVersionName)?.isPrerelease == true
+                        val channelForWhatsNew = if (isBetaInstalled) UpdateChannels.BETA else null
+                        val result = accountViewModel.manualCheckForUpdates(currentVersionName, channelForWhatsNew)
                         if (result is UpdateCheckResult.NoUpdateAvailable) {
-                            whatsNewChangelogState.value = result.updateInfo.changelog
-                            sharedPreferencesManager.saveString("last_seen_version_name", currentVersionName)
+                            val normalizedCurrent = currentVersionName.removePrefix("v").removePrefix("V")
+                            val normalizedRemote = result.updateInfo.version.removePrefix("v").removePrefix("V")
+                            if (normalizedCurrent.equals(normalizedRemote, ignoreCase = true) || !isBetaInstalled) {
+                                whatsNewChangelogState.value = result.updateInfo.changelog
+                                sharedPreferencesManager.saveString("last_seen_version_name", currentVersionName)
+                            }
                         }
                     } else {
                         if (lastSeenVersionName.isEmpty()) {

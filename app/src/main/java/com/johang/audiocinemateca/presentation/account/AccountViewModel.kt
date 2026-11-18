@@ -60,8 +60,11 @@ class AccountViewModel @Inject constructor(
         appUpdateDownloader.installPackage(uri)
     }
 
-    suspend fun manualCheckForUpdates(currentVersion: String): UpdateCheckResult {
-        val channel = refreshUpdateChannel()
+    suspend fun manualCheckForUpdates(
+        currentVersion: String,
+        channelOverride: String? = null
+    ): UpdateCheckResult {
+        val channel = channelOverride?.let { UpdateChannels.normalize(it) } ?: refreshUpdateChannel()
         return checkForUpdateUseCase(currentVersion, channel)
     }
 }

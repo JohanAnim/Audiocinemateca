@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.johang.audiocinemateca.util.parseMarkdownToAnnotatedString
 
 @Composable
 fun WhatsNewDialog(
@@ -127,8 +129,11 @@ private fun WhatsNewDialogContent(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 modifier = Modifier.fillMaxWidth()
             ) {
+                val formattedChangelog = remember(changelog) {
+                    parseMarkdownToAnnotatedString(changelog.replace(Regex("(?m)^>\\s*"), ""))
+                }
                 Text(
-                    text = changelog,
+                    text = formattedChangelog,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 22.sp,
