@@ -67,6 +67,20 @@ class CatalogViewModel @Inject constructor(
         }
     }
 
+    fun updateNarrator(categoryName: String, narrator: String) {
+        viewModelScope.launch {
+            filterRepository.updateNarrator(categoryName, narrator)
+            _currentFilterOptions.value = filterRepository.getFilterOptionsFlow(categoryName).first()
+        }
+    }
+
+    fun updateProvider(categoryName: String, provider: String) {
+        viewModelScope.launch {
+            filterRepository.updateProvider(categoryName, provider)
+            _currentFilterOptions.value = filterRepository.getFilterOptionsFlow(categoryName).first()
+        }
+    }
+
     fun updateFilter(categoryName: String, filterType: String, filterValue: String) {
         viewModelScope.launch {
             filterRepository.updateFilter(categoryName, filterType, filterValue)
@@ -95,6 +109,14 @@ class CatalogViewModel @Inject constructor(
 
     suspend fun getCountriesForCategory(categoryName: String?): List<String> {
         return catalogRepository.getCountries(categoryName)
+    }
+
+    suspend fun getNarratorsForCategory(categoryName: String?, language: String): List<String> {
+        return catalogRepository.getNarrators(categoryName, language)
+    }
+
+    suspend fun getProvidersForCategory(categoryName: String?, language: String): List<String> {
+        return catalogRepository.getProviders(categoryName, language)
     }
 
     fun loadFilterOptions(categoryName: String) {

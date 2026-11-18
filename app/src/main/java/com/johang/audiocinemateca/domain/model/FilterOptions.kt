@@ -6,6 +6,8 @@ data class FilterOptions(
     val genre: String = "Todos",
     val language: String = "Todos",
     val country: String = "Todos",
+    val narrator: String = "Todos",
+    val provider: String = "Todos",
     val searchQuery: String? = null
 ) {
     // Propiedades de compatibilidad

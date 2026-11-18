@@ -97,6 +97,30 @@ interface CatalogDao {
     @Query("SELECT DISTINCT pais FROM catalog_items WHERE pais != ''")
     suspend fun getAllDistinctCountries(): List<String>
 
+    @Query("SELECT DISTINCT narracion FROM catalog_items WHERE category = :category AND TRIM(narracion) != ''")
+    suspend fun getDistinctNarratorsByCategory(category: String): List<String>
+
+    @Query("SELECT DISTINCT narracion FROM catalog_items WHERE category = :category AND TRIM(narracion) != '' AND (TRIM(idioma) = '1' OR LOWER(idioma) LIKE '%españa%' OR LOWER(idioma) LIKE '%castellano%')")
+    suspend fun getDistinctNarratorsByCategorySpain(category: String): List<String>
+
+    @Query("SELECT DISTINCT narracion FROM catalog_items WHERE category = :category AND TRIM(narracion) != '' AND TRIM(idioma) != '1'")
+    suspend fun getDistinctNarratorsByCategoryLatin(category: String): List<String>
+
+    @Query("SELECT DISTINCT narracion FROM catalog_items WHERE TRIM(narracion) != ''")
+    suspend fun getAllDistinctNarrators(): List<String>
+
+    @Query("SELECT DISTINCT productora FROM catalog_items WHERE category = :category AND TRIM(productora) != ''")
+    suspend fun getDistinctProvidersByCategory(category: String): List<String>
+
+    @Query("SELECT DISTINCT productora FROM catalog_items WHERE category = :category AND TRIM(productora) != '' AND (TRIM(idioma) = '1' OR LOWER(idioma) LIKE '%españa%' OR LOWER(idioma) LIKE '%castellano%')")
+    suspend fun getDistinctProvidersByCategorySpain(category: String): List<String>
+
+    @Query("SELECT DISTINCT productora FROM catalog_items WHERE category = :category AND TRIM(productora) != '' AND TRIM(idioma) != '1'")
+    suspend fun getDistinctProvidersByCategoryLatin(category: String): List<String>
+
+    @Query("SELECT DISTINCT productora FROM catalog_items WHERE TRIM(productora) != ''")
+    suspend fun getAllDistinctProviders(): List<String>
+
     @Query("SELECT * FROM catalog_items WHERE category = :category AND id = :id COLLATE NOCASE LIMIT 1")
     suspend fun findByIdAndCategory(id: String, category: String): CatalogItemEntity?
 

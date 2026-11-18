@@ -180,6 +180,20 @@ class CatalogRepository @Inject constructor(
         }
     }
 
+    private fun collectDistinctFieldTokens(
+        rawValues: List<String>,
+        delimiters: Regex
+    ): List<String> {
+        val tokens = java.util.TreeSet<String>(String.CASE_INSENSITIVE_ORDER)
+        rawValues.forEach { raw ->
+            raw.split(delimiters).forEach { individual ->
+                val trimmed = individual.trim()
+                if (trimmed.isNotBlank()) tokens.add(trimmed)
+            }
+        }
+        return tokens.toList()
+    }
+
     suspend fun getGenres(categoryName: String? = null): List<String> = withContext(Dispatchers.IO) {
         if (!ensureCatalogInSqlite()) return@withContext emptyList()
         val rawGenres = if (categoryName != null) {
@@ -187,14 +201,7 @@ class CatalogRepository @Inject constructor(
         } else {
             catalogDao.getAllDistinctGenres()
         }
-        val genres = mutableSetOf<String>()
-        rawGenres.forEach { raw ->
-            raw.split(".", "|", ",").forEach { individual ->
-                val trimmed = individual.trim()
-                if (trimmed.isNotBlank()) genres.add(trimmed)
-            }
-        }
-        genres.toList().sorted()
+        collectDistinctFieldTokens(rawGenres, Regex("[.|,]"))
     }
 
     suspend fun getCountries(categoryName: String? = null): List<String> = withContext(Dispatchers.IO) {
@@ -204,14 +211,39 @@ class CatalogRepository @Inject constructor(
         } else {
             catalogDao.getAllDistinctCountries()
         }
-        val countries = mutableSetOf<String>()
-        rawCountries.forEach { raw ->
-            raw.split(",").forEach { individual ->
-                val trimmed = individual.trim()
-                if (trimmed.isNotBlank()) countries.add(trimmed)
-            }
+        collectDistinctFieldTokens(rawCountries, Regex(","))
+    }
+
+    suspend fun getNarrators(
+        categoryName: String? = null,
+        language: String = "Todos"
+    ): List<String> = withContext(Dispatchers.IO) {
+        if (!ensureCatalogInSqlite()) return@withContext emptyList()
+        val rawNarrators = when {
+            categoryName == null -> catalogDao.getAllDistinctNarrators()
+            language == "Español de España" || language == "Castellano" ->
+                catalogDao.getDistinctNarratorsByCategorySpain(categoryName)
+            language == "Español Latino" || language == "Latino" ->
+                catalogDao.getDistinctNarratorsByCategoryLatin(categoryName)
+            else -> catalogDao.getDistinctNarratorsByCategory(categoryName)
         }
-        countries.toList().sorted()
+        collectDistinctFieldTokens(rawNarrators, Regex("[,/|;•]"))
+    }
+
+    suspend fun getProviders(
+        categoryName: String? = null,
+        language: String = "Todos"
+    ): List<String> = withContext(Dispatchers.IO) {
+        if (!ensureCatalogInSqlite()) return@withContext emptyList()
+        val rawProviders = when {
+            categoryName == null -> catalogDao.getAllDistinctProviders()
+            language == "Español de España" || language == "Castellano" ->
+                catalogDao.getDistinctProvidersByCategorySpain(categoryName)
+            language == "Español Latino" || language == "Latino" ->
+                catalogDao.getDistinctProvidersByCategoryLatin(categoryName)
+            else -> catalogDao.getDistinctProvidersByCategory(categoryName)
+        }
+        collectDistinctFieldTokens(rawProviders, Regex("[,/|;•]"))
     }
 
     suspend fun getFilteredAndPaginatedItems(
@@ -371,6 +403,16 @@ class CatalogRepository @Inject constructor(
         if (options.country != "Todos" && options.country.isNotBlank()) {
             whereClauses.add("LOWER(pais) LIKE ?")
             args.add("%${options.country.trim().lowercase(Locale.ROOT)}%")
+        }
+
+        if (options.narrator != "Todos" && options.narrator.isNotBlank()) {
+            whereClauses.add("LOWER(narracion) LIKE ?")
+            args.add("%${options.narrator.trim().lowercase(Locale.ROOT)}%")
+        }
+
+        if (options.provider != "Todos" && options.provider.isNotBlank()) {
+            whereClauses.add("LOWER(productora) LIKE ?")
+            args.add("%${options.provider.trim().lowercase(Locale.ROOT)}%")
         }
 
         val orderBy = when (options.sortType) {

@@ -279,7 +279,8 @@ fun CatalogScreen(
                             showSearchableDialog = true
                             isLoadingSearchableItems = true
                             coroutineScope.launch {
-                                searchableDialogItems = catalogViewModel.getGenresForCategory(currentCategory)
+                                val loaded = catalogViewModel.getGenresForCategory(currentCategory)
+                                searchableDialogItems = listOf("Todos") + loaded.filterNot { it.equals("Todos", ignoreCase = true) }
                                 isLoadingSearchableItems = false
                             }
                         },
@@ -314,7 +315,8 @@ fun CatalogScreen(
                             showSearchableDialog = true
                             isLoadingSearchableItems = true
                             coroutineScope.launch {
-                                searchableDialogItems = catalogViewModel.getCountriesForCategory(currentCategory)
+                                val loaded = catalogViewModel.getCountriesForCategory(currentCategory)
+                                searchableDialogItems = listOf("Todos") + loaded.filterNot { it.equals("Todos", ignoreCase = true) }
                                 isLoadingSearchableItems = false
                             }
                         },
@@ -326,8 +328,60 @@ fun CatalogScreen(
                         }
                     )
 
-                    // 5. Restablecer Filtros
-                    if (isGenreActive || isLangActive || isCountryActive) {
+                    // 5. Narrador Filter Chip (según el idioma seleccionado o todos)
+                    val isNarratorActive = currentFilterOptions.narrator != "Todos"
+                    FilterChip(
+                        selected = isNarratorActive,
+                        onClick = {
+                            searchableDialogTitle = "Seleccionar narrador"
+                            searchableDialogType = "narrator"
+                            showSearchableDialog = true
+                            isLoadingSearchableItems = true
+                            coroutineScope.launch {
+                                val loaded = catalogViewModel.getNarratorsForCategory(
+                                    currentCategory,
+                                    currentFilterOptions.language
+                                )
+                                searchableDialogItems = listOf("Todos") + loaded.filterNot { it.equals("Todos", ignoreCase = true) }
+                                isLoadingSearchableItems = false
+                            }
+                        },
+                        label = { Text("Narrador: ${currentFilterOptions.narrator}") },
+                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Filtro de narrador actual: ${currentFilterOptions.narrator}. Toca dos veces para elegir un narrador disponible"
+                            role = Role.Button
+                        }
+                    )
+
+                    // 6. Proveedor Filter Chip (Productora / Plataforma: Netflix, Crunchyroll, etc.)
+                    val isProviderActive = currentFilterOptions.provider != "Todos"
+                    FilterChip(
+                        selected = isProviderActive,
+                        onClick = {
+                            searchableDialogTitle = "Seleccionar proveedor"
+                            searchableDialogType = "provider"
+                            showSearchableDialog = true
+                            isLoadingSearchableItems = true
+                            coroutineScope.launch {
+                                val loaded = catalogViewModel.getProvidersForCategory(
+                                    currentCategory,
+                                    currentFilterOptions.language
+                                )
+                                searchableDialogItems = listOf("Todos") + loaded.filterNot { it.equals("Todos", ignoreCase = true) }
+                                isLoadingSearchableItems = false
+                            }
+                        },
+                        label = { Text("Proveedor: ${currentFilterOptions.provider}") },
+                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+                        modifier = Modifier.semantics {
+                            contentDescription = "Filtro de proveedor actual: ${currentFilterOptions.provider}. Toca dos veces para elegir un proveedor disponible"
+                            role = Role.Button
+                        }
+                    )
+
+                    // 7. Restablecer Filtros
+                    if (isGenreActive || isLangActive || isCountryActive || isNarratorActive || isProviderActive) {
                         IconButton(
                             onClick = { catalogViewModel.resetFilters(currentCategory) },
                             modifier = Modifier.semantics {
@@ -550,19 +604,27 @@ fun CatalogScreen(
         )
     }
 
-    // Searchable Filter Dialog (Género / Países)
+    // Searchable Filter Dialog (Género / Países / Narrador / Proveedor)
     if (showSearchableDialog) {
+        val currentSelection = when (searchableDialogType) {
+            "genre" -> currentFilterOptions.genre
+            "country" -> currentFilterOptions.country
+            "narrator" -> currentFilterOptions.narrator
+            "provider" -> currentFilterOptions.provider
+            else -> "Todos"
+        }
         SearchableCatalogFilterDialog(
             title = searchableDialogTitle,
             items = searchableDialogItems,
-            currentOption = if (searchableDialogType == "genre") currentFilterOptions.genre else currentFilterOptions.country,
+            currentOption = currentSelection,
             isLoading = isLoadingSearchableItems,
             onDismissRequest = { showSearchableDialog = false },
             onItemSelected = { selectedValue ->
-                if (searchableDialogType == "genre") {
-                    catalogViewModel.updateGenre(currentCategory, selectedValue)
-                } else {
-                    catalogViewModel.updateCountry(currentCategory, selectedValue)
+                when (searchableDialogType) {
+                    "genre" -> catalogViewModel.updateGenre(currentCategory, selectedValue)
+                    "country" -> catalogViewModel.updateCountry(currentCategory, selectedValue)
+                    "narrator" -> catalogViewModel.updateNarrator(currentCategory, selectedValue)
+                    "provider" -> catalogViewModel.updateProvider(currentCategory, selectedValue)
                 }
                 showSearchableDialog = false
             }

@@ -65,12 +65,28 @@ class FilterRepository @Inject constructor(private val sharedPreferencesManager:
         }
     }
 
+    fun updateNarrator(categoryName: String, narrator: String) {
+        _categoryFilters.value = _categoryFilters.value.toMutableMap().apply {
+            val currentOptions = this[categoryName] ?: getDefaultFilterOptions()
+            this[categoryName] = currentOptions.copy(narrator = narrator)
+        }
+    }
+
+    fun updateProvider(categoryName: String, provider: String) {
+        _categoryFilters.value = _categoryFilters.value.toMutableMap().apply {
+            val currentOptions = this[categoryName] ?: getDefaultFilterOptions()
+            this[categoryName] = currentOptions.copy(provider = provider)
+        }
+    }
+
     fun updateFilter(categoryName: String, filterType: String, filterValue: String) {
         when (filterType) {
             "Alfabéticamente", "Fecha", "Año", "Año de estreno" -> updateSort(categoryName, filterType, filterValue)
             "Género" -> updateGenre(categoryName, filterValue)
             "Idiomas" -> updateLanguage(categoryName, filterValue)
             "Países" -> updateCountry(categoryName, filterValue)
+            "Narrador", "Narradores" -> updateNarrator(categoryName, filterValue)
+            "Proveedor", "Proveedores", "Productora" -> updateProvider(categoryName, filterValue)
             else -> updateSort(categoryName, filterType, filterValue)
         }
     }

@@ -914,9 +914,9 @@ fun FavoriteGridCard(
         SharedPreferencesManager(context).getBoolean("enable_accessibility_hints", true)
     }
 
-    val fullContentDescription = remember(favorite.title, typeBadge, showAccessibilityHints) {
+    val fullContentDescription = remember(favorite.title, typeBadge, dateStr, showAccessibilityHints) {
         buildInteractionDescription(
-            mainContent = "${favorite.title}. $typeBadge",
+            mainContent = "${favorite.title}. $typeBadge, se agregó el $dateStr",
             hintText = "Mantén presionado para opciones de favoritos",
             showHint = showAccessibilityHints
         )
@@ -983,7 +983,7 @@ fun FavoriteGridCard(
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                text = "$typeBadge • $dateStr",
+                text = "$typeBadge • se agregó el $dateStr",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.primary,
