@@ -10,6 +10,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -57,7 +58,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -66,6 +69,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.johang.audiocinemateca.R
 import com.johang.audiocinemateca.util.audiocinematecaAccessibility
 import com.johang.audiocinemateca.util.parseMarkdownToAnnotatedString
 
@@ -247,17 +251,16 @@ fun AiChatScreen(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(68.dp)
+                            color = Color(0xFF0F172A),
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)),
+                            modifier = Modifier.size(92.dp)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(36.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
+                            Image(
+                                painter = painterResource(id = R.drawable.aura_avatar),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
                         }
 
                         Text(
@@ -666,14 +669,25 @@ fun AuraHeaderSelector(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+            modifier = Modifier.padding(start = 8.dp, end = 12.dp, top = 5.dp, bottom = 5.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(indicatorColor)
-            )
+            Box(modifier = Modifier.size(28.dp)) {
+                Image(
+                    painter = painterResource(id = R.drawable.aura_avatar),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                )
+                Box(
+                    modifier = Modifier
+                        .size(9.dp)
+                        .align(Alignment.BottomEnd)
+                        .clip(CircleShape)
+                        .background(indicatorColor)
+                )
+            }
             Spacer(modifier = Modifier.width(8.dp))
             Column(
                 modifier = Modifier.weight(1f, fill = false)
@@ -1169,6 +1183,15 @@ fun AuraChatBubble(
             .padding(start = 4.dp, end = 4.dp),
         verticalAlignment = Alignment.Bottom
     ) {
+        Image(
+            painter = painterResource(id = R.drawable.aura_avatar),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
         Surface(
             shape = RoundedCornerShape(18.dp).copy(bottomStart = CornerSize(4.dp)),
             color = MaterialTheme.colorScheme.surfaceVariant,

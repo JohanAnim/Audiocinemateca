@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Arco de audífonos -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M4.5,12.5 C4.5,7.8 7.9,4.2 12,4.2 C16.1,4.2 19.5,7.8 19.5,12.5"
+        android:strokeWidth="2.1"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <!-- Copa izquierda -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M3.2,12 A1.5,1.5 0 0 1 4.7,13.5 L4.7,17.2 A1.5,1.5 0 0 1 3.2,18.7 A1.5,1.5 0 0 1 1.7,17.2 L1.7,13.5 A1.5,1.5 0 0 1 3.2,12 Z" />
+    <!-- Copa derecha -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M20.8,12 A1.5,1.5 0 0 1 22.3,13.5 L22.3,17.2 A1.5,1.5 0 0 1 20.8,18.7 A1.5,1.5 0 0 1 19.3,17.2 L19.3,13.5 A1.5,1.5 0 0 1 20.8,12 Z" />
+    <!-- Marco de cine -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M7.8,10.5 L16.2,10.5 A1.3,1.3 0 0 1 17.5,11.8 L17.5,18.2 A1.3,1.3 0 0 1 16.2,19.5 L7.8,19.5 A1.3,1.3 0 0 1 6.5,18.2 L6.5,11.8 A1.3,1.3 0 0 1 7.8,10.5 Z"
+        android:strokeWidth="1.6"
+        android:strokeColor="#FFFFFF" />
+    <!-- Botón Play -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M10.4,12.7 L14.8,15 L10.4,17.3 Z" />
+</vector>

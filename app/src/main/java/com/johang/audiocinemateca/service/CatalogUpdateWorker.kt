@@ -107,7 +107,7 @@ class CatalogUpdateWorker(
         )
 
         val builder = NotificationCompat.Builder(applicationContext, channelId)
-            .setSmallIcon(R.mipmap.ic_launcher_round)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(message.toString())
             .setStyle(NotificationCompat.BigTextStyle().bigText(message.toString()))

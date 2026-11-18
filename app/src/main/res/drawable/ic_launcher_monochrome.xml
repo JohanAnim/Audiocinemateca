@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Arco de audífonos centrado en zona segura (66% de 108dp) -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M34,53 C34,40.8 42.9,32 54,32 C65.1,32 74,40.8 74,53"
+        android:strokeWidth="4.2"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <!-- Copa izquierda -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M31.5,51.5 C33.4,51.5 35,53.1 35,55 L35,63 C35,64.9 33.4,66.5 31.5,66.5 C29.6,66.5 28,64.9 28,63 L28,55 C28,53.1 29.6,51.5 31.5,51.5 Z" />
+    <!-- Copa derecha -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M76.5,51.5 C78.4,51.5 80,53.1 80,55 L80,63 C80,64.9 78.4,66.5 76.5,66.5 C74.6,66.5 73,64.9 73,63 L73,55 C73,53.1 74.6,51.5 76.5,51.5 Z" />
+    <!-- Ondas sonoras laterales -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M24,54.5 C22.5,57 22.5,61 24,63.5"
+        android:strokeWidth="2.4"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M84,54.5 C85.5,57 85.5,61 84,63.5"
+        android:strokeWidth="2.4"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <!-- Marco de pantalla central -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M43,48 L65,48 A3,3 0 0 1 68,51 L68,66 A3,3 0 0 1 65,69 L43,69 A3,3 0 0 1 40,66 L40,51 A3,3 0 0 1 43,48 Z"
+        android:strokeWidth="3.0"
+        android:strokeColor="#FFFFFF" />
+    <!-- Triángulo de reproducción -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50.5,53.5 L60.5,58.5 L50.5,63.5 Z" />
+</vector>

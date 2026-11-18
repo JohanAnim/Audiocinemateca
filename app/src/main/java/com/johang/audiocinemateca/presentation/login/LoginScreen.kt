@@ -4,9 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.Vibrator
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -117,11 +119,10 @@ fun LoginScreen(
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            Icon(
-                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+            Image(
+                painter = painterResource(id = R.drawable.ic_audiocinemateca_brand),
                 contentDescription = null,
-                modifier = Modifier.size(80.dp),
-                tint = MaterialTheme.colorScheme.primary
+                modifier = Modifier.size(96.dp)
             )
 
             Text(

@@ -44,8 +44,10 @@ import com.johang.audiocinemateca.data.local.SharedPreferencesManager
 import com.johang.audiocinemateca.domain.usecase.LoginUseCase
 import com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -84,33 +86,40 @@ class SplashActivity : ComponentActivity() {
     }
 
     private fun playBootSoundAndVibrate() {
-        try {
-            val appCtx = applicationContext
-            bootMediaPlayer?.release()
+        val appCtx = applicationContext
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                bootMediaPlayer?.release()
 
-            val mediaPlayer = MediaPlayer()
-            bootMediaPlayer = mediaPlayer
-
-            val afd = appCtx.assets.openFd("sonidos/efectos/Boot Animation.mp3")
-            mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-            mediaPlayer.prepare()
-            afd.close()
-
-            mediaPlayer.start()
-            triggerVibration(1500L)
-
-            mediaPlayer.setOnCompletionListener { mp ->
-                try {
-                    mp.release()
-                    if (bootMediaPlayer == mp) {
-                        bootMediaPlayer = null
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                val mediaPlayer = MediaPlayer()
+                val afd = appCtx.assets.openFd("sonidos/efectos/Boot Animation.mp3")
+                afd.use {
+                    mediaPlayer.setDataSource(it.fileDescriptor, it.startOffset, it.length)
                 }
+                mediaPlayer.prepare()
+                mediaPlayer.setOnCompletionListener { mp ->
+                    try {
+                        mp.release()
+                        if (bootMediaPlayer == mp) {
+                            bootMediaPlayer = null
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    if (isFinishing || isDestroyed) {
+                        mediaPlayer.release()
+                        return@withContext
+                    }
+                    bootMediaPlayer = mediaPlayer
+                    mediaPlayer.start()
+                    triggerVibration(1500L)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 
@@ -257,9 +266,9 @@ fun SplashScreenContent(durationMs: Long) {
                 .alpha(alpha.value)
         ) {
             Image(
-                painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                contentDescription = "Animación",
-                modifier = Modifier.size(120.dp)
+                painter = painterResource(id = R.drawable.ic_audiocinemateca_brand),
+                contentDescription = "Audiocinemateca",
+                modifier = Modifier.size(128.dp)
             )
             Spacer(modifier = Modifier.height(24.dp))
             Text(

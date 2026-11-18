@@ -956,7 +956,7 @@ class PlayerService : MediaSessionService() {
         val playPauseTitle = if (isPlaying) "Pausar" else "Reproducir"
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(subtitle)
             .setContentIntent(pendingIntent)
