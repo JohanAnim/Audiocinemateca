@@ -497,7 +497,9 @@ class CatalogRepository @Inject constructor(
         return diacriticsRegex.replace(decomposed, "").lowercase(Locale.ROOT).trim()
     }
 
-    private fun catalogToEntities(catalog: CatalogResponse): List<CatalogItemEntity> {
+    private fun safeText(value: String?, fallback: String = ""): String = value ?: fallback
+
+    internal fun catalogToEntities(catalog: CatalogResponse): List<CatalogItemEntity> {
         val entities = ArrayList<CatalogItemEntity>(
             (catalog.movies?.size ?: 0) +
                 (catalog.series?.size ?: 0) +
@@ -506,23 +508,25 @@ class CatalogRepository @Inject constructor(
         )
 
         catalog.movies?.forEachIndexed { index, movie ->
+            val safeEnlaces = (movie.enlaces as List<String>?) ?: emptyList()
             entities.add(
                 createEntity(
                     item = movie,
                     category = "peliculas",
-                    partes = movie.partes,
-                    mediaJson = gson.toJson(movie.enlaces),
+                    partes = safeText(movie.partes),
+                    mediaJson = gson.toJson(safeEnlaces),
                     sortOrder = index
                 )
             )
         }
         catalog.series?.forEachIndexed { index, serie ->
+            val safeCapitulos = (serie.capitulos as Map<String, List<Episode>>?) ?: emptyMap()
             entities.add(
                 createEntity(
                     item = serie,
                     category = "series",
-                    partes = serie.temporadas,
-                    mediaJson = gson.toJson(serie.capitulos),
+                    partes = safeText(serie.temporadas),
+                    mediaJson = gson.toJson(safeCapitulos),
                     sortOrder = index
                 )
             )
@@ -532,8 +536,8 @@ class CatalogRepository @Inject constructor(
                 createEntity(
                     item = doc,
                     category = "documentales",
-                    partes = doc.partes,
-                    mediaJson = doc.enlace,
+                    partes = safeText(doc.partes),
+                    mediaJson = safeText(doc.enlace),
                     sortOrder = index
                 )
             )
@@ -544,7 +548,7 @@ class CatalogRepository @Inject constructor(
                     item = shortFilm,
                     category = "cortometrajes",
                     partes = "1",
-                    mediaJson = shortFilm.enlace,
+                    mediaJson = safeText(shortFilm.enlace),
                     sortOrder = index
                 )
             )
@@ -555,43 +559,62 @@ class CatalogRepository @Inject constructor(
     private fun createEntity(
         item: CatalogItem,
         category: String,
-        partes: String,
-        mediaJson: String,
+        partes: String?,
+        mediaJson: String?,
         sortOrder: Int
     ): CatalogItemEntity {
-        val titleNorm = normalizeText(item.title)
+        val safeId = safeText(item.id)
+        val safeTitle = safeText(item.title)
+        val safeAnio = safeText(item.anio)
+        val safeGenero = safeText(item.genero)
+        val safePais = safeText(item.pais)
+        val safeDirector = safeText(item.director)
+        val safeGuion = safeText(item.guion)
+        val safeMusica = safeText(item.musica)
+        val safeFotografia = safeText(item.fotografia)
+        val safeReparto = safeText(item.reparto)
+        val safeProductora = safeText(item.productora)
+        val safeNarracion = safeText(item.narracion)
+        val safeDuracion = safeText(item.duracion)
+        val safeIdioma = safeText(item.idioma)
+        val safePartes = safeText(partes)
+        val safeFilmaffinity = safeText(item.filmaffinity)
+        val safeSinopsis = safeText(item.sinopsis)
+        val safeMediaJson = safeText(mediaJson)
+
+        val titleNorm = normalizeText(safeTitle)
         val searchTextNorm = normalizeText(
             listOf(
-                item.title,
-                item.director,
-                item.reparto,
-                item.musica,
-                item.genero,
-                item.anio,
-                item.sinopsis
+                safeTitle,
+                safeDirector,
+                safeReparto,
+                safeMusica,
+                safeGenero,
+                safeAnio,
+                safeSinopsis
             ).filter { it.isNotBlank() }.joinToString(" ")
         )
         return CatalogItemEntity(
-            id = item.id,
+            id = safeId,
             category = category,
-            title = item.title,
+            title = safeTitle,
             titleNorm = titleNorm,
-            anio = item.anio,
-            genero = item.genero,
-            pais = item.pais,
-            director = item.director,
-            guion = item.guion,
-            musica = item.musica,
-            fotografia = item.fotografia,
-            reparto = item.reparto,
-            productora = item.productora,
-            narracion = item.narracion,
-            duracion = item.duracion,
-            idioma = item.idioma,
-            partes = partes,
-            filmaffinity = item.filmaffinity,
-            sinopsis = item.sinopsis,
-            mediaJson = mediaJson,
+            anio = safeAnio,
+            genero = safeGenero,
+            pais = safePais,
+            director = safeDirector,
+            guion = safeGuion,
+            musica = safeMusica,
+            fotografia = safeFotografia,
+            reparto = safeReparto,
+            productora = safeProductora,
+            narracion = safeNarracion,
+            duracion = safeDuracion,
+            idioma = safeIdioma,
+            partes = safePartes,
+            filmaffinity = safeFilmaffinity,
+            sinopsis = safeSinopsis,
+            mediaJson = safeMediaJson,
             searchTextNorm = searchTextNorm,
             sortOrder = sortOrder
         )
