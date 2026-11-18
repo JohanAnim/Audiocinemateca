@@ -18,7 +18,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Home
@@ -81,6 +83,7 @@ import com.johang.audiocinemateca.presentation.player.PlayerService
 import com.johang.audiocinemateca.presentation.theme.AudiocinematecaTheme
 import com.johang.audiocinemateca.util.SoundEffectsManager
 import com.johang.audiocinemateca.util.TtsManager
+import com.johang.audiocinemateca.util.accessibleHeading
 import com.johang.audiocinemateca.util.findCurrentlyAccessibilityFocusedNodeId
 import com.johang.audiocinemateca.util.initialAccessibilityFocus
 import com.johang.audiocinemateca.util.requestComposeAccessibilityFocusById
@@ -131,8 +134,10 @@ class MainActivity : AppCompatActivity() {
     private val isCommunityVisibleState = MutableStateFlow(false)
     private val isHomeVisibleState = MutableStateFlow(true)
     private val whatsNewChangelogState = MutableStateFlow<String?>(null)
+    private val availableStartupUpdateState = MutableStateFlow<com.johang.audiocinemateca.domain.model.UpdateInfo?>(null)
     private val showGlobalDonationDialogState = MutableStateFlow(false)
     private val pendingNavigationRouteState = MutableStateFlow<String?>(null)
+    private var hasCheckedStartupUpdate = false
 
     private var currentPlayingItemId: String? = null
     private var currentPlayingItemType: String? = null
@@ -333,6 +338,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 val whatsNewChangelog by whatsNewChangelogState.collectAsState()
+                val availableStartupUpdate by availableStartupUpdateState.collectAsState()
                 val showGlobalDonation by showGlobalDonationDialogState.collectAsState()
                 val pendingRoute by pendingNavigationRouteState.collectAsState()
                 val migrationStatus by serverMigrationManager.status.collectAsState()
@@ -470,6 +476,68 @@ class MainActivity : AppCompatActivity() {
                     UpdateProgressDialog(
                         viewModel = accountViewModel,
                         onDismiss = { showGlobalUpdateProgress = false }
+                    )
+                }
+
+                availableStartupUpdate?.takeIf {
+                    whatsNewChangelog == null && !(showMigrationDialog && migrationStatus.shouldShowBanner)
+                }?.let { startupUpdate ->
+                    val dialogTitle = if (startupUpdate.isPrerelease) {
+                        "Actualización Beta disponible (${startupUpdate.version})"
+                    } else {
+                        "Nueva versión disponible (${startupUpdate.version})"
+                    }
+                    AlertDialog(
+                        onDismissRequest = { availableStartupUpdateState.value = null },
+                        title = {
+                            Text(
+                                text = dialogTitle,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.accessibleHeading(dialogTitle)
+                            )
+                        },
+                        text = {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 320.dp)
+                                    .verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Hay una nueva versión de Audiocinemateca lista para descargar e instalar.",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                if (startupUpdate.changelog.isNotBlank()) {
+                                    val formattedNotes = remember(startupUpdate.changelog) {
+                                        com.johang.audiocinemateca.util.parseMarkdownToAnnotatedString(
+                                            startupUpdate.changelog.replace(Regex("(?m)^>\\s*"), "")
+                                        )
+                                    }
+                                    Text(
+                                        text = formattedNotes,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    availableStartupUpdateState.value = null
+                                    showGlobalUpdateProgress = true
+                                    accountViewModel.downloadUpdate(startupUpdate)
+                                }
+                            ) {
+                                Text("Actualizar ahora")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { availableStartupUpdateState.value = null }) {
+                                Text("Más tarde")
+                            }
+                        }
                     )
                 }
 
@@ -692,11 +760,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAppUpdateAutomatically(currentVersionName: String) {
+        if (hasCheckedStartupUpdate) return
         if (!sharedPreferencesManager.getBoolean("auto_check_app", true)) return
+        hasCheckedStartupUpdate = true
         lifecycleScope.launch {
             try {
                 val result = accountViewModel.manualCheckForUpdates(currentVersionName)
                 if (result is UpdateCheckResult.UpdateAvailable) {
+                    availableStartupUpdateState.value = result.updateInfo
                     val intent = Intent(ACTION_SHOW_UPDATE_INDICATOR)
                     LocalBroadcastManager.getInstance(this@MainActivity).sendBroadcast(intent)
                 }
